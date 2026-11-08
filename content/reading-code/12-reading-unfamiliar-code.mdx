@@ -1,0 +1,207 @@
+---
+id: reading-unfamiliar-code
+title: Reading code you didn't write
+order: 12
+topic: reading-code
+minutes: 50
+summary: How to find your way around a project you've never seen, and how to review code, whether a person or an AI wrote it, for the bugs that matter.
+connectivity: offline
+prerequisites: [javascript-in-node]
+predict:
+  id: p1
+  type: mcq
+  prompt: You're handed a client's project with 300 files. Where do you start?
+  options:
+    - Read every file from top to bottom
+    - The README, then the entry point (where the program starts), then follow one feature from start to finish
+    - The biggest file
+    - Rewrite it in a language you know
+  answer: 1
+  why: Nobody reads a whole codebase. You build a map, from what it is and where it starts, then follow one real path through it. The rest you look up only when you need it.
+tasks:
+  - id: discount-bug
+    type: flaw
+    title: Review a pull request
+    language: javascript
+    instructions: |
+      A developer opens a pull request: "Add a WELCOME10 code for 10% off a customer's first order." It passed a quick manual test with the code WELCOME10. You're reviewing it. One line means **every** customer gets 10% off, whatever code they type. Which one?
+    code: |
+      app.post("/api/checkout", async (req, res) => {
+        const { customerId, code, total } = req.body;
+        let discount = 0;
+
+        if (code = "WELCOME10") {
+          discount = total * 0.1;
+        }
+
+        const order = await saveOrder(customerId, total - discount);
+        res.json({ orderId: order.id, charged: total - discount });
+      });
+    flawLines: [5]
+    lineNotes:
+      "1": Defining a checkout endpoint that waits on async work is normal.
+      "2": Reading values from the request body is normal. Though should the server trust a total sent by the browser? Note that for later, but it's not the bug asked about.
+      "3": Starting the discount at 0 is right.
+      "6": 10% of the total is the right amount, when the discount applies.
+      "9": Saving the order after the discount is right.
+      "10": Returning the order is fine.
+    explanation: |
+      `code = "WELCOME10"` uses **one** equals sign, so it **assigns** "WELCOME10" to code instead of comparing. The value of an assignment is the assigned text, which counts as true, so the discount applies to every order. The manual test passed because the tester typed the right code.
+
+      The fix is `if (code === "WELCOME10")`. Tools called **linters** flag this pattern automatically, which is one reason good projects use them.
+
+      And line 2's note is a real second issue: the server takes `total` from the browser, which a user could change. Prices should be worked out on the server. Good reviewers notice both: the bug asked about, and the risk nobody mentioned.
+  - id: new-codebase
+    type: case
+    title: "Your first week on a client's codebase"
+    instructions: A client asks you to look at their app before quoting for a new feature.
+    scenario: |
+      A small company's booking app was built by a freelancer who has since left. There's a Git repository with about 200 files, a short README, and no tests. The client wants to add text-message reminders and asks how long it'll take.
+    questions:
+      - prompt: What do you do first?
+        choices:
+          - text: Read the README and package.json, get it running locally, then follow how a booking is created from the form to the database
+            score: 2
+            why: That gives you a map and a working copy, and tracing one real feature shows how the whole app is put together.
+          - text: Start writing the reminder feature straight away
+            score: 0
+            why: Without understanding how bookings work, you'll likely build it in the wrong place or break something.
+          - text: Quote a number based on similar projects
+            score: 0
+            why: You'd be guessing about a codebase you haven't seen. Unknown code is the biggest risk in any estimate.
+      - prompt: You find booking times are stored in different time zones in different places. What do you do with that?
+        choices:
+          - text: Note it as a risk, because reminders depend on correct times, and include it in your estimate and your conversation with the client
+            score: 2
+            why: Reminders sent at the wrong hour would be the visible symptom. Raising it now, with its cost, is honest and protects everyone.
+          - text: Ignore it. It's not part of the feature
+            score: 0
+            why: It directly affects the feature. Reminders at the wrong time would be blamed on your work.
+          - text: Quietly rewrite all the date handling
+            score: 0
+            why: That's a big, risky change the client hasn't agreed to or budgeted for.
+      - prompt: How do you use AI on this codebase?
+        choices:
+          - text: Ask it to explain specific files or functions, then check its explanation against the actual code, without pasting secrets
+            score: 2
+            why: AI is great for "what does this function do?", as long as you verify, and keep passwords and keys out of what you share.
+          - text: Paste the whole repository and trust its summary
+            score: 0
+            why: That may share secrets, and a summary of 200 files will miss details and may invent some.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: What's the "entry point" of a program?
+    options:
+      - The login page
+      - Where the program starts running, like the file named in package.json's scripts
+      - The first file alphabetically
+      - The README
+    answer: 1
+    why: Starting from the entry point and following the calls is how you trace what actually happens.
+  - id: r2
+    type: mcq
+    prompt: 'What''s wrong with `if (status = "paid")` in JavaScript?'
+    options:
+      - Nothing
+      - It assigns instead of comparing, so it's always true
+      - Strings can't be compared
+      - It needs a semicolon
+    answer: 1
+    why: One = assigns. Comparing needs ===.
+  - id: r3
+    type: self
+    prompt: When you review code, what kinds of problems do you look for, beyond "does it work for the example"?
+    modelAnswer: Edge cases like empty lists, missing values and boundaries. Security, like trusting data from the browser, missing permission checks, and secrets in code. Errors that aren't handled. Whether it does what the request actually asked. And whether it's readable, with names that say what things do.
+cards:
+  - id: map-codebase
+    front: How do you start on an unfamiliar codebase?
+    back: README → package.json or requirements.txt → get it running → find the entry point → trace one real feature from start to finish. Look the rest up as needed.
+  - id: search
+    front: What's the quickest way to find where something happens in a codebase?
+    back: Search the whole project for a word you can see, like a button's label, an error message or a URL. Editors like VS Code search every file at once.
+  - id: review-list
+    front: What does a good code review check?
+    back: Does it do what was asked? Edge cases, error handling, security (trusting input, permissions, secrets), and readability.
+  - id: trust-input
+    front: Why shouldn't a server trust a price sent by the browser?
+    back: Users can change anything their browser sends. Prices, permissions and totals must be worked out or checked on the server.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: A client says "the Save button shows 'Something went wrong'". What's the fastest way to find the code involved?
+    options:
+      - Read every file
+      - Search the project for the text "Something went wrong" and the save request's URL
+      - Ask the client to rewrite it
+      - Reinstall the packages
+    answer: 1
+    why: Visible text and URLs are great search terms. They lead you straight to the code.
+  - id: t2
+    type: mcq
+    prompt: AI wrote a function and it passes the one example you tried. Is it ready?
+    options:
+      - Yes
+      - Not yet. Read it, and test edge cases like empty input, missing values and boundaries
+      - Only if it's short
+      - Only if the AI says so
+    answer: 1
+    why: One example proves little. Edge cases are where AI-written code, and human-written code, usually breaks.
+docs:
+  - title: "Google: How to do a code review"
+    url: https://google.github.io/eng-practices/review/reviewer/
+  - title: "VS Code: Search across files"
+    url: https://code.visualstudio.com/docs/editing/codebasics#_search-across-files
+videos: []
+---
+
+## Most code you read won't be yours
+
+As a consultant, you'll spend far more time reading other people's code than writing your own: client projects, old systems, libraries, and more and more often, AI-written code. Reading code well is the core skill. This lesson is about doing it efficiently.
+
+## Finding your way around
+
+Nobody reads a whole codebase. Build a map, then follow one path:
+
+1. **The README.** What is it, and how do you run it? Even a bad README tells you something.
+2. **The package list:** `package.json`, `requirements.txt` or similar. It shows the language, the framework and the major tools. The `scripts` section tells you how it starts.
+3. **Get it running** on your machine. Code you can run is far easier to understand than code you can only read.
+4. **Find the entry point**, where the program starts, and the folder structure. Typical folders are `src/`, `routes/` or `api/`, `components/`, `models/` and `tests/`.
+5. **Trace one real feature** from start to finish. For example: the booking form → the request it sends → the server route → the database. Now you understand how the whole app is wired.
+
+## Search is your superpower
+
+To find where something happens, **search the whole project** for something you can see:
+
+- Text on the screen: a button label or an error message.
+- A URL from the browser's address bar or the network tab.
+- A name from the database or an error log.
+
+In VS Code, **Ctrl+Shift+F** searches every file at once.
+
+## Reviewing code
+
+Whether a teammate or an AI wrote it, ask:
+
+| Question | What you're looking for |
+| --- | --- |
+| Does it do what was **asked**? | Not just what the example tested |
+| What about the **edges**? | Empty lists, missing values, exactly-on-the-boundary numbers, odd characters like apostrophes |
+| What happens when it **fails**? | Errors swallowed? Network calls that might never answer? |
+| Is it **safe**? | Trusting data from the browser, missing permission checks, secrets in code |
+| Can someone **read** it? | Names that say what things do, and no surprises |
+
+The bugs you've met in this module, like `>` instead of `>=`, `or` instead of `and`, a missing `return`, text instead of numbers, and `=` instead of `===`, are exactly what slips past a quick test and gets caught by a careful reader.
+
+<Callout title="Reviewing AI-written code">
+AI code often looks polished, which makes it easy to trust. Review it like a stranger's: read every line, test the edge cases, and be extra suspicious of anything that "fixes" an error by turning a check off. That's a pattern you've now seen several times.
+</Callout>
+
+## You've finished Stage 1
+
+You can now find your way around a computer and a terminal, explain what happens when software runs, use Git and GitHub, and read, debug and judge real Python and JavaScript. That's a solid foundation. Next comes **Stage 2: How software connects**, starting with how a web request really works.
+
+<ConsultantNote>
+A careful code review is one of the most valuable things a consultant offers. A client usually can't judge their own software. You can tell them, in plain language, what's solid, what's risky, and what it would cost to fix, and that starts with reading code the way you've practiced here.
+</ConsultantNote>

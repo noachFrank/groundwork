@@ -1,0 +1,5 @@
+# Windows batch files must keep CRLF line endings or cmd.exe misreads them.
+# -text stops Git (and GitHub Download ZIP) from ever converting them.
+* text=auto
+*.bat -text
+*.ps1 -text

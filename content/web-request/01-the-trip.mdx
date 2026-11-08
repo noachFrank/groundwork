@@ -1,0 +1,133 @@
+---
+id: the-trip
+title: The trip a web request takes
+order: 1
+topic: networks-and-the-web
+minutes: 40
+summary: What happens between pressing Enter and seeing a page, and your first real request from a real terminal.
+connectivity: offline
+prerequisites: []
+predict:
+  id: p1
+  type: mcq
+  prompt: You type a website's name and press Enter. What does your browser do first?
+  options:
+    - Downloads the page from the website directly
+    - Finds out the website's number address
+    - Asks Google for the page
+    - Checks whether the website is safe
+  answer: 1
+  why: Computers connect using number addresses, not names. So before anything else, the browser has to turn the name into a number. That step is called DNS, and you'll run your own DNS server later in this module.
+tasks:
+  - id: first-request
+    type: terminal
+    title: Send a request from a real terminal
+    instructions: |
+      A **terminal** is a window where you type commands instead of clicking. People who build software use one every day, and it's far less scary than it looks. You can't break anything by following these steps.
+
+      Do these in order. Use the Copy button, then right-click inside the PowerShell window to paste, and press Enter.
+    steps:
+      - text: Press the **Windows key**, type `powershell`, and press Enter. A window opens with a blinking cursor. That's your terminal.
+      - text: Move into your practice folder. (`cd` means "change directory", and directory is another word for folder.)
+        command: cd $HOME\Groundwork-Practice
+      - text: Send a real web request to the lab server on your computer. Its reply prints right in the terminal. That's the same kind of request your browser makes.
+        command: curl.exe http://localhost:4314/hello
+      - text: Same request, but save the response to a file with `-o`, for "output".
+        command: curl.exe -o hello.txt http://localhost:4314/hello
+      - text: Now make a tiny program. This creates a `.bat` file, which is simply a text file of commands Windows can run. It's the same kind of file as `start.bat`, which starts this app.
+        command: Set-Content fetch.bat "curl.exe -s -o from-bat.txt http://localhost:4314/hello"
+      - text: Run your program. (`.\` means "in this folder".)
+        command: .\fetch.bat
+      - text: Read the file your program created.
+        command: Get-Content from-bat.txt
+    checks:
+      - path: hello.txt
+        contains: Hello from the Groundwork lab
+        hint: This file should be created by the `curl.exe -o hello.txt` step. Are you in the practice folder? Run the `cd` command again, then that step.
+      - path: fetch.bat
+        contains: curl
+        hint: This is created by the `Set-Content` step.
+      - path: from-bat.txt
+        contains: Hello from the Groundwork lab
+        hint: This is created when you run `.\fetch.bat`.
+recall:
+  - id: r1
+    type: mcq
+    prompt: Put the start of a web request in the right order.
+    options:
+      - Send the HTTP request → find the IP address → connect
+      - Find the IP address → connect to the server → send the HTTP request
+      - Connect to the server → find the IP address → send the HTTP request
+    answer: 1
+    why: The browser needs the address before it can connect, and needs a connection before it can send anything.
+  - id: r2
+    type: short
+    prompt: What is the name of the system that turns a name like example.com into an IP address?
+    accept: ['\bdns\b', 'domain name']
+    answerText: DNS (the Domain Name System)
+  - id: r3
+    type: self
+    prompt: In your own words, why might a web server need to talk to a database while answering a request?
+    modelAnswer: The page often depends on data that changes, like products or your account. The web server asks the database for that data, then builds the response with it.
+cards:
+  - id: order
+    front: What are the main stages of a web request, in order?
+    back: Find the IP address (DNS) → connect to the server (TCP, plus TLS for HTTPS) → send the HTTP request → the server does its work → the response comes back → the browser shows it.
+  - id: curl
+    front: What does `curl.exe http://localhost:4314/hello` do?
+    back: It sends a real HTTP request from the terminal and prints the response. It's the same kind of request a browser sends, without the browser.
+  - id: bat
+    front: What is a `.bat` file?
+    back: A plain text file of commands that Windows can run, one after another.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: What is the first network step when you visit a site you haven't been to recently?
+    options: [Send the HTTP request, Look up the IP address with DNS, Download the images, Start encryption]
+    answer: 1
+    why: Without the address, there's nowhere to connect.
+  - id: t2
+    type: mcq
+    prompt: In PowerShell, what does `curl.exe -o out.txt http://localhost:4314/hello` do?
+    options: [Uploads out.txt to the server, Saves the server's response into out.txt, Opens the page in a browser, Deletes out.txt]
+    answer: 1
+    why: "`-o` means write the output to this file."
+docs:
+  - title: "MDN: How the web works"
+    url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Getting_started/Web_standards/How_the_web_works
+  - title: "Microsoft: What is PowerShell?"
+    url: https://learn.microsoft.com/en-us/powershell/scripting/overview
+videos:
+  - id: 7_LPdttKXPc
+    title: How the Internet Works in 5 Minutes
+    channel: Aaron
+    note: A friendly five-minute overview of what's underneath all this.
+---
+
+## You already use this hundreds of times a day
+
+Every time you open a web page, your computer has a short, fast conversation with computers around the world. Almost every technical problem a client will ever bring you lives somewhere in that conversation: "the site is down", "it's slow", "it works for me but not for them".
+
+If you can picture the trip, you can work out **where** a problem is. That's most of the job.
+
+Step through it. Don't rush, and read each step:
+
+<Viz name="request-trip" />
+
+## The five stages
+
+1. **Find the address.** Names are for people. Computers connect using numbers called **IP addresses**. **DNS** turns one into the other.
+2. **Connect.** Your computer opens a connection to that address. For HTTPS, the two sides also set up encryption.
+3. **Ask.** Your browser sends an **HTTP request**, a short text message saying what it wants.
+4. **Work.** The server figures out the answer, often by asking a database.
+5. **Answer.** The server sends an **HTTP response**: a status code like `200 OK`, plus the content. Your browser then displays it, and usually repeats the trip for each image, style and script.
+
+The rest of this module takes those apart one at a time.
+
+## What "localhost" means
+
+In the task below you'll send requests to an address called `localhost`. That's a special name meaning **"this computer"**. Groundwork runs small practice servers on your own machine, so these are real requests using the real rules, and they need no internet.
+
+<ConsultantNote>
+"The website is down" can mean many different things. Is the name not resolving? Is the server refusing connections? Is it answering with an error? Knowing the stages turns a vague complaint into one precise question, and that's what clients pay for.
+</ConsultantNote>

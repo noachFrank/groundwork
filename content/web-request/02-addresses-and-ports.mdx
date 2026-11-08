@@ -1,0 +1,131 @@
+---
+id: addresses-and-ports
+title: "Addresses and ports: where things live"
+order: 2
+topic: networks-and-the-web
+minutes: 30
+summary: How an IP address finds a computer and a port finds the right program on it, plus TCP and UDP.
+connectivity: offline
+prerequisites: [the-trip]
+predict:
+  id: p1
+  type: mcq
+  prompt: One computer runs both a website and an email server. A request arrives at its address. How does the computer know which program it's for?
+  options:
+    - It reads the message and guesses
+    - Each program has its own IP address
+    - Requests carry a port number, and each program listens on its own port
+    - It sends the request to every program
+  answer: 2
+  why: The IP address gets a message to the right computer. The port gets it to the right program on that computer.
+tasks:
+  - id: two-services
+    type: lab
+    lab: ports
+    title: Two services, one computer
+    instructions: |
+      Your computer is running several small servers right now. They share one address, `localhost`, and differ only by port. The lab server will notice when your requests arrive.
+recall:
+  - id: r1
+    type: mcq
+    prompt: An IP address is like a building's street address. So what's a port like?
+    options: [The name of the building, A specific apartment number inside it, The road leading to it, The building's owner]
+    answer: 1
+    why: The address finds the building (computer). The apartment number finds who you want inside (program).
+  - id: r2
+    type: short
+    prompt: What's the standard port number for HTTPS?
+    accept: ['\b443\b']
+    answerText: "443"
+    why: HTTP is 80. Browsers fill these in for you, which is why you rarely see them.
+  - id: r3
+    type: mcq
+    prompt: A video call would rather skip a lost bit of audio than stop and wait for it. Which protocol suits that?
+    options: [TCP, UDP]
+    answer: 1
+    why: UDP sends without waiting for confirmation. TCP guarantees delivery in order, which is what you want for web pages, but its waiting would make a call stutter.
+  - id: r4
+    type: short
+    prompt: What IP address does `localhost` usually mean?
+    accept: ['127\.0\.0\.1', '::1']
+    answerText: 127.0.0.1
+cards:
+  - id: ip-vs-port
+    front: What's the difference between an IP address and a port?
+    back: The IP address finds the computer. The port finds the program on that computer.
+  - id: ports
+    front: Which ports do HTTP and HTTPS normally use?
+    back: HTTP uses 80, and HTTPS uses 443.
+  - id: tcp-udp
+    front: When would you pick TCP, and when UDP?
+    back: TCP when everything must arrive, in order (web pages, files). UDP when speed matters more than perfection (calls, games, DNS lookups).
+  - id: localhost
+    front: What does `localhost` mean?
+    back: This computer. It usually maps to the address 127.0.0.1.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: A server's firewall allows port 443 but blocks port 22. What does this most directly affect?
+    options: [Which computers exist, Which programs on the server can be reached, The server's IP address, How fast the disk is]
+    answer: 1
+    why: Ports map to programs, so blocking a port blocks access to whatever listens there.
+  - id: t2
+    type: mcq
+    prompt: Which is true about TCP compared with UDP?
+    options: [TCP guarantees ordered delivery, UDP guarantees ordered delivery, Neither is used on the web, They are the same]
+    answer: 0
+    why: TCP retransmits what's lost and keeps things in order, at the cost of some delay.
+docs:
+  - title: "MDN: Port"
+    url: https://developer.mozilla.org/en-US/docs/Glossary/Port
+  - title: "MDN: IP address"
+    url: https://developer.mozilla.org/en-US/docs/Glossary/IP_Address
+videos:
+  - id: g2fT-g9PX9o
+    title: Network Ports Explained
+    channel: PowerCert Animated Videos
+    end: 300
+    note: The first five minutes cover what you need.
+---
+
+## IP addresses find computers
+
+An **IP address** identifies a computer on a network. Most look like four numbers with dots: `142.250.190.78`. That format is **IPv4**. There's a newer, longer format called **IPv6**, like `2607:f8b0:4009::200e`. They do the same job.
+
+A few are worth recognizing:
+
+| Address | What it means |
+| --- | --- |
+| `127.0.0.1` | This computer. Also known as `localhost`. |
+| `192.168.x.x` or `10.x.x.x` | Private. Only meaningful inside a home or office network. |
+| Anything else, generally | Public: reachable from across the internet. |
+
+Your laptop probably has a private address like `192.168.1.23`. Your router shares one public address for everyone at home. That's why a server on your laptop can't normally be reached from outside.
+
+## Ports find programs
+
+A computer runs many programs that use the network at once. Each server program **listens** on a numbered **port**, from 1 to 65535.
+
+Think of an apartment building: the IP address gets a letter to the building, and the port is the apartment number.
+
+| Port | Usually |
+| --- | --- |
+| 80 | HTTP (unencrypted web) |
+| 443 | HTTPS (encrypted web) |
+| 22 | SSH (logging in to a server remotely) |
+| 5432 | PostgreSQL, a database |
+
+So `https://example.com` really means `https://example.com:443`. The browser fills in the port when it's the standard one. Developers constantly run things on other ports, like `http://localhost:3000`.
+
+If nothing is listening on a port, the connection is **refused**. You'll see that for yourself in the task.
+
+## TCP and UDP: two ways to send
+
+Messages travel in small chunks called **packets**. Two protocols handle most of them:
+
+- **TCP** is like a phone call. It sets up a connection, confirms everything arrives, re-sends what's lost, and keeps it all in order. The web, email and file transfers use it.
+- **UDP** is like posting postcards. It just sends. It's faster, with no guarantee. Video calls and DNS lookups use it.
+
+<ConsultantNote>
+"Connection refused" and "connection timed out" are clues. **Refused** means the computer answered but nothing is listening on that port, so the service is probably down. **Timed out** means nothing answered at all, so suspect a firewall or the wrong address.
+</ConsultantNote>

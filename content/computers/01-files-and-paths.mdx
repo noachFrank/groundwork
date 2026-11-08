@@ -1,0 +1,179 @@
+---
+id: files-and-paths
+title: Files, folders and paths
+order: 1
+topic: how-computers-run-software
+minutes: 50
+summary: How a computer organizes files, how to write down exactly where one is, and your first steps moving around in a terminal.
+connectivity: offline
+prerequisites: []
+predict:
+  id: p1
+  type: mcq
+  prompt: 'What does `C:\Users\sam\Documents\cv.docx` tell you?'
+  options:
+    - The file's size
+    - Exactly where the file is, folder by folder, starting at the C drive
+    - Who last opened the file
+    - That the file is on the internet
+  answer: 1
+  why: That's a **path**. Read left to right, it's directions. Start at drive C, go into Users, then sam, then Documents, and there's the file cv.docx.
+tasks:
+  - id: move-around
+    type: terminal
+    title: Make, copy and rename files without the mouse
+    instructions: |
+      You'll do the everyday things you'd normally do in File Explorer, but by typing. Use the Copy button next to each command, right-click inside PowerShell to paste, then press Enter.
+
+      Nothing here can harm your computer. Everything happens inside your practice folder.
+    steps:
+      - text: Press the **Windows key**, type `powershell`, and press Enter.
+      - text: Go to your practice folder. `cd` means "change directory", and directory is another word for folder.
+        command: cd $HOME\Groundwork-Practice
+      - text: Ask where you are. PowerShell prints the full path of the folder you're in.
+        command: Get-Location
+      - text: Make a new folder for this lesson, then go into it.
+        command: mkdir files-lesson; cd files-lesson
+      - text: Create a file with some text in it.
+        command: Set-Content notes.txt "My first file, made from the terminal"
+      - text: List what's in this folder. `ls` is a short name for the same thing, and works too.
+        command: Get-ChildItem
+      - text: Make a folder inside this one, and copy the file into it under a new name.
+        command: mkdir archive; Copy-Item notes.txt archive\notes-copy.txt
+      - text: Rename the original. Renaming is really moving a file to a new name.
+        command: Move-Item notes.txt plan.txt
+      - text: List everything, including inside the archive folder, and save that list to a file.
+        command: Get-ChildItem -Recurse | Out-File tree.txt
+      - text: "Open this folder in File Explorer to see that the terminal and the mouse are two views of the same files. The dot means \"the folder I'm in\"."
+        command: explorer .
+    checks:
+      - path: files-lesson/plan.txt
+        contains: My first file
+        hint: This is created by `Set-Content`, then renamed by `Move-Item`. Did you run both, inside the `files-lesson` folder?
+      - path: files-lesson/archive/notes-copy.txt
+        contains: My first file
+        hint: This is created by the `mkdir archive; Copy-Item ...` step.
+      - path: files-lesson/tree.txt
+        contains: notes-copy.txt
+        hint: This is created by the `Get-ChildItem -Recurse | Out-File tree.txt` step.
+recall:
+  - id: r1
+    type: mcq
+    prompt: 'You''re in `C:\Users\sam`. Which path is **relative**?'
+    options:
+      - 'C:\Users\sam\Documents'
+      - 'Documents\cv.docx'
+      - 'C:\Windows'
+    answer: 1
+    why: A relative path starts from where you are now. The others start from the drive, so they're absolute and work from anywhere.
+  - id: r2
+    type: short
+    prompt: In a path, what do two dots (`..`) mean?
+    accept: ['parent', 'up one', 'folder above', 'one level up', 'containing folder', 'up a folder', 'previous folder']
+    answerText: The parent folder, one level up
+  - id: r3
+    type: mcq
+    prompt: Why turn on "File name extensions" in File Explorer?
+    options:
+      - It makes files open faster
+      - So you can see what kind of file something really is, like spotting that invoice.pdf.exe is a program
+      - It's needed to run PowerShell
+      - It saves disk space
+    answer: 1
+    why: Windows hides extensions by default, which hides useful information and helps disguise harmful files.
+  - id: r4
+    type: short
+    prompt: Which PowerShell command shows the folder you're currently in?
+    accept: ['get-location', '\bpwd\b']
+    answerText: Get-Location (or its short name, pwd)
+cards:
+  - id: path
+    front: What is a path?
+    back: The address of a file or folder, written folder by folder, like `C:\Users\sam\Documents\cv.docx`.
+  - id: abs-rel
+    front: What's the difference between an absolute and a relative path?
+    back: An absolute path starts at the drive (`C:\...`) and works from anywhere. A relative path starts from the folder you're in.
+  - id: dots
+    front: What do `.` and `..` mean in a path?
+    back: "`.` is the folder you're in. `..` is the folder above it."
+  - id: basic-cmds
+    front: "PowerShell: where am I, what's here, go into a folder, make a folder?"
+    back: "`Get-Location` (pwd), `Get-ChildItem` (ls), `cd name`, `mkdir name`. `cd ..` goes up one."
+testOut:
+  - id: t1
+    type: mcq
+    prompt: 'You''re in `C:\Projects\shop`. Where does `cd ..\blog` take you?'
+    options: ['C:\Projects\shop\blog', 'C:\Projects\blog', 'C:\blog', 'Nowhere, it''s an error']
+    answer: 1
+    why: "`..` goes up to `C:\\Projects`, then `blog` goes into the blog folder there."
+  - id: t2
+    type: mcq
+    prompt: 'A path has a space in it: `C:\My Files\notes.txt`. What do you need to do in the terminal?'
+    options:
+      - Nothing special
+      - Put the path in quotes
+      - Replace the space with a dash
+      - Paths can't have spaces
+    answer: 1
+    why: Without quotes, the terminal thinks the space separates two different things.
+docs:
+  - title: "Microsoft: about Locations (PowerShell)"
+    url: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_locations
+  - title: "Microsoft: Show hidden files and file name extensions"
+    url: https://support.microsoft.com/en-us/windows/file-explorer-in-windows-ef370130-1cca-9dc5-e0df-2f7416fe1cb1
+videos: []
+---
+
+## Everything is a file in a folder
+
+Your photos, your documents, and every program on your computer, including Groundwork, are **files**. Files live in **folders**, also called **directories**, and folders can hold other folders. Together they make a tree.
+
+At the top of the tree on Windows is a **drive**, usually `C:`. Your own files live in your **home folder**, `C:\Users\your-name`.
+
+## Paths are addresses
+
+A **path** writes down exactly where a file is, one folder at a time:
+
+```text
+C:\Users\sam\Documents\cv.docx
+│  │     │   │         └── the file
+│  │     │   └── a folder inside sam
+│  │     └── sam's home folder
+│  └── the Users folder
+└── the C drive
+```
+
+On Windows, folders are separated by a **backslash** `\`. On Mac, Linux and in web addresses, they use a **forward slash** `/`. You'll see both constantly.
+
+### Absolute and relative
+
+- An **absolute** path starts at the drive, `C:\...`. It works from anywhere.
+- A **relative** path starts from wherever you are right now. If you're in `C:\Users\sam`, then `Documents\cv.docx` points to the same file.
+
+Two shortcuts appear in relative paths all the time:
+
+| | Means |
+| --- | --- |
+| `.` | The folder I'm in |
+| `..` | The folder above this one |
+| `$HOME` or `~` | My home folder |
+
+## File extensions
+
+The letters after the last dot in a file name, like `.docx`, `.txt` or `.exe`, are the **extension**. They tell Windows what kind of file it is and which program opens it.
+
+Windows hides extensions by default, which is unhelpful. Turn them on: open File Explorer, click **View** → **Show** → **File name extensions**. You'll need to see them for the rest of this course.
+
+<Callout kind="warn" title="Hidden extensions hide tricks">
+A file called `invoice.pdf.exe` shows up as `invoice.pdf` when extensions are hidden. It looks like a document, but it's a program. Seeing extensions helps you spot that.
+</Callout>
+
+## The terminal is another view of the same files
+
+File Explorer and the terminal show the same files. The terminal just uses typing instead of clicking. Developers use it because it's faster for many jobs, it can be repeated exactly, and instructions for software are almost always written as terminal commands.
+
+At any moment, the terminal is "in" one folder, called the **current directory**. Commands work relative to it.
+
+<ConsultantNote>
+"I can't find the file" and "it says the file doesn't exist" are some of the most common problems you'll help people with. Nine times out of ten, the program is looking in a different folder than they think. Asking "what's the full path?" solves a lot.
+</ConsultantNote>

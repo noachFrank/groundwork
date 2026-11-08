@@ -1,0 +1,193 @@
+---
+id: python-first-steps
+title: "Python: values, variables and printing"
+order: 1
+topic: reading-code
+minutes: 50
+summary: What a program is, how Python stores values in variables, the difference between text and numbers, and how to print results.
+connectivity: offline
+prerequisites: [asking-good-questions]
+predict:
+  id: p1
+  type: mcq
+  prompt: 'In Python, what does `print("2" + "2")` show?'
+  options: ["4", "22", "2 + 2", An error]
+  answer: 1
+  why: 'The quotes make them text, called **strings**, not numbers. Adding two strings joins them together: "2" + "2" is "22". Without quotes, `2 + 2` is 4. Python cares a lot about what kind of value something is.'
+tasks:
+  - id: receipt
+    type: python
+    title: Work out a café bill
+    instructions: |
+      Python runs right here in the app, with no install. Press **Run and check** to run your code. Hidden checks then test it. If something's wrong, they tell you what.
+
+      A **variable** is a name for a value: `price = 3.5` stores 3.5 under the name `price`. `*` multiplies and `+` adds. An **f-string** puts values inside text: `f"Hello {name}"`.
+    starter: |
+      # A café sells coffee for 3.5 and cake for 4.25.
+      coffee_price = 3.5
+      cake_price = 4.25
+
+      # 1. Make a variable called total for 2 coffees and 1 cake.
+
+      # 2. Make a variable called message, using an f-string, that reads exactly:
+      #    Your total is 11.25
+
+      # 3. Print the message.
+    tests:
+      - name: total is right
+        code: |
+          assert "total" in dir() or "total" in globals(), "Make a variable called total."
+          assert total == 11.25, f"total should be 11.25 (two coffees plus one cake), but it's {total}."
+      - name: message is right
+        code: |
+          assert message == "Your total is 11.25", f'message should be exactly "Your total is 11.25", but it\'s "{message}". Use an f-string with total inside curly brackets.'
+      - name: the message was printed
+        code: |
+          assert "Your total is 11.25" in __output__, "Nothing printed the message yet. Add print(message) at the end."
+    solution: |
+      coffee_price = 3.5
+      cake_price = 4.25
+      total = coffee_price * 2 + cake_price
+      message = f"Your total is {total}"
+      print(message)
+    wrong: |
+      coffee_price = 3.5
+      cake_price = 4.25
+      total = coffee_price + cake_price
+      message = f"Your total is {total}"
+      print(message)
+  - id: text-or-number
+    type: flaw
+    title: Which line crashes?
+    language: python
+    instructions: |
+      This program should tell someone how old they'll be next year. It crashes with `TypeError: can only concatenate str (not "int") to str`. Which line causes it?
+    code: |
+      name = "Sam"
+      age = "30"
+      print("Hello, " + name)
+      next_year = age + 1
+      print(f"Next year you'll be {next_year}")
+    flawLines: [4]
+    lineNotes:
+      "1": Storing a name as text, in quotes, is exactly right.
+      "2": This is the root cause, in a way. The quotes make "30" text, not a number. But Python doesn't complain here. Which line actually crashes?
+      "3": Joining two pieces of text with + works fine.
+      "5": This line would be fine if next_year had a value.
+    explanation: |
+      `age` holds the **text** "30", because of the quotes on line 2. Line 4 tries to add the **number** 1 to text, and Python refuses, because it can't know whether you mean 31 or "301".
+
+      The fix is either to store a number, `age = 30`, or to convert the text: `next_year = int(age) + 1`. You'll meet this constantly, because anything typed by a user, or read from a file or web page, arrives as text.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What does `x = 5` do in Python?
+    options:
+      - Checks whether x equals 5
+      - Stores the value 5 under the name x
+      - Prints 5
+      - Creates a file called x
+    answer: 1
+    why: A single `=` assigns a value. Checking for equality uses `==`, in the next lesson.
+  - id: r2
+    type: mcq
+    prompt: Which of these is a string?
+    options: ['42', '"42"', '4.2', 'True']
+    answer: 1
+    why: Quotes make a string, which is text. Without quotes, 42 is a whole number (an int) and 4.2 is a decimal (a float).
+  - id: r3
+    type: short
+    prompt: 'If `name = "Ada"`, what does `print(f"Hi {name}!")` show?'
+    accept: ['^\s*hi ada!?\s*$']
+    answerText: Hi Ada!
+  - id: r4
+    type: short
+    prompt: Which Python function turns the text "30" into the number 30?
+    accept: ['\bint\b']
+    answerText: int, as in int("30")
+cards:
+  - id: variable
+    front: What is a variable?
+    back: A name for a value, like `price = 3.5`. You can use the name later, and change what it holds.
+  - id: types
+    front: What are str, int, float and bool?
+    back: Text ("hello"), whole numbers (42), decimal numbers (4.2), and True or False.
+  - id: fstring
+    front: What is an f-string?
+    back: 'Text with values inside it: `f"Total: {total}"`. The f before the quote turns on the curly brackets.'
+  - id: str-int
+    front: Why does `"30" + 1` fail in Python?
+    back: You can't add a number to text. Convert first, with `int("30") + 1`, or join text with `"30" + str(1)`.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: 'What does `print(3 * "ab")` show?'
+    options: [ababab, "3ab", An error, "9"]
+    answer: 0
+    why: Multiplying a string by a number repeats it.
+  - id: t2
+    type: mcq
+    prompt: 'After `a = 5` then `a = a + 2`, what is `a`?'
+    options: ["5", "7", "2", An error]
+    answer: 1
+    why: The right side is worked out first (5 + 2), then stored back in a.
+docs:
+  - title: "Python tutorial: An informal introduction to Python"
+    url: https://docs.python.org/3/tutorial/introduction.html
+  - title: "Python docs: f-strings"
+    url: https://docs.python.org/3/tutorial/inputoutput.html#formatted-string-literals
+videos: []
+---
+
+## What a program is
+
+A program is a list of instructions that the computer follows **in order, from the top**. That's all. Everything else, from loops to functions to whole apps, is a way of organizing those instructions.
+
+This module's goal is **reading** code: understanding what it does, spotting what's wrong, and judging code that someone else, or an AI, wrote. You'll write some too, because writing is the best way to learn reading.
+
+We start with Python because it reads almost like English. Then JavaScript, the language of the web.
+
+## Values and their types
+
+Every value has a **type**, and the type decides what you can do with it:
+
+| Type | Example | What it is |
+| --- | --- | --- |
+| `str` | `"hello"`, `"30"` | Text. Always in quotes. |
+| `int` | `42`, `-7` | A whole number |
+| `float` | `3.5`, `0.1` | A number with a decimal point |
+| `bool` | `True`, `False` | Yes or no |
+
+`"30"` and `30` look alike but behave differently. `"30" + "1"` is `"301"`, and `30 + 1` is `31`. Mixing them, `"30" + 1`, is an error. This one detail causes a surprising share of real bugs.
+
+## Variables
+
+A **variable** gives a value a name:
+
+```python
+price = 3.5
+quantity = 2
+total = price * quantity     # 7.0
+```
+
+Read `=` as "store". The right side is worked out first, then stored under the name on the left. That's why `count = count + 1` makes sense: take the old count, add one, store it back.
+
+Lines starting with `#` are **comments**: notes for people, ignored by Python.
+
+## Showing results
+
+`print()` shows a value. **f-strings** are the neat way to mix values into text:
+
+```python
+name = "Ada"
+total = 7.0
+print(f"{name}, your total is {total}")   # Ada, your total is 7.0
+```
+
+<Callout title="Reading tip">
+When you read code, say each line out loud in plain English: "store 3.5 as price", "store price times quantity as total". If you can't say what a line does, that's the line to look up.
+</Callout>
+
+<ConsultantNote>
+You don't have to become a full-time programmer to be a good consultant, but you do need to read code well enough to judge it. "Is this well written? Is it safe? Does it do what the client thinks it does?" all start with reading it line by line.
+</ConsultantNote>

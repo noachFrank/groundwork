@@ -1,0 +1,164 @@
+---
+id: conflicts
+title: Merge conflicts, on purpose
+order: 4
+topic: git-and-github
+minutes: 45
+summary: What happens when two people change the same line. You'll cause a conflict deliberately and fix it, so the real ones never scare you.
+connectivity: offline
+prerequisites: [branches]
+predict:
+  id: p1
+  type: mcq
+  prompt: Two branches both changed the same line of the same file, in different ways. You merge them. What does Git do?
+  options:
+    - Keeps the newest change
+    - Keeps both changes side by side
+    - Stops and asks you to decide, marking the clashing lines in the file
+    - Deletes the file
+  answer: 2
+  why: Git can't know which version is right, so it doesn't guess. It marks both versions in the file and waits for a person to choose. That's a **merge conflict**, and it's normal.
+tasks:
+  - id: make-and-fix
+    type: terminal
+    title: Cause a conflict, then resolve it
+    instructions: |
+      You'll change the page title in two different ways on two branches, then merge them. You'll fix the conflict by hand in Notepad.
+    steps:
+      - text: Open PowerShell and go into your website's repository.
+        command: cd $HOME\Groundwork-Practice\git-lesson\my-site
+      - text: On a new branch, change the title to "Welcome to my site", and commit.
+        command: git switch -c new-title; (Get-Content index.html) -replace 'My first page', 'Welcome to my site' | Set-Content index.html; git commit -am "Friendlier title"
+      - text: Back on main, change the **same line** differently, and commit.
+        command: git switch main; (Get-Content index.html) -replace 'My first page', 'My homepage' | Set-Content index.html; git commit -am "Rename the title"
+      - text: Merge. Git reports a CONFLICT in index.html and stops halfway.
+        command: git merge new-title
+      - text: Git's status lists the file under "Unmerged paths".
+        command: git status
+      - text: Open the file in Notepad.
+        command: notepad index.html
+      - text: "In Notepad, you'll see both versions between markers: `<<<<<<<`, `=======` and `>>>>>>>`. Decide what the title should be. Combining them is fine, like `<h1>Welcome to my homepage</h1>`. **Delete all three marker lines** and the version you don't want, so one `<h1>` line is left. Save with Ctrl+S, and close Notepad."
+      - text: Check the file looks right, with no markers left.
+        command: Get-Content index.html
+      - text: Tell Git it's resolved by staging the file, then finish the merge.
+        command: git add index.html; git commit --no-edit
+      - text: Save the history.
+        command: git log --oneline > ..\conflict-log.txt; Get-Content ..\conflict-log.txt
+    checks:
+      - path: git-lesson/my-site/index.html
+        contains: "<h1>"
+        notContains: "<<<<<<<"
+        hint: Open index.html in Notepad again, delete every marker line (`<<<<<<<`, `=======`, `>>>>>>>`), keep one `<h1>` line, save, then `git add index.html` and commit.
+      - path: git-lesson/conflict-log.txt
+        contains: Merge branch 'new-title'
+        hint: After resolving, run `git add index.html; git commit --no-edit`, then save the log.
+recall:
+  - id: r1
+    type: mcq
+    prompt: 'In a conflicted file, what''s between `<<<<<<< HEAD` and `=======`?'
+    options:
+      - The version from the branch you're merging in
+      - The version on the branch you're on
+      - Git's suggested fix
+      - An error message
+    answer: 1
+    why: HEAD is your current branch. The part between `=======` and `>>>>>>>` is the incoming branch's version.
+  - id: r2
+    type: mcq
+    prompt: You've edited the conflicted file and removed the markers. What tells Git it's resolved?
+    options: [Saving the file, git add on the file, then commit, Restarting, git status]
+    answer: 1
+    why: Staging the file marks it as resolved, and committing finishes the merge.
+  - id: r3
+    type: short
+    prompt: Halfway through a messy conflict, which command cancels the merge and puts everything back as it was?
+    accept: ['git merge --abort']
+    answerText: git merge --abort
+  - id: r4
+    type: self
+    prompt: Why is a merge conflict not a sign that something went wrong?
+    modelAnswer: It just means two people changed the same lines, which is normal when people work in parallel. Git refuses to guess which change is right and asks a person to decide. Nothing is lost, and both versions are shown.
+cards:
+  - id: conflict
+    front: What is a merge conflict?
+    back: Two branches changed the same lines differently. Git marks both versions in the file and waits for you to choose.
+  - id: markers
+    front: What do the conflict markers mean?
+    back: "`<<<<<<< HEAD` starts your branch's version, `=======` separates them, and `>>>>>>> other` ends the incoming version. Delete all the markers when you resolve."
+  - id: resolve
+    front: How do you resolve a conflict?
+    back: Edit the file to the version you want, remove the markers, `git add` the file, then `git commit`. Or `git merge --abort` to cancel.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: After a conflict, a teammate commits a file that still contains `<<<<<<<` lines. What happens?
+    options:
+      - Nothing, Git removes them automatically
+      - The markers are now part of the code, which usually breaks it
+      - Git refuses the commit every time
+      - The file is deleted
+    answer: 1
+    why: Git doesn't stop you committing markers. They then end up in the real file, on the website or in the program.
+  - id: t2
+    type: mcq
+    prompt: What makes conflicts less likely on a team?
+    options:
+      - Small, frequent merges, and not everyone editing the same lines at once
+      - Bigger, rarer merges
+      - Never using branches
+      - Turning off Git
+    answer: 0
+    why: The longer branches stay apart, the more they drift, and the bigger the conflicts get.
+docs:
+  - title: "Pro Git book: Basic Merge Conflicts"
+    url: https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging#_basic_merge_conflicts
+  - title: "GitHub Docs: Resolving a merge conflict using the command line"
+    url: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/addressing-merge-conflicts/resolving-a-merge-conflict-using-the-command-line
+videos: []
+---
+
+## When Git can't decide
+
+Most of the time, Git merges branches by itself, even when both changed the same file, as long as they changed **different lines**. But when both changed the **same lines** differently, Git can't know which is right. So it stops and asks.
+
+That's a **merge conflict**. It isn't an error, and nothing is lost. It's Git being careful.
+
+## What a conflict looks like
+
+Git writes both versions into the file between markers:
+
+```text
+<<<<<<< HEAD
+<h1>My homepage</h1>
+=======
+<h1>Welcome to my site</h1>
+>>>>>>> new-title
+<p>Made by me.</p>
+```
+
+- Between `<<<<<<< HEAD` and `=======` is the version on **your current branch**.
+- Between `=======` and `>>>>>>> new-title` is the version from the **branch being merged in**.
+- Everything outside the markers merged fine.
+
+## Resolving it
+
+1. **Open the file** and find the markers. Editors like VS Code highlight them and add buttons such as "Accept current" and "Accept incoming".
+2. **Decide what it should say.** Keep one side, the other, or a mix of both. It's a judgment, so if it's someone else's code, ask them.
+3. **Delete every marker line.**
+4. **Stage and commit:** `git add file`, then `git commit`.
+
+Changed your mind halfway? `git merge --abort` puts everything back as it was before the merge.
+
+<Callout kind="warn" title="Check for leftover markers">
+Git won't stop you committing a file that still has `<<<<<<<` in it. Those lines then break the code or appear on the website. Always look over the file before you commit.
+</Callout>
+
+## Fewer conflicts
+
+- **Merge often.** The longer branches stay apart, the more they drift and the bigger the conflicts.
+- **Keep branches small.** One feature or fix per branch.
+- **Talk.** If two people need to rework the same file, a quick message saves a painful merge.
+
+<ConsultantNote>
+A team that dreads merging usually has branches that live for weeks. Suggesting smaller, shorter-lived branches and frequent merges is simple advice that makes a big difference to how quickly a client's team can ship.
+</ConsultantNote>

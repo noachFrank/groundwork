@@ -1,0 +1,212 @@
+---
+id: debugging
+title: Debugging when there's no error message
+order: 7
+topic: reading-code
+minutes: 50
+summary: A calm, repeatable method for finding bugs that don't crash, just give wrong answers. Reproduce, narrow down, look inside, fix, and check.
+connectivity: offline
+prerequisites: [errors-and-tracebacks]
+predict:
+  id: p1
+  type: mcq
+  prompt: A program gives the wrong total, with no error. What's the most effective first step?
+  options:
+    - Rewrite the whole program
+    - Find a small example where you know the right answer, and reproduce the wrong result reliably
+    - Change things at random until it works
+    - Ask an AI to rewrite it
+  answer: 1
+  why: If you can't make the bug happen on demand, you can't tell whether you've fixed it. A small, known example turns a vague problem into one you can investigate step by step.
+tasks:
+  - id: pagination-bug
+    type: python
+    title: Find the bug in the page splitter
+    instructions: |
+      A shop shows products 3 per page. `get_page(items, page_number, per_page)` should return the items for that page, where page 1 is the first page. Customers say page 1 is missing the first product, and the last page sometimes shows nothing.
+
+      There's no error message. Run it, compare what it prints with what it should print, and use extra `print()` calls inside the function to see what's happening. Then fix it.
+
+      Python's **slicing**, `items[a:b]`, gives the items from position a up to, but not including, position b.
+    starter: |
+      products = ["Lamp", "Desk", "Chair", "Shelf", "Rug", "Clock", "Mirror"]
+
+
+      def get_page(items, page_number, per_page):
+          start = page_number * per_page
+          end = start + per_page
+          return items[start:end]
+
+
+      print(get_page(products, 1, 3))   # should be ['Lamp', 'Desk', 'Chair']
+      print(get_page(products, 2, 3))   # should be ['Shelf', 'Rug', 'Clock']
+      print(get_page(products, 3, 3))   # should be ['Mirror']
+    tests:
+      - name: page 1 starts at the first product
+        code: |
+          assert get_page(products, 1, 3) == ["Lamp", "Desk", "Chair"], f"Page 1 should be the first three products, but got {get_page(products, 1, 3)}. What should start be when page_number is 1?"
+      - name: page 2 is the next three
+        code: |
+          assert get_page(products, 2, 3) == ["Shelf", "Rug", "Clock"], f"Got {get_page(products, 2, 3)}."
+      - name: the last page has what's left
+        code: |
+          assert get_page(products, 3, 3) == ["Mirror"], f"Page 3 should just be Mirror, but got {get_page(products, 3, 3)}."
+      - name: other page sizes work
+        code: |
+          assert get_page(products, 2, 2) == ["Chair", "Shelf"], "With 2 per page, page 2 should be Chair and Shelf."
+    solution: |
+      products = ["Lamp", "Desk", "Chair", "Shelf", "Rug", "Clock", "Mirror"]
+
+
+      def get_page(items, page_number, per_page):
+          start = (page_number - 1) * per_page
+          end = start + per_page
+          return items[start:end]
+    wrong: |
+      products = ["Lamp", "Desk", "Chair", "Shelf", "Rug", "Clock", "Mirror"]
+
+
+      def get_page(items, page_number, per_page):
+          start = page_number * per_page - 1
+          end = start + per_page
+          return items[start:end]
+  - id: checkout-bug
+    type: case
+    title: "\"Checkout is broken, sometimes\""
+    instructions: A client calls with a vague bug report. Choose how you'd work through it.
+    scenario: |
+      An online shop's owner says: "Some customers can't check out. It's been happening since last week. It works fine when I try it." They don't have any error messages to share.
+    questions:
+      - prompt: What do you do first?
+        choices:
+          - text: Ask for specifics. Which customers, what they did, what they saw, and when. Then try to reproduce it the way they did it
+            score: 2
+            why: '"Sometimes" always has a pattern: a browser, a country, a coupon, a type of card, a basket size. Specifics help you find it.'
+          - text: Rewrite the checkout
+            score: 0
+            why: You don't know what's wrong yet. A rewrite might keep the bug and add new ones.
+          - text: Tell them it works, since it works for the owner
+            score: 0
+            why: '"Works for me" is the start of an investigation, not the end of one.'
+      - prompt: It started last week. What's a quick way to narrow it down?
+        choices:
+          - text: Check what changed last week, like a deployment, an updated package or a new payment setting, using the Git history and release notes
+            score: 2
+            why: Bugs that start on a date usually come from a change on that date. git log shows exactly what changed and when.
+          - text: Wait to see if it fixes itself
+            score: 0
+            why: It rarely does, and every day costs the client sales.
+      - prompt: You find that it fails only for customers with an apostrophe in their surname, like O'Brien. What next?
+        choices:
+          - text: Reproduce it with a test order for O'Brien, fix the code that mishandles the apostrophe, confirm the test now works, and check other forms for the same problem
+            score: 2
+            why: Reproduce, fix, confirm, then look for the same bug elsewhere. An apostrophe breaking things can also point to a security problem, called injection, which is worth checking.
+          - text: Ask customers not to use apostrophes
+            score: 0
+            why: That pushes the bug onto customers, and the underlying problem may be a security hole.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: Put the debugging method in order.
+    options:
+      - Fix → reproduce → check
+      - Reproduce → narrow down → look inside → fix → check it's fixed
+      - Guess → change things → hope
+      - Rewrite → test → deploy
+    answer: 1
+    why: Each step makes the next one possible. Without reproducing it, you can't confirm a fix.
+  - id: r2
+    type: mcq
+    prompt: What is "print debugging"?
+    options:
+      - Printing the code on paper
+      - Adding temporary print() calls to see what values variables really hold as the program runs
+      - Debugging a printer
+      - Deleting print statements
+    answer: 1
+    why: It shows you what's actually happening instead of what you assume is happening. Remove the prints when you're done.
+  - id: r3
+    type: self
+    prompt: What's rubber duck debugging, and why does it work?
+    modelAnswer: Explaining the code line by line, out loud, to someone or something, even a rubber duck. Putting each step into words forces you to notice the gap between what you think the code does and what it actually does.
+cards:
+  - id: method
+    front: What's the debugging method?
+    back: Reproduce it reliably → narrow down where it happens → look at the real values → fix → confirm it's fixed, and look for the same bug elsewhere.
+  - id: print-debug
+    front: What's print debugging?
+    back: Adding temporary print() calls to see actual values while the program runs. Remove them afterwards.
+  - id: what-changed
+    front: A bug started on a specific date. Where do you look?
+    back: At what changed on that date, such as deployments, package updates or settings. `git log` shows code changes.
+  - id: off-by-one-pages
+    front: Why do "page 1" bugs happen?
+    back: People count pages from 1, but lists count from 0, so the first item of page n is at position (n - 1) × per_page.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: You've changed some code and the bug seems gone. What should you do before saying it's fixed?
+    options:
+      - Nothing
+      - Rerun the exact steps that reproduced it, and check you haven't broken anything else
+      - Delete the test
+      - Ask the client to test it
+    answer: 1
+    why: "Seems gone isn't fixed. Confirm with the same reproduction, then check that nearby things still work."
+  - id: t2
+    type: mcq
+    prompt: 'What does `["a", "b", "c", "d"][1:3]` give?'
+    options: ['["a", "b", "c"]', '["b", "c"]', '["b", "c", "d"]', '["c", "d"]']
+    answer: 1
+    why: A slice starts at the first position and stops before the second, so positions 1 and 2.
+docs:
+  - title: "Python tutorial: Lists and slicing"
+    url: https://docs.python.org/3/tutorial/introduction.html#lists
+  - title: "Python docs: pdb, the Python debugger"
+    url: https://docs.python.org/3/library/pdb.html
+videos: []
+---
+
+## The worst bugs don't crash
+
+A crash at least tells you where to look. The bugs that cost clients money usually **don't** crash: they give a slightly wrong price, skip a customer, or fail only for some people. Finding those takes a method, not luck.
+
+## The method
+
+1. **Reproduce it.** Find a small example where you know the right answer and can make the wrong one happen every time. If you can't reproduce it, you can't confirm a fix.
+2. **Narrow it down.** Which part of the program is it in? Cut the problem in half: is the data right going into this function? Coming out?
+3. **Look at the real values.** Don't assume. Add `print()` calls, or use a debugger, to see what variables actually hold.
+4. **Fix the cause**, not the symptom.
+5. **Check it's fixed.** Run the same reproduction. Then check you haven't broken anything nearby, and look for the same mistake elsewhere.
+
+## Print debugging
+
+The simplest tool is still one of the best. Add temporary prints to see inside:
+
+```python
+def get_page(items, page_number, per_page):
+    start = page_number * per_page
+    end = start + per_page
+    print("page", page_number, "start", start, "end", end)   # temporary
+    return items[start:end]
+```
+
+Seeing `page 1 start 3 end 6` makes the bug obvious: page 1 should start at 0. Remove the prints once you've fixed it.
+
+Editors like VS Code have a proper **debugger**, which pauses the program on a line and lets you inspect every variable. It's the same idea with more power.
+
+## Useful habits
+
+- **Change one thing at a time.** Otherwise you won't know which change fixed it, or broke something else.
+- **Ask "what changed?"** A bug that started last Tuesday usually comes from something that changed last Tuesday. `git log` tells you what.
+- **Explain it out loud.** Rubber duck debugging, from the first module, works remarkably well.
+- **Take a break.** Fresh eyes find bugs that tired ones stare straight past.
+
+<Callout title="Asking AI to debug">
+AI can be good at spotting bugs, if you give it what you'd give a person: the code, the input, what you expected, and what actually happened. "It doesn't work" gets a guess. "For page 1 I expected Lamp, Desk, Chair but got Shelf, Rug, Clock" usually gets the answer.
+</Callout>
+
+<ConsultantNote>
+Clients rarely report bugs precisely. "It's broken sometimes" is normal. Turning that into "it fails for surnames with apostrophes since last Tuesday's update" is a valuable skill. It's careful questions plus this method, and it's what makes clients trust you with their systems.
+</ConsultantNote>

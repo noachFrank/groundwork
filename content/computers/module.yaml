@@ -1,0 +1,5 @@
+id: computers
+title: How computers run software
+summary: Files, folders and the terminal, then what actually happens when a program runs. Covers processes, ports, PATH, packages and npm run dev. By the end, setup instructions stop looking like magic.
+stage: stage-1
+order: 2

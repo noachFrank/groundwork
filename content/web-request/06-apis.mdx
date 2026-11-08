@@ -1,0 +1,246 @@
+---
+id: apis
+title: "APIs and JSON: software talking to software"
+order: 6
+topic: software-talking
+minutes: 45
+summary: How programs ask each other for things, what JSON is, and where the data behind an API comes from.
+connectivity: offline
+prerequisites: [https]
+predict:
+  id: p1
+  type: mcq
+  prompt: A weather app on your phone shows today's forecast. Where does the app most likely get it?
+  options:
+    - It's stored inside the app when you install it
+    - It requests the data from a weather company's server, and gets back structured data rather than a web page
+    - It reads a weather website's page and copies the words
+    - Your phone has a weather sensor
+  answer: 1
+  why: That's an API. The app sends an HTTP request and gets data back, usually as JSON, then decides for itself how to display it.
+tasks:
+  - id: call-api
+    type: python
+    title: Call an API with Python
+    instructions: |
+      This calls the practice API running on your computer, so it needs no internet. The `requests` library is what you'd use in real Python, too.
+
+      `requests.get(url)` sends a GET request. On the result, `.status_code` is the status and `.json()` gives you the body as Python data. A JSON list becomes a Python list, and a JSON object becomes a dictionary, where `order["customer"]` reads a value.
+
+      Hint: go through a list with `for order in orders:`. Use `==` to compare things, and keep a running total.
+    starter: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def total_spent(customer):
+          # 1. GET BASE + "/orders" and read the .json() list
+          # 2. Add up the "total" of every order where "customer" matches
+          # 3. Return the sum
+          pass
+
+
+      def find_order(order_id):
+          # GET BASE + "/orders/" + str(order_id)
+          # If the status code is 404, return None. Otherwise return the .json()
+          pass
+
+
+      print(total_spent("Ada"))
+      print(find_order(102))
+      print(find_order(999))
+    tests:
+      - name: total_spent adds up Ada's orders
+        code: |
+          assert total_spent("Ada") == 58, "Ada has two orders, 49 and 9, so this should return 58."
+      - name: total_spent works for someone else
+        code: |
+          assert total_spent("Grace") == 189, "Grace has one order, for 189. Make sure you're comparing with the customer argument, not the name Ada."
+      - name: find_order returns an order that exists
+        code: |
+          order = find_order(102)
+          assert order is not None, "Order 102 exists, so this shouldn't be None."
+          assert order["item"] == "Monitor", "Order 102 is a Monitor. Return the .json() of the response."
+      - name: find_order returns None for a missing order
+        code: |
+          assert find_order(999) is None, "Order 999 doesn't exist. The API answers 404, so check .status_code and return None."
+    solution: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def total_spent(customer):
+          total = 0
+          for order in requests.get(BASE + "/orders").json():
+              if order["customer"] == customer:
+                  total += order["total"]
+          return total
+
+
+      def find_order(order_id):
+          response = requests.get(BASE + "/orders/" + str(order_id))
+          if response.status_code == 404:
+              return None
+          return response.json()
+    wrong: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def total_spent(customer):
+          return sum(order["total"] for order in requests.get(BASE + "/orders").json())
+
+
+      def find_order(order_id):
+          return requests.get(BASE + "/orders/" + str(order_id)).json()
+  - id: join-sql
+    type: sql
+    title: Look behind the API at the database
+    dataset: shop
+    instructions: |
+      Behind most APIs sits a database. This is **SQL**, the language for asking databases questions. It reads almost like English.
+
+      The practice database has two tables: `customers` (id, name, city) and `orders` (id, customer_id, item, total, status). Each order's `customer_id` matches a customer's `id`. A **JOIN** connects them.
+
+      **Your task:** list each customer's **name** and the **item** they ordered, only for orders with a total **over 20**. You can see how a join works, step by step, in the lesson above.
+
+      The starter query just shows the first table, so run it to see how this works. Then rewrite it.
+    starter: |
+      SELECT * FROM customers;
+    solution: |
+      SELECT customers.name, orders.item
+      FROM customers
+      JOIN orders ON orders.customer_id = customers.id
+      WHERE orders.total > 20;
+    wrong: |
+      SELECT customers.name, orders.item
+      FROM customers
+      JOIN orders ON orders.customer_id = customers.id;
+recall:
+  - id: r1
+    type: mcq
+    prompt: 'In `{"name": "Ada", "orders": [101, 103]}`, what is `orders`?'
+    options: [A key whose value is a list of two numbers, A value with a key of 101, A database table, An error]
+    answer: 0
+    why: JSON has key and value pairs in curly braces, and lists in square brackets.
+  - id: r2
+    type: short
+    prompt: Which SQL keyword connects rows from two tables?
+    accept: ['\bjoin\b']
+    answerText: JOIN
+  - id: r3
+    type: mcq
+    prompt: Why would an API require an API key?
+    options:
+      - To know who's calling, and to limit or bill them
+      - To make requests faster
+      - To encrypt the database
+      - Because HTTP can't work without one
+    answer: 0
+    why: Keys identify the caller. They aren't a strong secret on their own, so they must never be put in code that users can see.
+  - id: r4
+    type: self
+    prompt: Why is it safer for code to check an API's status code before using the response?
+    modelAnswer: An API can answer with an error (like a 404 or 500), and then the body isn't the data you expected. Without a check, the code might crash or quietly use bad data. Checking lets you handle the failure on purpose.
+cards:
+  - id: api
+    front: What is an API, in one sentence?
+    back: A defined way for one program to ask another for data or actions. On the web, usually HTTP requests that return JSON.
+  - id: json
+    front: What does JSON look like, and what's it for?
+    back: |
+      Text with key and value pairs in curly braces and lists in square brackets, like `{"id": 1, "tags": ["a"]}`. It's the common format for APIs to send data.
+  - id: join
+    front: What does a SQL JOIN do?
+    back: It combines rows from two tables wherever a column matches, like `orders.customer_id = customers.id`.
+  - id: key
+    front: Where should an API key never go?
+    back: In browser code, or in a code repository. Anyone can read those. Keep keys on a server, in environment variables.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Which SQL finds every order with a total over 20?
+    options:
+      - SELECT * FROM orders WHERE total > 20;
+      - GET orders WHERE total > 20;
+      - SELECT orders IF total > 20;
+      - FIND orders total > 20;
+    answer: 0
+    why: SELECT picks the columns, FROM picks the table, and WHERE filters the rows.
+  - id: t2
+    type: mcq
+    prompt: A REST API is designed so that a URL like `/orders/102` represents what?
+    options: [A specific resource, A function name, A database password, A web page's styling]
+    answer: 0
+    why: In REST, URLs name things, and HTTP methods say what to do with them.
+docs:
+  - title: "MDN: Working with JSON"
+    url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/JSON
+  - title: "SQLite: SELECT"
+    url: https://www.sqlite.org/lang_select.html
+  - title: "Requests: the Python library"
+    url: https://requests.readthedocs.io/en/latest/
+videos:
+  - id: s7wmiS2mSXY
+    title: What is an API? (in 3 minutes)
+    channel: MuleSoft Videos
+  - id: -mN3VyJuCjM
+    title: What Is REST API? Examples And How To Use It
+    channel: ByteByteGo
+    note: A bit deeper. Watch it if you want more on REST.
+---
+
+## When the visitor is a program
+
+So far a person has been at one end of the request. An **API** (Application Programming Interface) is the same idea when the visitor is a program. Your weather app, a checkout using Stripe, a dashboard pulling in sales numbers: all APIs.
+
+An API is a promise: "send me a request shaped like this, and I'll answer in this shape." A lot of modern software is mostly services talking to each other this way.
+
+## REST: the most common style
+
+Most web APIs follow a style called **REST**. URLs name things, and the HTTP methods you already know say what to do:
+
+| Request | Meaning |
+| --- | --- |
+| `GET /orders` | List the orders |
+| `GET /orders/102` | Get order 102 |
+| `POST /orders` | Create an order |
+| `DELETE /orders/102` | Delete order 102 |
+
+## JSON: the shared language
+
+APIs usually send data as **JSON**. It's just text, which nearly every language can read:
+
+```json
+{
+  "id": 102,
+  "customer": "Grace",
+  "paid": true,
+  "items": ["Monitor", "Cable"]
+}
+```
+
+Curly braces hold **key and value** pairs. Square brackets hold **lists**. Values can be text, numbers, `true`/`false`, `null`, or more of the same, nested.
+
+## API keys
+
+Many APIs want to know who's calling, usually with a key sent in a header, as you did with `X-API-Key`. Keys let the provider limit and bill usage.
+
+<Callout kind="warn" title="Keep keys out of browser code">
+Anything in a web page's code can be read by anyone. A key in there is public. Real keys belong on a server. This is one of the most common mistakes in AI-generated code, so watch for it.
+</Callout>
+
+## Where the data lives
+
+Behind most APIs is a database, and a common kind stores data in **tables**. A shop keeps customers in one table and orders in another, with each order holding the id of its customer. **SQL** is the language for asking questions across them.
+
+A `JOIN` connects those tables. Step through how one works, and try switching between `JOIN` and `LEFT JOIN`:
+
+<Viz name="sql-join" />
+
+<ConsultantNote>
+"Do they have an API?" comes up in almost every client project. Connecting to an existing system can be a day's work if it has good API docs, or impossible if it doesn't, and that can decide the whole budget. Reading API docs is a core consulting skill.
+</ConsultantNote>

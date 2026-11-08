@@ -1,0 +1,242 @@
+---
+id: javascript-basics
+title: "JavaScript for Python people"
+order: 9
+topic: reading-code
+minutes: 50
+summary: The language of the web, side by side with the Python you know. Same ideas, different punctuation, plus a couple of traps that only JavaScript has.
+connectivity: offline
+prerequisites: [small-scripts]
+predict:
+  id: p1
+  type: mcq
+  prompt: 'In JavaScript, what does `"5" + 1` give?'
+  options: ["6", '"51"', An error, "5"]
+  answer: 1
+  why: 'Python refuses to mix text and numbers. JavaScript doesn''t refuse: it quietly turns the 1 into text and joins them. JavaScript tries to be helpful by converting types automatically, and that causes some famous bugs.'
+tasks:
+  - id: shipping-js
+    type: javascript
+    title: Translate the shipping rules into JavaScript
+    instructions: |
+      This is the shipping function from the Python decisions lesson. Write the same rules in JavaScript: international orders cost **15**, domestic orders of **50 or more** ship free (**0**), and other domestic orders cost **5**.
+
+      Then finish `describeOrder`, which uses a **template literal**, backticks with `${...}` inside, like Python's f-strings.
+    starter: |
+      // Python version, for reference:
+      // def shipping_cost(order_total, is_international):
+      //     if is_international:
+      //         return 15
+      //     elif order_total >= 50:
+      //         return 0
+      //     else:
+      //         return 5
+
+      function shippingCost(orderTotal, isInternational) {
+        // Your if / else if / else goes here
+      }
+
+      function describeOrder(order) {
+        // order looks like { customer: "Ada", items: 2 }
+        // Return exactly: "Ada ordered 2 items"
+      }
+
+      console.log(shippingCost(20, false));
+      console.log(describeOrder({ customer: "Ada", items: 2 }));
+    tests:
+      - name: small domestic order costs 5
+        code: |
+          assert(shippingCost(20, false) === 5, "A 20 domestic order should cost 5, but got " + shippingCost(20, false) + ".");
+      - name: exactly 50 ships free
+        code: |
+          assert(shippingCost(50, false) === 0, "Exactly 50 should ship free. Check > versus >=.");
+      - name: international costs 15
+        code: |
+          assert(shippingCost(500, true) === 15, "International orders always cost 15.");
+      - name: describeOrder
+        code: |
+          const d = describeOrder({ customer: "Grace", items: 3 });
+          assert(d === "Grace ordered 3 items", 'Expected "Grace ordered 3 items", got ' + JSON.stringify(d) + ". Use order.customer and order.items in a template literal.");
+    solution: |
+      function shippingCost(orderTotal, isInternational) {
+        if (isInternational) {
+          return 15;
+        } else if (orderTotal >= 50) {
+          return 0;
+        } else {
+          return 5;
+        }
+      }
+
+      function describeOrder(order) {
+        return `${order.customer} ordered ${order.items} items`;
+      }
+    wrong: |
+      function shippingCost(orderTotal, isInternational) {
+        if (isInternational) {
+          return 15;
+        } else if (orderTotal > 50) {
+          return 0;
+        } else {
+          return 5;
+        }
+      }
+
+      function describeOrder(order) {
+        return `${order.customer} ordered ${order.items} items`;
+      }
+  - id: text-prices
+    type: flaw
+    title: "The basket total of \"04.502.00\""
+    language: javascript
+    instructions: |
+      A shop's basket page reads prices from the page, so they arrive as text, like `["4.50", "2.00"]`. Customers report a basket total of **04.502.00**. Which line causes it?
+    code: |
+      function basketTotal(prices) {
+        let total = 0;
+        for (const price of prices) {
+          total = total + price;
+        }
+        return total;
+      }
+
+      console.log(basketTotal(["4.50", "2.00"]));
+    flawLines: [4]
+    lineNotes:
+      "1": Taking a list of prices is fine.
+      "2": Starting the total at the number 0 is right.
+      "3": "`for (const price of prices)` goes through each price. It's JavaScript's version of Python's `for price in prices:`."
+      "6": Returning the total is fine. The problem is what total has become.
+      "9": This shows the bug, but it doesn't cause it.
+    explanation: |
+      Each `price` is **text**. When you `+` a number and text in JavaScript, it doesn't add, it **joins**: 0 + "4.50" is "04.50", then "04.50" + "2.00" is "04.502.00". Python would have stopped with a TypeError. JavaScript carries on.
+
+      The fix is to convert on purpose: `total = total + Number(price);`.
+
+      Anything from a web page, a form, a URL or a CSV arrives as text. In JavaScript, convert it to a number before doing maths, because the language won't warn you.
+recall:
+  - id: r1
+    type: mcq
+    prompt: "What's the JavaScript version of Python's `print()`?"
+    options: [echo(), console.log(), print(), write()]
+    answer: 1
+    why: console.log writes to the browser's console or the terminal in Node.
+  - id: r2
+    type: mcq
+    prompt: Which should you normally use to compare in JavaScript?
+    options: ["=", "==", "===", "=>"]
+    answer: 2
+    why: '`===` compares without converting types. `==` converts first, which leads to surprises like `"" == 0` being true.'
+  - id: r3
+    type: mcq
+    prompt: "What's the difference between `const` and `let`?"
+    options:
+      - They're the same
+      - const can't be reassigned. let can
+      - let is for numbers and const for text
+      - const is faster
+    answer: 1
+    why: Use const by default, and let when the variable really needs to change, like a running total.
+  - id: r4
+    type: short
+    prompt: 'If `name` is "Ada", what does `` `Hi ${name}!` `` give in JavaScript?'
+    accept: ['^\s*hi ada!?\s*$']
+    answerText: Hi Ada!
+cards:
+  - id: py-js
+    front: Python versus JavaScript syntax?
+    back: "Blocks use { } instead of indentation. Statements often end with ;. elif is else if. True/False/None are true/false/null. print is console.log."
+  - id: triple-equals
+    front: Why use `===` instead of `==`?
+    back: '`==` converts types before comparing, so `"" == 0` and `"5" == 5` are true. `===` doesn''t convert, so there are no surprises.'
+  - id: const-let
+    front: const or let?
+    back: const by default. let for variables you'll reassign, like counters. Avoid the old var.
+  - id: template
+    front: What is a template literal?
+    back: 'A string in backticks that can hold values: `` `Total: ${total}` ``. Like a Python f-string.'
+testOut:
+  - id: t1
+    type: mcq
+    prompt: 'What does `5 + "5"` give in JavaScript?'
+    options: ["10", '"55"', An error, "0"]
+    answer: 1
+    why: JavaScript turns the number into text and joins them.
+  - id: t2
+    type: mcq
+    prompt: 'In JavaScript, how do you read the price from `const item = { name: "Lamp", price: 22 }`?'
+    options: [item.price, item->price, price(item), item:price]
+    answer: 0
+    why: Dot notation reads a property. `item["price"]` works too.
+docs:
+  - title: "MDN: JavaScript first steps"
+    url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting
+  - title: "MDN: Equality comparisons and sameness"
+    url: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Equality_comparisons_and_sameness
+videos: []
+---
+
+## Why JavaScript
+
+JavaScript is the only language that runs in every web browser. Every interactive website uses it. With **Node.js**, the program that runs Groundwork, it also runs servers. So whether a client's project is a website, a web app or an API, you'll meet JavaScript, or TypeScript, which is JavaScript with type labels added.
+
+The good news: you already know the ideas. Variables, if, loops, functions, lists and dictionaries all exist in JavaScript. Mostly the punctuation is different.
+
+## Side by side
+
+```python
+# Python
+def shipping_cost(total, international):
+    if international:
+        return 15
+    elif total >= 50:
+        return 0
+    else:
+        return 5
+
+name = "Ada"
+print(f"Hello {name}")
+```
+
+```javascript
+// JavaScript
+function shippingCost(total, international) {
+  if (international) {
+    return 15;
+  } else if (total >= 50) {
+    return 0;
+  } else {
+    return 5;
+  }
+}
+
+const name = "Ada";
+console.log(`Hello ${name}`);
+```
+
+| Python | JavaScript |
+| --- | --- |
+| Indentation groups lines | `{ }` braces group lines. Indentation is just for people. |
+| `# comment` | `// comment` |
+| `elif` | `else if` |
+| `True`, `False`, `None` | `true`, `false`, `null`, and also `undefined` |
+| `print(x)` | `console.log(x)` |
+| `f"Hi {name}"` | `` `Hi ${name}` `` (backticks) |
+| `name = "Ada"` | `const name = "Ada"` or `let count = 0` |
+| `shipping_cost` | `shippingCost`. JavaScript names usually use "camelCase". |
+| list `[1, 2]` | array `[1, 2]` |
+| dictionary `{"a": 1}` | object `{ a: 1 }`, read with `obj.a` |
+
+## const and let
+
+JavaScript makes you announce new variables. `const` is for values that won't be reassigned, and `let` is for ones that will, like a running total. You'll also see `var` in older code. It behaves in confusing ways, so avoid it in new code.
+
+## The two traps
+
+**Automatic type conversion.** Python stops you mixing text and numbers. JavaScript converts silently: `"5" + 1` is `"51"`, but `"5" - 1` is `4`. Data from forms and web requests often arrives as text, so convert on purpose with `Number(...)`.
+
+**`==` versus `===`.** `==` converts before comparing, so `"" == 0`, `"1" == 1` and `null == undefined` are all true. `===` compares exactly. **Always use `===`** (and `!==`).
+
+<ConsultantNote>
+JavaScript's loose rules are a big reason TypeScript has become the default on serious projects. It catches many type mistakes before the code runs. If a client's large JavaScript codebase keeps having "undefined" bugs, gradually moving to TypeScript is a common recommendation.
+</ConsultantNote>

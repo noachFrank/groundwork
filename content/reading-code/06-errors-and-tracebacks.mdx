@@ -1,0 +1,270 @@
+---
+id: errors-and-tracebacks
+title: Reading errors and tracebacks
+order: 6
+topic: reading-code
+minutes: 50
+summary: How to read a Python traceback from the bottom up, what the common errors mean, and how to handle errors you expect.
+connectivity: offline
+prerequisites: [python-dicts-data]
+predict:
+  id: p1
+  type: mcq
+  prompt: A Python program crashes and prints a long "Traceback" with many lines. Where's the most useful information usually?
+  options:
+    - The first line
+    - The last line, which names the error, and the lines just above it, which show where it happened
+    - The middle
+    - None of it is useful
+  answer: 1
+  why: Python prints the trail of function calls leading to the crash, with the most recent call last. The final line says what went wrong. The lines just above it say where.
+tasks:
+  - id: fix-the-script
+    type: python
+    title: Fix a broken script, one error at a time
+    instructions: |
+      This script has **three** bugs. Each one stops it with a different error. Run it, read the last line of the error and the line number, fix that one thing, and run it again. Repeat until the checks pass.
+
+      Don't rewrite the whole thing. Fixing one error at a time, guided by the message, is the skill.
+    starter: |
+      stock = {"apples": 12, "pears": 0, "plums": 7}
+
+
+      def describe(fruit):
+          count = stock[fruit]
+          if count == 0:
+              return fruit + " are sold out"
+          return fruit + ": " + count + " left"
+
+
+      def total_items():
+          total = 0
+          for fruit in stock:
+              total = total + stock[fruit]
+          return totl
+
+
+      print(describe("apples"))
+      print(describe("pears"))
+      print(describe("Plums"))
+      print(total_items())
+    tests:
+      - name: describe works for fruit in stock
+        code: |
+          assert describe("apples") == "apples: 12 left", f'Expected "apples: 12 left", got {describe("apples")!r}.'
+      - name: describe says sold out
+        code: |
+          assert describe("pears") == "pears are sold out"
+      - name: total_items adds everything
+        code: |
+          assert total_items() == 19, f"12 + 0 + 7 is 19, but got {total_items()}."
+    solution: |
+      stock = {"apples": 12, "pears": 0, "plums": 7}
+
+
+      def describe(fruit):
+          count = stock[fruit]
+          if count == 0:
+              return fruit + " are sold out"
+          return fruit + ": " + str(count) + " left"
+
+
+      def total_items():
+          total = 0
+          for fruit in stock:
+              total = total + stock[fruit]
+          return total
+
+
+      print(describe("apples"))
+      print(describe("pears"))
+      print(describe("plums"))
+      print(total_items())
+    wrong: |
+      stock = {"apples": 12, "pears": 0, "plums": 7}
+
+
+      def describe(fruit):
+          count = stock[fruit]
+          if count == 0:
+              return fruit + " are sold out"
+          return fruit + ": " + str(count) + " left"
+
+
+      def total_items():
+          total = 0
+          for fruit in stock:
+              total = stock[fruit]
+          return total
+
+
+      print(describe("apples"))
+      print(describe("pears"))
+      print(describe("plums"))
+      print(total_items())
+  - id: read-traceback
+    type: flaw
+    title: Follow the traceback
+    language: python
+    instructions: |
+      Running this prints:
+
+      ```text
+      Traceback (most recent call last):
+        File "report.py", line 9, in <module>
+          print(average_price(products))
+        File "report.py", line 5, in average_price
+          return total / len(items)
+      ZeroDivisionError: division by zero
+      ```
+
+      The traceback points at line 5. But which line is the real mistake that made `items` empty?
+    code: |
+      def average_price(items):
+          total = 0
+          for item in items:
+              total = total + item["price"]
+          return total / len(items)
+
+      all_products = [{"name": "Lamp", "price": 22}, {"name": "Desk", "price": 140}]
+      products = [p for p in all_products if p["price"] > 1000]
+      print(average_price(products))
+    flawLines: [8]
+    lineNotes:
+      "1": The function definition is fine.
+      "2": Starting a running total at 0 is right.
+      "4": Adding up prices is fine.
+      "5": This is where Python noticed the problem, dividing by len(items), which is 0. But why was the list empty?
+      "7": The product list has two items, so it's fine.
+      "9": This calls the function with whatever products holds.
+    explanation: |
+      Line 8 keeps only products priced over 1000, and none are, so `products` is an empty list. Line 5 then divides by `len(items)`, which is 0.
+
+      Two things are worth fixing. The filter on line 8 is probably a mistake: perhaps they meant 100. And `average_price` should cope with an empty list, for example `if not items: return 0`, because empty lists happen in real data.
+
+      Tracebacks tell you **where the program noticed** the problem. The cause is often a few steps earlier, in where the data came from.
+recall:
+  - id: r1
+    type: mcq
+    prompt: In a Python traceback, where is the line that actually crashed?
+    options: [At the top, At the bottom, just above the error message, In the middle, It isn't shown]
+    answer: 1
+    why: '"Most recent call last" means the crash is at the bottom, and the calls that led there are above it.'
+  - id: r2
+    type: mcq
+    prompt: '`NameError: name ''totl'' is not defined` most likely means...'
+    options:
+      - A variable name is misspelled, or used before it's given a value
+      - The file is missing
+      - The internet is down
+      - A number was divided by zero
+    answer: 0
+    why: Python doesn't recognize the name. Usually it's a typo.
+  - id: r3
+    type: mcq
+    prompt: 'Which error do you get from `{"a": 1}["b"]`?'
+    options: [IndexError, KeyError, TypeError, NameError]
+    answer: 1
+    why: The key "b" doesn't exist in the dictionary. IndexError is the list version, for a position that doesn't exist.
+  - id: r4
+    type: self
+    prompt: When should you use try/except, and when shouldn't you?
+    modelAnswer: Use it for errors you expect and can handle sensibly, like a file that might be missing or a network request that might fail, and handle that specific error. Don't wrap everything in a bare except to make errors disappear, because that hides bugs instead of fixing them.
+cards:
+  - id: read-tb
+    front: How do you read a traceback?
+    back: From the bottom. The last line names the error and its message. The lines just above show the file, line and code where it happened. Further up is the chain of calls that led there.
+  - id: common-errors
+    front: NameError, TypeError, KeyError, IndexError?
+    back: Unknown name (often a typo). Wrong type of value for the operation. Missing dictionary key. List position that doesn't exist.
+  - id: try-except
+    front: What does try/except do?
+    back: Runs code, and if a specific error happens, runs the except block instead of crashing. Only catch errors you expect and can handle.
+  - id: one-at-a-time
+    front: What's the routine for fixing a crashing program?
+    back: Read the last line and the line number. Fix that one thing. Run again. Repeat.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: '`TypeError: can only concatenate str (not "int") to str`. What''s the fix?'
+    options:
+      - Convert the number with str() before joining, or use an f-string
+      - Delete the line
+      - Restart the computer
+      - Use a list
+    answer: 0
+    why: You can't join text and a number directly. Convert, or let an f-string do it.
+  - id: t2
+    type: mcq
+    prompt: Why is `except:` with no error type, around a whole program, usually bad?
+    options:
+      - It's slow
+      - It hides every error, including real bugs, so problems go unnoticed
+      - It's not valid Python
+      - It deletes the error log
+    answer: 1
+    why: Swallowing all errors makes bugs invisible. It's a classic sign of code that "works" but no one understands why it misbehaves.
+docs:
+  - title: "Python tutorial: Errors and exceptions"
+    url: https://docs.python.org/3/tutorial/errors.html
+  - title: "Python docs: Built-in exceptions"
+    url: https://docs.python.org/3/library/exceptions.html
+videos: []
+---
+
+## Errors are messages, not failures
+
+Every programmer sees errors constantly, including experienced ones. The difference is that experienced programmers **read** them. Python's errors are unusually helpful once you know where to look.
+
+## Reading a traceback
+
+```text
+Traceback (most recent call last):
+  File "shop.py", line 12, in <module>
+    print(describe("Plums"))
+  File "shop.py", line 5, in describe
+    count = stock[fruit]
+KeyError: 'Plums'
+```
+
+**Read it from the bottom up:**
+
+1. **The last line** is the error type and message: `KeyError: 'Plums'`. There's no key "Plums" in the dictionary.
+2. **Just above** is where it happened: line 5, in the function `describe`, and the actual code.
+3. **Further up** is how the program got there: line 12 called `describe("Plums")`.
+
+"Most recent call last" means the crash is at the bottom.
+
+## The errors you'll see most
+
+| Error | Usually means | Example |
+| --- | --- | --- |
+| `NameError` | Python doesn't know that name. Often a typo. | `totl` instead of `total` |
+| `TypeError` | The wrong kind of value for the operation | `"Total: " + 5` |
+| `KeyError` | A dictionary doesn't have that key | `order["phone"]` |
+| `IndexError` | A list doesn't have that position | `items[10]` in a 3-item list |
+| `AttributeError` | The value doesn't have that method | `None.upper()`, often from a missing return |
+| `IndentationError`, `SyntaxError` | Python can't even read the code | A missing colon or bracket |
+
+Notice that `KeyError: 'Plums'` above is a capital-letter problem. The key is "plums". Error messages often show the exact value, which is the clue.
+
+## Handling errors you expect
+
+Some errors aren't bugs. A file might be missing, or a network might be down. For those, `try` and `except` let you handle the problem instead of crashing:
+
+```python
+try:
+    price = float(user_input)
+except ValueError:
+    print("Please type a number, like 4.99")
+```
+
+Catch **specific** errors you can do something sensible about. Never wrap everything in a bare `except:` to make errors go away, because that hides real bugs.
+
+<Callout kind="warn" title="'It just says error'">
+When someone tells you "it gave an error", always ask for the **exact** text, ideally the whole traceback. "An error" could be any of a thousand problems. The full message usually narrows it to one.
+</Callout>
+
+<ConsultantNote>
+Error messages often reach clients' customers, and sometimes they reveal too much: file paths, database names, even passwords. Real apps show visitors a friendly message and write the full details to a log that only developers see. Checking what errors expose is part of a security review.
+</ConsultantNote>

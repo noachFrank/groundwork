@@ -1,0 +1,215 @@
+---
+id: javascript-arrays
+title: "JavaScript: arrays, objects and arrow functions"
+order: 10
+topic: reading-code
+minutes: 50
+summary: The style you'll see in almost all modern JavaScript, from filter and map to find, reduce and arrow functions, plus undefined and how to read chains of them.
+connectivity: offline
+prerequisites: [javascript-basics]
+predict:
+  id: p1
+  type: mcq
+  prompt: 'What does `[1, 2, 3, 4].filter(n => n > 2)` give?'
+  options: ["[1, 2]", "[3, 4]", "[true, true]", "2"]
+  answer: 1
+  why: filter keeps the items for which the little function returns true. `n => n > 2` is an **arrow function**, a short way of writing a function. You'll see this style constantly in real JavaScript.
+tasks:
+  - id: order-tools
+    type: javascript
+    title: Answer questions about orders
+    instructions: |
+      Use the array methods from the lesson: `filter` keeps some items, `map` turns each item into something else, `find` gets the first match, and `reduce` combines everything into one value.
+
+      You can use loops instead if you prefer. The checks only test the results. But try at least one of these methods, since you'll be reading them everywhere.
+    starter: |
+      const orders = [
+        { id: 101, customer: "Ada", city: "London", total: 49, status: "shipped" },
+        { id: 102, customer: "Grace", city: "New York", total: 189, status: "processing" },
+        { id: 103, customer: "Ada", city: "London", total: 9, status: "delivered" },
+        { id: 104, customer: "Linus", city: "Helsinki", total: 57, status: "processing" },
+      ];
+
+      // The ids of orders that are still "processing", like [102, 104]
+      function processingIds(orders) {
+      }
+
+      // The total of every order added together
+      function grandTotal(orders) {
+      }
+
+      // The order with this id, or null if there isn't one
+      function findOrder(orders, id) {
+      }
+
+      console.log(processingIds(orders));
+      console.log(grandTotal(orders));
+      console.log(findOrder(orders, 103));
+      console.log(findOrder(orders, 999));
+    tests:
+      - name: processingIds
+        code: |
+          const ids = processingIds(orders);
+          assert(Array.isArray(ids), "processingIds should return an array.");
+          assert(JSON.stringify(ids) === "[102,104]", "Expected [102, 104], got " + JSON.stringify(ids) + ". Filter by status, then map to the id.");
+      - name: grandTotal
+        code: |
+          assert(grandTotal(orders) === 304, "49 + 189 + 9 + 57 is 304, but got " + grandTotal(orders) + ".");
+          assert(grandTotal([]) === 0, "With no orders, the total should be 0. With reduce, give a starting value of 0.");
+      - name: findOrder finds an order
+        code: |
+          const o = findOrder(orders, 103);
+          assert(o && o.customer === "Ada" && o.total === 9, "Order 103 is Ada's 9 order.");
+      - name: findOrder returns null when missing
+        code: |
+          assert(findOrder(orders, 999) === null, "There's no order 999. find gives undefined, so return null instead. Try ?? null.");
+    solution: |
+      function processingIds(orders) {
+        return orders.filter((o) => o.status === "processing").map((o) => o.id);
+      }
+
+      function grandTotal(orders) {
+        return orders.reduce((sum, o) => sum + o.total, 0);
+      }
+
+      function findOrder(orders, id) {
+        return orders.find((o) => o.id === id) ?? null;
+      }
+
+      const orders = [
+        { id: 101, customer: "Ada", city: "London", total: 49, status: "shipped" },
+        { id: 102, customer: "Grace", city: "New York", total: 189, status: "processing" },
+        { id: 103, customer: "Ada", city: "London", total: 9, status: "delivered" },
+        { id: 104, customer: "Linus", city: "Helsinki", total: 57, status: "processing" },
+      ];
+    wrong: |
+      function processingIds(orders) {
+        return orders.filter((o) => o.status === "processing").map((o) => o.id);
+      }
+
+      function grandTotal(orders) {
+        return orders.reduce((sum, o) => sum + o.total, 0);
+      }
+
+      function findOrder(orders, id) {
+        return orders.find((o) => o.id === id);
+      }
+
+      const orders = [
+        { id: 101, customer: "Ada", city: "London", total: 49, status: "shipped" },
+        { id: 102, customer: "Grace", city: "New York", total: 189, status: "processing" },
+        { id: 103, customer: "Ada", city: "London", total: 9, status: "delivered" },
+        { id: 104, customer: "Linus", city: "Helsinki", total: 57, status: "processing" },
+      ];
+recall:
+  - id: r1
+    type: mcq
+    prompt: Which array method turns every item into something else and gives a new array of the same length?
+    options: [filter, map, find, reduce]
+    answer: 1
+    why: 'map transforms each item. `[1, 2].map(n => n * 10)` is `[10, 20]`.'
+  - id: r2
+    type: mcq
+    prompt: What does find give when nothing matches?
+    options: ["null", "undefined", An empty array, An error]
+    answer: 1
+    why: undefined means "no value here". It often causes errors later, like "Cannot read properties of undefined".
+  - id: r3
+    type: mcq
+    prompt: Which is the same as `function (o) { return o.total; }`?
+    options: ["o => o.total", "o -> o.total", "(o) { o.total }", "total(o)"]
+    answer: 0
+    why: An arrow function with one expression returns it automatically.
+  - id: r4
+    type: self
+    prompt: 'Read this out loud in plain English: `orders.filter(o => o.city === "London").map(o => o.customer)`'
+    modelAnswer: Take the orders, keep only the ones whose city is London, and turn each of those into its customer's name. The result is a list of the names of London customers.
+cards:
+  - id: array-methods
+    front: filter, map, find, reduce?
+    back: filter keeps matching items. map transforms every item. find gets the first match, or undefined. reduce combines all items into one value.
+  - id: arrow
+    front: What is `(a, b) => a + b`?
+    back: An arrow function, a short way to write a function. With a single expression after the arrow, it returns that value.
+  - id: undefined
+    front: What does "Cannot read properties of undefined" mean?
+    back: Code tried to read something like `x.name` when x was undefined, often because a find, a lookup or an API call returned nothing.
+  - id: nullish
+    front: What do `?.` and `??` do?
+    back: '`a?.b` reads b only if a exists, otherwise gives undefined. `x ?? "default"` uses the default when x is null or undefined.'
+testOut:
+  - id: t1
+    type: mcq
+    prompt: 'What does `[3, 1, 2].map(n => n * 2)` give?'
+    options: ["[6, 2, 4]", "[2, 4, 6]", "12", "[3, 1, 2]"]
+    answer: 0
+    why: map keeps the order and doubles each item.
+  - id: t2
+    type: mcq
+    prompt: 'What does `[5, 10, 20].reduce((sum, n) => sum + n, 0)` give?'
+    options: ["0", "20", "35", "[5, 10, 20]"]
+    answer: 2
+    why: reduce starts at 0 and adds each number in turn.
+docs:
+  - title: "MDN: Array"
+    url: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array
+  - title: "MDN: Arrow function expressions"
+    url: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions
+videos: []
+---
+
+## Modern JavaScript reads like a pipeline
+
+You could write every JavaScript loop the Python way, with `for`. But real-world JavaScript, including most AI-written code, uses **array methods** chained together:
+
+```javascript
+const londonNames = orders
+  .filter((o) => o.city === "London")
+  .map((o) => o.customer);
+```
+
+Read it top to bottom, like a recipe: **take the orders → keep the London ones → turn each into a name.**
+
+## Arrow functions
+
+`(o) => o.city === "London"` is an **arrow function**: a small function with no name, written inline. These all mean the same thing:
+
+```javascript
+function isBig(o) { return o.total > 100; }
+const isBig = (o) => { return o.total > 100; };
+const isBig = (o) => o.total > 100;      // one expression is returned automatically
+```
+
+## The four methods you'll see most
+
+| Method | Does | Example | Gives |
+| --- | --- | --- | --- |
+| `filter` | Keeps items where the function is true | `[1, 2, 3, 4].filter(n => n > 2)` | `[3, 4]` |
+| `map` | Turns each item into something else | `[1, 2, 3].map(n => n * 10)` | `[10, 20, 30]` |
+| `find` | Gets the first match | `[1, 2, 3].find(n => n > 1)` | `2`, or `undefined` if none |
+| `reduce` | Combines everything into one value | `[1, 2, 3].reduce((sum, n) => sum + n, 0)` | `6` |
+
+## Objects
+
+JavaScript **objects** are like Python dictionaries, but you usually read them with a dot:
+
+```javascript
+const order = { id: 101, customer: "Ada", total: 49 };
+order.customer          // "Ada"
+order["customer"]       // also "Ada"
+order.phone             // undefined, with no error yet
+order.phone.length      // TypeError: Cannot read properties of undefined
+```
+
+## undefined, and how to cope with it
+
+JavaScript gives `undefined` for things that don't exist: a missing property, a `find` with no match. It doesn't complain, until you try to use it. "**Cannot read properties of undefined**" is probably the most common JavaScript error in the world.
+
+Two modern helpers:
+
+- `order.customer?.name` reads `name` only if `customer` exists. Otherwise it gives undefined, with no crash.
+- `value ?? "default"` uses the default when the value is null or undefined.
+
+<ConsultantNote>
+When you read a client's frontend code, these chains are everywhere, often several lines long. Reading them step by step, saying "keep the ones that…, turn each into…", is the skill. When they're too long to follow, that's worth mentioning in a review, too.
+</ConsultantNote>

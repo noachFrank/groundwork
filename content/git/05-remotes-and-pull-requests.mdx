@@ -1,0 +1,216 @@
+---
+id: remotes-and-pull-requests
+title: "Push, pull, clone and pull requests"
+order: 5
+topic: git-and-github
+minutes: 50
+summary: How a team shares one project. You'll push, clone and pull using a shared copy on your own computer, then learn how GitHub's pull requests let teammates review work before it joins.
+connectivity: offline
+prerequisites: [conflicts]
+predict:
+  id: p1
+  type: mcq
+  prompt: You and a teammate both have the project on your laptops. You make a commit. How does it get to your teammate?
+  options:
+    - Git sends it to them automatically
+    - You push it to a shared copy of the repository, like one on GitHub, and they pull it from there
+    - You email them the folder
+    - It can't. Each person has their own project
+  answer: 1
+  why: Each person has a full copy of the repository. A shared copy, called a **remote**, sits in the middle. You **push** commits up to it, and others **pull** them down.
+tasks:
+  - id: teammate-sim
+    type: terminal
+    title: Play both teammates
+    instructions: |
+      GitHub is just a computer holding a shared copy of a repository. A folder on your own laptop can play that role too, so you can practice the whole routine offline. You'll be both yourself and a teammate.
+    steps:
+      - text: Open PowerShell and go to the git-lesson folder.
+        command: cd $HOME\Groundwork-Practice\git-lesson
+      - text: Make an empty shared repository. `--bare` means it holds history only, with no working files, just like the copy on GitHub.
+        command: git init --bare shared-copy.git
+      - text: Go into your website, register the shared copy as a remote called `origin`, and push your main branch to it.
+        command: cd my-site; git remote add origin ..\shared-copy.git; git push -u origin main
+      - text: Now be your teammate. **Clone** the shared copy into a new folder. That's how anyone joins a project.
+        command: cd ..; git clone shared-copy.git teammate-copy; cd teammate-copy
+      - text: As the teammate, change the page, commit, and push.
+        command: Add-Content index.html "<p>Edited by a teammate</p>"; git commit -am "Teammate's change"; git push
+      - text: Go back to being yourself, and **pull** the teammate's work.
+        command: cd ..\my-site; git pull
+      - text: The teammate's line is now in your copy. Save the history.
+        command: Get-Content index.html; git log --oneline > ..\pull-log.txt
+      - text: List the remotes this repository knows about.
+        command: git remote -v
+    checks:
+      - path: git-lesson/shared-copy.git/HEAD
+        hint: Run `git init --bare shared-copy.git` inside the git-lesson folder.
+      - path: git-lesson/teammate-copy/index.html
+        contains: Edited by a teammate
+        hint: Clone the shared copy into teammate-copy, then add the line, commit and push from inside it.
+      - path: git-lesson/my-site/index.html
+        contains: Edited by a teammate
+        hint: Go back into my-site and run `git pull`.
+      - path: git-lesson/pull-log.txt
+        contains: Teammate's change
+        hint: After pulling, run `git log --oneline > ..\pull-log.txt` from inside my-site.
+  - id: review-a-pr
+    type: case
+    title: Your first pull request review
+    instructions: You've joined a client's team, and they ask you to review a pull request.
+    scenario: |
+      A developer opens a pull request titled "Update" with no description. It changes 43 files: it adds a new payment page, renames a dozen unrelated files, reformats the whole stylesheet, and includes a file called `.env.production`. They want it merged today.
+    questions:
+      - prompt: What's the most urgent problem?
+        choices:
+          - text: The `.env.production` file, which likely contains live secrets
+            score: 2
+            why: Right. Once pushed, those secrets are in the history and must be treated as leaked. Flag it at once, and the keys should be changed even if the file is removed.
+          - text: The vague title
+            score: 1
+            why: It's a real problem, but a leaked secret is far more serious.
+          - text: It's too big to read, so approve it
+            score: 0
+            why: Approving what you haven't reviewed defeats the purpose of reviewing.
+      - prompt: How would you suggest they restructure it?
+        choices:
+          - text: Split it into separate pull requests, one for the payment page and one for renames and formatting, each with a description of what and why
+            score: 2
+            why: Small, focused pull requests are quicker to review, easier to understand, and safer to undo if something breaks.
+          - text: Squash everything into one even bigger commit
+            score: 0
+            why: That makes it harder to review, not easier.
+          - text: Leave it as it is
+            score: 0
+            why: A 43-file mixed change hides problems, like the secrets file you just found.
+      - prompt: How should you phrase your comments?
+        choices:
+          - text: About the code, specific, and kind, like "This file looks like it has live keys. Could we remove it and rotate them?"
+            score: 2
+            why: Reviews work best when they're about the work, not the person, and say exactly what to change.
+          - text: '"This is a mess."'
+            score: 0
+            why: It's not specific, it isn't actionable, and it damages the relationship.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: What's the difference between `git clone` and `git pull`?
+    options:
+      - They're the same
+      - clone makes a new local copy of a repository. pull brings new commits into a copy you already have
+      - clone uploads, pull downloads
+      - pull deletes your changes
+    answer: 1
+    why: You clone once, to join a project, and pull often, to stay up to date.
+  - id: r2
+    type: short
+    prompt: What's the conventional name of the main remote a repository was cloned from?
+    accept: ['\borigin\b']
+    answerText: origin
+  - id: r3
+    type: mcq
+    prompt: What is a pull request?
+    options:
+      - A request to download code
+      - A request to merge a branch, where teammates can review and discuss the changes first
+      - An error message
+      - A type of commit
+    answer: 1
+    why: It's GitHub's way of saying "I'd like these commits merged into main. Please check them."
+  - id: r4
+    type: self
+    prompt: Describe the usual pull request routine from start to finish.
+    modelAnswer: Pull the latest main, make a branch, commit the work, push the branch to GitHub, and open a pull request describing what changed and why. Teammates review it, automated checks run, you make any changes they ask for by pushing more commits, then it's merged into main and the branch is deleted.
+cards:
+  - id: remote
+    front: What is a remote?
+    back: A shared copy of a repository, often on GitHub. `origin` is the usual name for the one you cloned from.
+  - id: push-pull
+    front: What do push, pull and clone do?
+    back: push sends your commits to the remote. pull fetches others' commits and merges them in. clone makes a new local copy of a remote repository.
+  - id: pr
+    front: What is a pull request?
+    back: A request to merge a branch on GitHub, where teammates review the changes, comment, and approve before it's merged.
+  - id: fork
+    front: What's a fork?
+    back: Your own copy of someone else's repository on GitHub. Used to contribute to projects you can't push to directly.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Your push is rejected because the remote has commits you don't have. What do you do?
+    options:
+      - Delete the remote
+      - git pull first, fix any conflicts, then push again
+      - Force push and overwrite their work
+      - Give up
+    answer: 1
+    why: Someone pushed before you. Pull their work in, then push. Force pushing would throw away their commits.
+  - id: t2
+    type: mcq
+    prompt: What makes a pull request easy to review?
+    options:
+      - Many unrelated changes together
+      - Small, focused on one thing, with a clear description of what and why
+      - No description, so reviewers aren't biased
+      - Lots of reformatting
+    answer: 1
+    why: Reviewers can understand and check a small, focused change properly.
+docs:
+  - title: "Pro Git book: Working with Remotes"
+    url: https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes
+  - title: "GitHub Docs: About pull requests"
+    url: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests
+videos: []
+---
+
+## Everyone has a full copy
+
+Git is **distributed**: every person has the entire project and its entire history on their own computer. To share work, teams agree on one shared copy, called a **remote**. Most often it lives on **GitHub**, though GitLab, Bitbucket and Azure DevOps do the same job.
+
+```text
+            ┌────────────────────┐
+            │  remote (GitHub)   │
+            └────────────────────┘
+          push ↑   ↓ pull   push ↑   ↓ pull
+     ┌──────────────┐        ┌──────────────┐
+     │  your laptop │        │  teammate's  │
+     └──────────────┘        └──────────────┘
+```
+
+| Command | What it does |
+| --- | --- |
+| `git clone url` | Make a new local copy of a remote repository. You do this once, to join. |
+| `git push` | Send your new commits up to the remote. |
+| `git pull` | Get others' new commits and merge them into your copy. |
+| `git remote -v` | List the remotes this copy knows about. |
+
+The remote you cloned from is called **`origin`** by convention.
+
+If your push is rejected because the remote has commits you don't have, **pull first**, sort out any conflicts, then push. Never "force push" over a shared branch unless you're certain, because it throws away other people's work.
+
+## Pull requests
+
+On a team, people don't usually push straight to main. Instead:
+
+1. Make a **branch** for the change.
+2. Commit, and **push the branch** to GitHub.
+3. Open a **pull request** (PR): "please merge my branch into main", with a description of what and why.
+4. Teammates **review** it: they read the changes, comment, and ask questions.
+5. **Automated checks** run, such as tests.
+6. Once approved, it's **merged**, and the branch is deleted.
+
+Pull requests catch mistakes before they reach main, spread knowledge across the team, and leave a record of why each change was made.
+
+### Good pull requests
+
+- **Small and focused** on one thing.
+- **A clear title and description**: what changed, why, and how to check it.
+- **No surprises**: no unrelated reformatting, and certainly no secrets.
+
+### Forks
+
+To contribute to a project you can't push to, like an open-source project, you **fork** it, making your own copy on GitHub, push to your fork, and open a pull request from there.
+
+<ConsultantNote>
+Reviewing pull requests is a consultant's daily work, and so is having your own work reviewed. Clear, kind, specific comments, about the code and not the person, build trust quickly with a client's team.
+</ConsultantNote>

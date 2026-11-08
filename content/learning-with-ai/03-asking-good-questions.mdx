@@ -1,0 +1,162 @@
+---
+id: asking-good-questions
+title: Asking questions that get good answers
+order: 3
+topic: learning-with-ai
+minutes: 40
+summary: What to include when you ask AI or a person for help, and what you must never paste in, especially when the work belongs to a client.
+connectivity: offline
+prerequisites: [when-ai-is-wrong]
+predict:
+  id: p1
+  type: mcq
+  prompt: 'You ask an AI "my code doesn''t work, fix it" and paste nothing else. What''s the most likely result?'
+  options:
+    - It fixes the exact problem
+    - It guesses at a problem you might have, which may not be yours
+    - It refuses to help
+    - It asks the right follow-up questions every time
+  answer: 1
+  why: Without your code, the error or your goal, it can only guess. The quality of the answer is limited by the information in the question.
+tasks:
+  - id: rewrite-question
+    type: explain
+    title: Rewrite a bad question
+    instructions: Turn this into a question that an AI, or a person, could actually help with. You can make up reasonable details where needed.
+    prompt: |
+      A learner sends this: "my python thing doesnt work pls fix"
+
+      Here's what's actually going on. They're on Windows 11. They wrote a script called `totals.py` that should add up the prices in a list. When they type `python totals.py` in PowerShell, they get: `'python' is not recognized as an internal or external command`. They installed Python yesterday from python.org. They've already tried restarting PowerShell.
+
+      Write the message they should have sent.
+    rubric:
+      - Says what they're trying to do
+      - Includes the exact error message, copied word for word
+      - Says what they've already tried
+      - Mentions the setup that matters (Windows, how Python was installed)
+    minScore: 3
+    modelAnswer: |
+      I'm on Windows 11 and I'm trying to run a small Python script (`totals.py`) from PowerShell. I installed Python yesterday from python.org.
+
+      When I type `python totals.py`, I get:
+      'python' is not recognized as an internal or external command
+
+      I've already tried closing and reopening PowerShell. What could cause this, and how can I check?
+    gradingPrompt: |
+      I'm learning to ask good technical questions. Here's my rewrite of a vague question ("my python thing doesnt work pls fix"). Would this give someone enough to help? What's missing? Suggest one improvement.
+
+      My rewrite:
+      {{ANSWER}}
+  - id: client-data
+    type: case
+    title: The client's spreadsheet
+    instructions: Decide what's safe to share with an AI tool.
+    scenario: |
+      A small medical clinic hires you to fix a script that imports patient appointments from a spreadsheet. The script crashes partway through. The spreadsheet has patients' names, phone numbers and appointment reasons. The script also contains the password for the clinic's booking system. You'd like an AI's help.
+    questions:
+      - prompt: What do you paste into the AI?
+        choices:
+          - text: The whole script and the whole spreadsheet, so it has everything
+            score: 0
+            why: That sends patients' private medical information and a password to an outside company. That could break privacy law and the clinic's trust, whatever the AI's settings are.
+          - text: The script with the password replaced by a placeholder, the exact error, and a few rows of made-up data in the same format
+            score: 2
+            why: The AI gets everything it needs to help, and nothing private leaves your computer. Made-up rows in the same shape usually reproduce the problem just as well.
+          - text: Nothing. You never use AI for client work
+            score: 1
+            why: Being careful is right, but you don't have to give up a useful tool. You can share safely if you remove what's private. Check what the client allows, though.
+      - prompt: Before you use AI on this job at all, what's worth doing?
+        choices:
+          - text: Ask the clinic whether they have rules about AI tools and their data
+            score: 2
+            why: Many organizations do, especially in healthcare. Asking first shows you take their data seriously, and it's something good consultants do as a matter of course.
+          - text: Nothing. It's your choice which tools you use
+            score: 0
+            why: It's the client's data, so they get a say.
+    passScore: 3
+recall:
+  - id: r1
+    type: mcq
+    prompt: Which of these belongs in a good request for help?
+    options:
+      - '"It doesn''t work."'
+      - The exact error message, copied in full
+      - Your password, so they can test it
+      - An apology for asking
+    answer: 1
+    why: The exact wording of an error is often the single most useful clue. Retyping it from memory loses details.
+  - id: r2
+    type: short
+    prompt: What should you replace a real password or API key with before sharing code?
+    accept: ['placeholder', 'fake', 'dummy', 'xxx', 'redact', 'made.?up', 'example']
+    answerText: A placeholder, like YOUR_PASSWORD_HERE
+  - id: r3
+    type: self
+    prompt: List the four things a good request for help includes.
+    modelAnswer: What I'm trying to do (the goal), the exact error or what happens instead, what I've already tried, and the setup that matters (operating system, versions, how things were installed). Plus a small piece of code or data that shows the problem, with anything private removed.
+cards:
+  - id: good-question
+    front: What goes into a good request for help?
+    back: Your goal, the exact error (copied, not retyped), what you've tried, and your setup (OS, versions). Add a small example that shows the problem.
+  - id: never-paste
+    front: What should you never paste into an AI tool?
+    back: Passwords, API keys and other secrets, plus private personal data, such as customers' or patients' details, unless the client has explicitly agreed.
+  - id: fake-data
+    front: How do you get help with a problem in private data?
+    back: Make a few rows of made-up data in the same format. It usually shows the problem just as well.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: You want AI help debugging a client's script, which contains an API key. What do you do?
+    options:
+      - Paste it as it is, because AI tools are private
+      - Replace the key with a placeholder before sharing
+      - Email the key to the AI company
+      - Delete the key from the client's system
+    answer: 1
+    why: Secrets should never leave your control. A placeholder keeps the code readable without exposing the key.
+  - id: t2
+    type: mcq
+    prompt: Which question will get the most useful answer?
+    options:
+      - '"Help, npm is broken."'
+      - '"On Windows 11, `npm install` fails with ECONNRESET. I''m on hotel Wi-Fi and I''ve tried twice. What does this error mean?"'
+      - '"Why is coding so hard?"'
+    answer: 1
+    why: It gives the exact error, the setup, the context and what was tried.
+docs:
+  - title: "Stack Overflow: How do I ask a good question?"
+    url: https://stackoverflow.com/help/how-to-ask
+  - title: "Stack Overflow: How to create a minimal, reproducible example"
+    url: https://stackoverflow.com/help/minimal-reproducible-example
+videos: []
+---
+
+## The answer can only be as good as the question
+
+Whoever you ask, whether it's an AI, a colleague or a forum, they can't see your screen. All they know is what you tell them. A vague question gets a guess. A clear question usually gets the answer.
+
+## The four things to include
+
+1. **What you're trying to do.** The goal, in a sentence. Sometimes the best answer is "there's an easier way to do that".
+2. **What actually happens.** The **exact** error message, copied and pasted, not retyped from memory. Small details in errors matter.
+3. **What you've already tried.** This saves time and shows where the problem isn't.
+4. **Your setup.** Operating system, versions, how things were installed. "Works on my machine" problems hide here.
+
+If you can, add a **small example**: the fewest lines of code, or the smallest bit of data, that still shows the problem. Making one often reveals the answer before you even ask.
+
+<Callout title="A useful side effect">
+Writing a clear question forces you to think clearly about the problem. Programmers call this **rubber duck debugging**: explaining a problem out loud, even to a rubber duck, often makes you spot the answer yourself.
+</Callout>
+
+## What never goes in
+
+Anything you paste into an online AI tool is sent to another company's computers. Depending on the tool and its settings, it may be stored or reviewed. So:
+
+- **Never paste secrets.** Passwords, API keys and access tokens get replaced with a placeholder like `YOUR_API_KEY_HERE`.
+- **Never paste private data.** Real customers', patients' or employees' details stay out. Use a few rows of **made-up data** in the same format.
+- **Check the client's rules.** Many organizations have policies about which AI tools can see their data. Ask.
+
+<ConsultantNote>
+Clients trust you with access to their systems and their customers' information. Leaking it, even by accident, even "just to an AI", can break privacy laws like GDPR or HIPAA and end the relationship. Handling data carefully is a skill clients notice.
+</ConsultantNote>

@@ -1,0 +1,179 @@
+---
+id: when-ai-is-wrong
+title: When AI is confidently wrong
+order: 2
+topic: learning-with-ai
+minutes: 40
+summary: How AI gets things wrong without sounding unsure, the kinds of mistakes to watch for, and the habits that catch them before they cost you.
+connectivity: offline
+prerequisites: [ai-as-a-tutor]
+predict:
+  id: p1
+  type: mcq
+  prompt: An AI tells you, in a confident and detailed answer, about a setting that would fix your problem. How do you know whether that setting really exists?
+  options:
+    - If it sounds confident and detailed, it's real
+    - You can't tell from the answer. You check the official documentation or try it somewhere safe
+    - Ask the same AI "are you sure?", and believe it if it says yes
+    - Settings mentioned by AI are always made up
+  answer: 1
+  why: AI writes the most likely-sounding text, and a made-up setting can sound exactly as confident as a real one. Asking "are you sure?" often just gets a confident yes. The only real check is outside the AI.
+tasks:
+  - id: cleanup-script
+    type: flaw
+    title: The clean-up script
+    language: powershell
+    instructions: |
+      Someone asked an AI how to free up disk space, and it gave them this PowerShell script. It looks reasonable and explains itself nicely. One line could do serious damage. Which one?
+
+      (You don't need to know PowerShell yet. Read the comments and think about what each line does. `$env:TEMP` is your temp folder's location, stored in a setting called an environment variable.)
+    code: |
+      # Free up space by clearing your temp folder
+      Write-Host "Your temp folder is $env:TEMP"
+      $size = (Get-ChildItem $env:TEMP -Recurse | Measure-Object Length -Sum).Sum
+      Write-Host "It holds $([math]::Round($size / 1MB)) MB"
+      Remove-Item "$env:TMP_DIR\*" -Recurse -Force
+      Write-Host "Done! Temp folder cleared."
+    flawLines: [5]
+    lineNotes:
+      "1": This is just a comment. PowerShell ignores lines that start with `#`.
+      "2": This only prints a message. Nothing is changed.
+      "3": This adds up file sizes. It reads files but doesn't change anything.
+      "4": This only prints a message.
+      "6": Printing "Done" is harmless, although it might not be true.
+    explanation: |
+      Every other line uses `$env:TEMP`. Line 5 uses `$env:TMP_DIR`, which doesn't exist on Windows. A missing variable becomes empty text, so the path becomes `"\*"`, which means **everything at the top of your C: drive**. With `-Recurse -Force`, it tries to delete all of it.
+
+      The AI didn't mean any harm. It produced something that looked right. That's the danger: the mistake was one small word in a script that otherwise made sense.
+
+      **The habit:** before running anything that deletes, moves or changes things, read every line and check every name. If you're not sure, ask what each line does, or try it on a test folder first.
+  - id: verify-claim
+    type: case
+    title: "\"Is that real?\""
+    instructions: You're helping a client. Decide what to do with what the AI tells you.
+    scenario: |
+      A client's website sends emails through a service. The emails sometimes don't arrive. You ask an AI, and it says: "Set `retryFailedEmails: true` in your email service's settings. It was added in version 4.2 and fixes exactly this." It also suggests installing a package called `email-retry-helper` from npm.
+    questions:
+      - prompt: What do you do about the `retryFailedEmails` setting?
+        choices:
+          - text: Tell the client it's fixed and add the setting
+            score: 0
+            why: You'd be promising a fix based on something you haven't checked. If the setting doesn't exist, it does nothing, and you look careless.
+          - text: Search the email service's official documentation for that setting and for version 4.2
+            score: 2
+            why: Official documentation is the source of truth. It takes two minutes and either confirms it or saves you from a made-up setting.
+          - text: Ask the AI "are you sure?"
+            score: 0
+            why: It will very often say yes, just as confidently. That's not a check.
+      - prompt: What about installing `email-retry-helper`?
+        choices:
+          - text: Install it, since the AI recommended it
+            score: 0
+            why: AI sometimes invents package names. Attackers know this, and publish harmful packages under names AI tends to make up. Installing an unchecked package runs a stranger's code on the client's server.
+          - text: Look it up first. Who publishes it, how many people use it, and when was it last updated?
+            score: 2
+            why: Right. Real, trustworthy packages have a track record. A package with no history, or one you can't find at all, is a red flag.
+          - text: Install it, but only on the live website
+            score: 0
+            why: That's the riskiest place to try something unknown.
+    passScore: 3
+recall:
+  - id: r1
+    type: mcq
+    prompt: Why does AI sometimes state false things confidently?
+    options:
+      - It's trying to trick you
+      - It generates likely-sounding text, and false text can sound just as likely as true text
+      - It only happens when the internet is down
+      - It's copying from one wrong website
+    answer: 1
+    why: AI models predict plausible words. They don't look facts up unless they're given a tool to do it, so they don't reliably know when they're wrong.
+  - id: r2
+    type: mcq
+    prompt: Which of these is the best check that an AI's answer is correct?
+    options:
+      - The answer is long and detailed
+      - The AI says "I'm confident"
+      - It matches the official documentation, or it works when you test it somewhere safe
+      - A second AI agrees
+    answer: 2
+    why: Checks have to come from outside the AI. Two AIs can easily be wrong in the same way.
+  - id: r3
+    type: self
+    prompt: Before running a command an AI gave you that deletes or changes files, what should you do?
+    modelAnswer: Read every line and make sure I know what it does, check that every name and path is correct, and if I'm unsure, ask what each part does or try it on a test folder first. Never run something destructive that I don't understand.
+cards:
+  - id: why-wrong
+    front: Why can AI be confidently wrong?
+    back: It produces likely-sounding text. A false answer can sound just as confident as a true one, and it doesn't reliably know the difference.
+  - id: how-check
+    front: How do you check something an AI tells you?
+    back: Against the official documentation, or by testing it somewhere safe. Not by asking the AI "are you sure?"
+  - id: fake-packages
+    front: Why be careful installing a package an AI recommends?
+    back: AI sometimes invents package names, and attackers publish harmful packages under those names. Check who publishes it, how widely it's used and when it was updated.
+  - id: empty-var
+    front: In a script, what happens if you misspell a variable name?
+    back: Often it silently becomes empty. In a delete command, an empty path can point at far more than you meant, like the whole drive.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: An AI recommends a package you've never heard of. What's the sensible first step?
+    options:
+      - Install it and see
+      - Check who publishes it, how widely it's used, and whether it's actively maintained
+      - Ask the AI if it's safe
+      - Install it on the live server
+    answer: 1
+    why: Packages run code on your machine. A quick look at their track record catches most made-up or malicious ones.
+  - id: t2
+    type: mcq
+    prompt: "In PowerShell, what does `Remove-Item \"$env:NOPE\\*\" -Recurse -Force` try to delete if `NOPE` isn't set?"
+    options:
+      - Nothing, because the variable is missing
+      - Everything at the top of the current drive
+      - Only the temp folder
+      - It asks you first
+    answer: 1
+    why: The missing variable becomes empty, leaving `\*`, which means everything at the root of the drive.
+docs:
+  - title: "Microsoft: about Environment Variables (PowerShell)"
+    url: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_environment_variables
+  - title: "npm Docs: Searching for and choosing packages"
+    url: https://docs.npmjs.com/searching-for-and-choosing-packages-to-download
+videos: []
+---
+
+## Confident isn't the same as correct
+
+AI models write by predicting what text is most likely to come next. That makes them fluent, fast and usually helpful. It also means they produce **plausible** text, and a wrong answer can be every bit as plausible as a right one.
+
+So AI doesn't sound unsure when it's wrong. It sounds exactly the same. You can't judge an answer by its tone.
+
+## The usual kinds of wrong
+
+| What happens | Example |
+| --- | --- |
+| **Invented details** | A setting, command option or function that doesn't exist |
+| **Out of date** | Instructions for an old version of a tool that has changed since |
+| **Almost right** | Code that works for the example but breaks for real data |
+| **Silencing the warning** | A "fix" that makes an error go away by turning off the safety check |
+| **One small slip** | A typo in one name, inside a script that otherwise makes perfect sense |
+
+The last one is the sneakiest, and you'll find one in the task below.
+
+## Habits that catch it
+
+- **Check the official documentation.** Each Groundwork lesson links to it. If a setting or option isn't there, be suspicious.
+- **Test somewhere safe.** Use a practice folder, a copy of the data, or a test account, never the real thing first.
+- **Read before you run.** Especially anything that deletes, moves, installs or changes settings.
+- **Ask for the why.** "What does each line do?" often makes the AI catch its own mistake, and it always helps you learn.
+- **Be wary of unknown packages.** AI sometimes invents package names, and attackers publish harmful packages under exactly those names.
+
+<Callout title="Don't overcorrect">
+Most of the time, AI is right, and it's an excellent tool. The point isn't to distrust everything. It's to check in proportion to the risk: a quick look for a harmless print statement, a careful one for anything that touches real files, money or customers.
+</Callout>
+
+<ConsultantNote>
+When you give a client advice, your name is on it, not the AI's. "The AI said so" is never an acceptable explanation for a mistake. The habit of checking is part of what makes you worth hiring.
+</ConsultantNote>

@@ -1,0 +1,158 @@
+---
+id: branches
+title: Branches and merging
+order: 3
+topic: git-and-github
+minutes: 50
+summary: Working on something new without disturbing the version that works, then bringing it back in. This is how every team works.
+connectivity: offline
+prerequisites: [ignore-and-history]
+predict:
+  id: p1
+  type: mcq
+  prompt: A website is live and working. A developer wants to try a big redesign that might take weeks. How do they avoid breaking the live version while they work?
+  options:
+    - Copy the whole project folder
+    - Make a branch, a separate line of commits for the redesign, and merge it back in when it's ready
+    - Work very carefully on the live version
+    - Wait until nobody's using the site
+  answer: 1
+  why: Branches let different pieces of work happen side by side. The main branch keeps working, and the redesign joins it only when it's ready.
+tasks:
+  - id: branch-and-merge
+    type: terminal
+    title: Build an About page on a branch
+    instructions: |
+      Watch the files in the folder as you switch branches. It's the clearest way to see what a branch is.
+    steps:
+      - text: Open PowerShell and go into your website's repository.
+        command: cd $HOME\Groundwork-Practice\git-lesson\my-site
+      - text: Create a branch called `add-about` and switch to it.
+        command: git switch -c add-about
+      - text: Make an About page and commit it, on this branch.
+        command: Set-Content about.html "<h1>About me</h1>"; git add about.html; git commit -m "Add an about page"
+      - text: Switch back to `main`, then list the files. **about.html has gone**, because it only exists on the other branch so far.
+        command: git switch main; Get-ChildItem
+      - text: Meanwhile, do some work on main. Add a link on the home page. `-am` stages every changed file and commits in one step.
+        command: "Add-Content index.html '<a href=\"about.html\">About</a>'; git commit -am \"Link to the about page\""
+      - text: Bring the branch's work into main. `--no-edit` accepts Git's suggested message.
+        command: git merge add-about --no-edit
+      - text: about.html is back, now on main. Draw the history as a graph and save it. You can see the two lines of work joining.
+        command: git log --oneline --graph --all > ..\graph.txt; Get-Content ..\graph.txt
+      - text: The branch's work is merged, so delete the branch label.
+        command: git branch -d add-about
+    checks:
+      - path: git-lesson/my-site/about.html
+        contains: About me
+        hint: Create about.html on the add-about branch, commit it, then merge add-about into main.
+      - path: git-lesson/my-site/index.html
+        contains: about.html
+        hint: On main, run the step that adds the link and commits it.
+      - path: git-lesson/graph.txt
+        contains: Merge branch 'add-about'
+        hint: Run `git merge add-about --no-edit` on main, then the `git log --oneline --graph --all` step.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What is a branch, really?
+    options:
+      - A full copy of the project folder
+      - A named line of commits, so work can happen separately from main
+      - A backup on another computer
+      - A type of file
+    answer: 1
+    why: Branches are cheap to make. Git just keeps a label pointing at the latest commit on each line of work.
+  - id: r2
+    type: short
+    prompt: Which command creates a branch called fix-menu and switches to it?
+    accept: ['git switch -c fix-menu', 'git checkout -b fix-menu']
+    answerText: git switch -c fix-menu (or the older git checkout -b fix-menu)
+  - id: r3
+    type: mcq
+    prompt: You're on main and run `git merge add-about`. What happens?
+    options:
+      - main's work is copied into add-about
+      - add-about's commits are brought into main
+      - Both branches are deleted
+      - add-about is renamed main
+    answer: 1
+    why: You merge another branch **into the one you're on**.
+  - id: r4
+    type: self
+    prompt: Why do teams keep main always working, and do all new work on branches?
+    modelAnswer: So there's always a version that works and could be released, and half-finished work never breaks it. Each feature or fix happens on its own branch, gets checked, then joins main when it's ready. People can also work on different things without getting in each other's way.
+cards:
+  - id: branch
+    front: What is a branch?
+    back: A separate, named line of commits. Work there doesn't affect main until you merge it.
+  - id: branch-cmds
+    front: Make a branch, switch branches, list branches, delete a branch?
+    back: "`git switch -c name`, `git switch name`, `git branch`, `git branch -d name`."
+  - id: merge
+    front: What does `git merge other` do?
+    back: Brings the commits from `other` into the branch you're currently on.
+  - id: main-rule
+    front: What's the usual rule for the main branch?
+    back: It should always work. New work happens on branches and is merged in when ready, often through a pull request.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: You made a commit on a branch, then switched to main. Why can't you see your new file?
+    options:
+      - It was deleted
+      - It only exists on the branch until you merge it into main
+      - Git is broken
+      - You need to restart
+    answer: 1
+    why: Switching branches changes the files to match that branch.
+  - id: t2
+    type: mcq
+    prompt: What does `git log --oneline --graph --all` show?
+    options: [Only main's history, The history of every branch drawn as a graph, A chart of file sizes, Who's online]
+    answer: 1
+    why: "`--all` includes every branch, and `--graph` draws how they split and join."
+docs:
+  - title: "Pro Git book: Branches in a Nutshell"
+    url: https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell
+  - title: "Pro Git book: Basic Branching and Merging"
+    url: https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging
+videos: []
+---
+
+## Parallel lines of work
+
+A **branch** is a separate line of commits. While you work on a branch, `main` stays exactly as it was. When the work is ready, you **merge** it back.
+
+Step through what you're about to do in the task:
+
+<Viz name="git-branches" />
+
+## Why teams work this way
+
+- **main always works.** Half-finished features never break the version people use.
+- **Everyone works separately.** One person fixes a bug on one branch while another builds a feature on another.
+- **Work can be checked before it joins.** That's what pull requests are for, coming up in a later lesson.
+- **Experiments are cheap.** Try an idea on a branch. If it doesn't work out, delete the branch.
+
+## The commands
+
+| Command | What it does |
+| --- | --- |
+| `git switch -c name` | Make a new branch and switch to it |
+| `git switch name` | Switch to an existing branch |
+| `git branch` | List branches. The one marked `*` is where you are |
+| `git merge name` | Bring `name`'s commits into the branch you're on |
+| `git branch -d name` | Delete a branch that's been merged |
+
+Older tutorials and AI answers often use `git checkout` for switching branches. It still works. `git switch` is newer and harder to misuse.
+
+## Two kinds of merge
+
+- **Fast-forward.** If main hasn't changed since the branch started, Git just moves main forward to include the branch's commits. No extra commit.
+- **Merge commit.** If both have new commits, as in the task, Git combines them and records a special commit with two parents. That's the `Merge branch 'add-about'` line in your graph.
+
+Either way, you usually don't have to think about it. Git sorts it out, unless the same lines were changed on both sides. That's a **conflict**, and it's the next lesson.
+
+<ConsultantNote>
+How a team uses branches says a lot about how it works. Does main always work? Is work reviewed before merging? Can anyone push straight to main? Simple rules here prevent a lot of "who broke the site?" moments, and setting them up is a quick win for a client.
+</ConsultantNote>

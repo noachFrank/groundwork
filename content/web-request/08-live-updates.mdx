@@ -1,0 +1,244 @@
+---
+id: live-updates
+title: "Live updates: polling, SSE and WebSockets"
+order: 8
+topic: software-talking
+minutes: 50
+summary: Three ways to get fresh data to a screen, what each costs, and how to choose the simplest one that's enough.
+connectivity: offline
+prerequisites: [cors]
+predict:
+  id: p1
+  type: mcq
+  prompt: A client wants a sales dashboard that "updates in real time". The numbers change about once an hour. What's the best first step?
+  options:
+    - Build it with WebSockets, since that's what real-time means
+    - Ask how fresh the numbers actually need to be
+    - Buy a bigger server
+    - Tell them it's impossible
+  answer: 1
+  why: '"Real-time" means very different things to different people. If an hour-old number is fine, refreshing every few minutes is cheaper and more reliable than a live connection.'
+tasks:
+  - id: live-lab
+    type: lab
+    lab: live
+    title: Feel the difference
+    instructions: |
+      This is a real WebSocket server and a real polling endpoint on your computer. A value on the server changes every 2 seconds.
+
+      Run both at once and watch the numbers. How many requests does polling send to get the same updates that a WebSocket simply receives?
+  - id: choose-wisely
+    type: case
+    title: "Client call: \"we need real-time\""
+    instructions: A warehouse client wants a live screen. Decide how you'd approach it.
+    scenario: |
+      A warehouse manager wants a wall screen showing how many orders are waiting. Staff glance at it every few minutes. New orders arrive around ten times an hour. Their one developer has never run WebSockets in production, and their budget is small. The manager says: "It has to be real-time. Everything is real-time now."
+    questions:
+      - prompt: What do you ask first?
+        choices:
+          - text: "If the number were 30 seconds old, would anything go wrong?"
+            score: 2
+            why: This turns "real-time" into an actual requirement. It's likely the answer settles the whole design.
+          - text: "Which WebSocket library do you prefer?"
+            score: 0
+            why: That jumps to a solution before you understand the need.
+          - text: "How many servers do you have?"
+            score: 1
+            why: It's a useful fact, but it won't tell you what they actually need yet.
+      - prompt: They confirm 30 seconds would be completely fine. What do you recommend?
+        choices:
+          - text: Poll every 30 seconds
+            score: 2
+            why: It's simple, uses plain HTTP that their developer already knows, and has nothing long-lived to keep alive. At this scale the wasted requests cost almost nothing.
+          - text: WebSockets, in case they need it later
+            score: 0
+            why: This adds real operating complexity for a need they don't have. It's easy to change later if that need appears.
+          - text: Have staff refresh the page by hand
+            score: 1
+            why: It's free, but a wall screen with nobody near it will go stale. A small timer solves that.
+      - prompt: A year later they build a two-way chat between hundreds of warehouse staff. Now what?
+        choices:
+          - text: Keep polling every 30 seconds
+            score: 0
+            why: A 30-second delay is unacceptable for chat, and faster polling for hundreds of users would be wasteful.
+          - text: WebSockets, or a managed service that provides them
+            score: 2
+            why: Now the need is real. It's instant, and it runs both ways. A managed service like Azure SignalR can remove much of the operating work.
+          - text: Email
+            score: 0
+            why: That's not chat.
+    passScore: 5
+  - id: tracker-design
+    type: architecture
+    title: Design a delivery tracker
+    instructions: Practice laying out a system. There's no code here. It's about what goes where.
+    scenario: |
+      A local food-delivery client wants customers to see their order status update live on their phones, with no refreshing. Drivers update the status from their own app. Orders must never be lost if a server restarts.
+    parts:
+      - id: web-app
+        label: Customer web page
+        hint: What the customer sees and taps
+      - id: api
+        label: API server
+        hint: Receives status updates from drivers, and saves them
+      - id: ws
+        label: WebSocket server
+        hint: Holds open connections and pushes updates
+      - id: db
+        label: Database
+        hint: Permanent storage
+      - id: poller
+        label: Script polling every 100ms
+        hint: Asks the server for news ten times a second
+      - id: db-password
+        label: Database password
+        hint: The credentials for the database
+    zones:
+      - id: device
+        label: Customer's phone
+        hint: Anyone can inspect what's here
+      - id: servers
+        label: Your servers
+        hint: Only you control these
+      - id: storage
+        label: Storage
+        hint: Survives restarts
+    checklist:
+      - text: Give customers a page on their phones
+        all: [{ part: web-app, zone: device }]
+      - text: Give drivers' updates somewhere to arrive
+        all: [{ part: api, zone: servers }]
+      - text: Push updates to phones with no refreshing
+        all: [{ part: ws, zone: servers }]
+      - text: Keep orders safe across restarts
+        all: [{ part: db, zone: storage }]
+      - text: Avoid hammering the server with constant polling
+        none: [poller]
+      - text: Keep the database password off customers' phones
+        none: [db-password]
+    model:
+      placements:
+        web-app: device
+        api: servers
+        ws: servers
+        db: storage
+      explanation: |
+        A driver's update goes to the API, which saves it in the database first, so it survives a restart. Then it's pushed through the WebSocket server to that customer's phone. Everything the customer's device holds is public, so secrets stay on the server.
+
+        In a real system the password would be kept in a secure setting on the server. We left it off the diagram, and a real consultant would want to know where it lives.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What's the main advantage of a WebSocket over polling?
+    options:
+      - The server can send data the moment it happens, on a connection that stays open
+      - It doesn't use the network
+      - It needs no server
+      - It's always simpler to run
+    answer: 0
+    why: It's instant and works in both directions. The cost is that the server has to hold those connections open.
+  - id: r2
+    type: short
+    prompt: What HTTP status code means a connection is switching to WebSockets?
+    accept: ['\b101\b']
+    answerText: "101"
+    why: 101 is Switching Protocols.
+  - id: r3
+    type: mcq
+    prompt: A news page gets the server to send new headlines as they arrive, and never needs to send anything back. Which is the simplest good fit?
+    options: [Server-Sent Events (SSE), WebSockets, Email, A bigger database]
+    answer: 0
+    why: SSE is one-way, server to browser, over regular HTTP, and it reconnects by itself.
+  - id: r4
+    type: self
+    prompt: When is simple polling the right choice, even though it's "less modern"?
+    modelAnswer: When updates are infrequent or a short delay is fine, like a dashboard people glance at. It's simple and reliable, with less to operate. The wasted requests don't matter at a small scale.
+cards:
+  - id: three
+    front: Compare polling, SSE and WebSockets in one line each.
+    back: "Polling: the browser keeps asking. SSE: the server streams to the browser, one way. WebSockets: an open connection, both ways."
+  - id: cost
+    front: What's the main cost of WebSockets?
+    back: The server has to keep a connection open for every user, which complicates scaling and deployment.
+  - id: realtime
+    front: A client says they need "real-time". What do you ask?
+    back: How fresh does it actually need to be? What goes wrong if it's 30 seconds old? The answer often means something much simpler will do.
+  - id: signalr
+    front: What's SignalR?
+    back: A Microsoft library for live updates in .NET. It uses WebSockets when it can, and falls back to other methods when it can't.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Which suits a two-way chat app best?
+    options: [WebSockets, Polling once an hour, A DNS record, A static web page]
+    answer: 0
+    why: Chat needs instant updates in both directions.
+  - id: t2
+    type: mcq
+    prompt: A dashboard updates hourly and is read by 5 people. What's most sensible?
+    options: [Polling every few minutes, A dedicated WebSocket cluster, A message queue with several workers, gRPC streaming]
+    answer: 0
+    why: Choose the simplest thing that meets the need. Complexity has a real cost.
+docs:
+  - title: "MDN: The WebSocket API"
+    url: https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API
+  - title: "MDN: Server-sent events"
+    url: https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events
+  - title: "RFC 6455: the WebSocket protocol (deep, not required)"
+    url: https://www.rfc-editor.org/rfc/rfc6455
+videos:
+  - id: 1BfCnjr_Vjg
+    title: WebSockets in 100 Seconds & Beyond with Socket.io
+    channel: Fireship
+---
+
+## HTTP's limitation
+
+HTTP has a built-in rule: the client asks, then the server answers. A server can't just start talking. So how do you get a new chat message or a changing price onto someone's screen?
+
+There are three common answers:
+
+<Viz name="polling-vs-websockets" />
+
+## Polling: keep asking
+
+The browser asks "anything new?" on a timer.
+
+- **Good:** dead simple. Uses plain HTTP, and works everywhere.
+- **Bad:** there's a delay, and most requests come back empty.
+
+It's underrated. For a dashboard that changes hourly, it's often the right call.
+
+## Server-Sent Events: the server streams to you
+
+The browser opens one long HTTP request, and the server keeps sending along it. It only goes one way, from server to browser.
+
+- **Good:** simple, reconnects by itself, and works over regular HTTP.
+- **Bad:** one-way only.
+
+It suits notifications, news feeds and progress bars. It's also how AI chat tools stream their replies word by word.
+
+## WebSockets: an open line
+
+A WebSocket starts as HTTP, then "upgrades" into a permanent two-way connection.
+
+- **Good:** instant, in both directions.
+- **Bad:** the server holds a connection open for every user. That complicates scaling and deploying.
+
+It suits chat, multiplayer games and collaborative editing. **SignalR** is a Microsoft library for .NET that uses WebSockets when it can, and falls back to other methods when it can't.
+
+## How to choose
+
+| Question | Lean toward |
+| --- | --- |
+| Updates are rare, or a short delay is fine | Polling |
+| Only the server sends, and it should feel live | SSE |
+| Both sides send, instantly | WebSockets |
+
+<Callout title="The takeaway">
+Start with the need, not the technology. "Real-time" is a feeling, so turn it into a number: how many seconds old is too old? The simplest thing that meets that number is usually the best design.
+</Callout>
+
+<ConsultantNote>
+Clients often ask for a technology when what they really want is an outcome. Your job is to find the outcome, then suggest the cheapest thing that delivers it. Talking a client out of unnecessary complexity saves them money for years, and it's one of the most valuable things a consultant can do.
+</ConsultantNote>

@@ -1,0 +1,241 @@
+---
+id: python-lists-loops
+title: "Python: lists and loops"
+order: 3
+topic: reading-code
+minutes: 50
+summary: Storing many values in a list, going through them one at a time with a for loop, and the running-total pattern you'll see everywhere.
+connectivity: offline
+prerequisites: [python-decisions]
+predict:
+  id: p1
+  type: mcq
+  prompt: 'With `names = ["Ada", "Grace", "Linus"]`, what is `names[1]`?'
+  options: [Ada, Grace, Linus, An error]
+  answer: 1
+  why: Python counts positions from **0**, so names[0] is Ada and names[1] is Grace. Counting from zero confuses everyone at first, and causes "off by one" bugs for years after.
+tasks:
+  - id: scores
+    type: python
+    title: Summarize test scores
+    instructions: |
+      A loop runs the same code once for each item: `for score in scores:` gives you each score in turn. Keep a running total in a variable that starts at 0.
+
+      `len(scores)` is how many items are in the list.
+    starter: |
+      scores = [72, 45, 90, 61, 38, 85]
+
+
+      def average(numbers):
+          # Add up all the numbers with a loop, then divide by how many there are.
+          # If the list is empty, return 0 (you can't divide by zero).
+          pass
+
+
+      def count_passing(numbers, pass_mark):
+          # Count how many numbers are at or above the pass mark.
+          pass
+
+
+      print(average(scores))
+      print(count_passing(scores, 50))
+    tests:
+      - name: average of the scores
+        code: |
+          result = average(scores)
+          assert result is not None, "average returned nothing. Did you forget to return the result?"
+          assert round(result, 2) == 65.17, f"The average should be about 65.17, but you got {result}."
+      - name: average of an empty list is 0
+        code: |
+          assert average([]) == 0, "An empty list should give 0. Check for len(numbers) == 0 before dividing."
+      - name: counting passes
+        code: |
+          assert count_passing(scores, 50) == 4, f"4 scores are 50 or more, but you got {count_passing(scores, 50)}."
+      - name: a score equal to the pass mark counts
+        code: |
+          assert count_passing([50, 49, 51], 50) == 2, "A score exactly equal to the pass mark is a pass. Check > versus >=."
+    solution: |
+      scores = [72, 45, 90, 61, 38, 85]
+
+
+      def average(numbers):
+          if len(numbers) == 0:
+              return 0
+          total = 0
+          for n in numbers:
+              total = total + n
+          return total / len(numbers)
+
+
+      def count_passing(numbers, pass_mark):
+          count = 0
+          for n in numbers:
+              if n >= pass_mark:
+                  count = count + 1
+          return count
+    wrong: |
+      scores = [72, 45, 90, 61, 38, 85]
+
+
+      def average(numbers):
+          if len(numbers) == 0:
+              return 0
+          total = 0
+          for n in numbers:
+              total = total + n
+          return total / len(numbers)
+
+
+      def count_passing(numbers, pass_mark):
+          count = 0
+          for n in numbers:
+              if n > pass_mark:
+                  count = count + 1
+          return count
+  - id: loop-bug
+    type: flaw
+    title: The total that's always wrong
+    language: python
+    instructions: |
+      This should add up a shopping basket. For `[10, 20, 30]` it should print 60, but it prints 30. Which line is the problem?
+    code: |
+      prices = [10, 20, 30]
+
+      for price in prices:
+          total = 0
+          total = total + price
+
+      print(total)
+    flawLines: [4]
+    lineNotes:
+      "1": The list is fine.
+      "3": Looping over the prices is right.
+      "5": Adding each price to the total is right, but what is total just before this line, every time?
+      "7": Printing after the loop is right, and the line isn't indented, so it runs once.
+    explanation: |
+      `total = 0` is **inside** the loop, so it resets to zero for every price. After the last item, total is just 0 + 30.
+
+      The running total has to start **before** the loop:
+
+      ```python
+      total = 0
+      for price in prices:
+          total = total + price
+      ```
+
+      One level of indentation decides whether a line runs once or once per item. When a loop gives a strange result, check what's inside it and what's outside.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What's the index of the first item in a Python list?
+    options: ["0", "1", "-1", It depends]
+    answer: 0
+    why: Lists count from 0. (And `-1` means the last item, which is handy.)
+  - id: r2
+    type: short
+    prompt: Which function tells you how many items are in a list?
+    accept: ['\blen\b']
+    answerText: len, as in len(scores)
+  - id: r3
+    type: mcq
+    prompt: What does `range(3)` give you in a loop?
+    options: ["1, 2, 3", "0, 1, 2", "3, three times", "Just 3"]
+    answer: 1
+    why: range(3) counts 0, 1, 2. It stops before 3.
+  - id: r4
+    type: self
+    prompt: Describe the running-total pattern in your own words.
+    modelAnswer: Make a variable that starts at zero before the loop. Inside the loop, add each item to it. After the loop, the variable holds the total. The same shape works for counting, finding the biggest, or building up a list.
+cards:
+  - id: list
+    front: How do you make and use a list?
+    back: '`items = ["a", "b"]`. `items[0]` is the first, `items[-1]` the last, `len(items)` the count, `items.append("c")` adds one.'
+  - id: for-loop
+    front: What does `for x in items:` do?
+    back: Runs the indented block once for each item, with x holding the current item.
+  - id: running-total
+    front: What's the running-total pattern?
+    back: Start a variable at 0 before the loop, add to it inside the loop, use it after the loop.
+  - id: off-by-one
+    front: What's an off-by-one bug?
+    back: Being out by one, often from counting from 0 or from `<` versus `<=`. range(3) is 0, 1, 2, not 1, 2, 3.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: 'With `nums = [4, 8, 15]`, what is `nums[-1]`?'
+    options: ["4", "8", "15", An error]
+    answer: 2
+    why: Negative indexes count from the end. -1 is the last item.
+  - id: t2
+    type: mcq
+    prompt: 'What does this give: `sum = 0`, then `for n in [1, 2, 3]: sum = sum + n * 2`?'
+    options: ["6", "12", "3", "0"]
+    answer: 1
+    why: 2 + 4 + 6 is 12.
+docs:
+  - title: "Python tutorial: Lists"
+    url: https://docs.python.org/3/tutorial/introduction.html#lists
+  - title: "Python tutorial: for statements"
+    url: https://docs.python.org/3/tutorial/controlflow.html#for-statements
+videos: []
+---
+
+## Many values, one name
+
+A **list** holds values in order:
+
+```python
+scores = [72, 45, 90]
+names = ["Ada", "Grace", "Linus"]
+```
+
+| Code | Gives |
+| --- | --- |
+| `names[0]` | `"Ada"`, the first item. Counting starts at 0. |
+| `names[-1]` | `"Linus"`, the last item |
+| `len(names)` | `3`, how many items |
+| `names.append("Margaret")` | Adds an item to the end |
+
+## Doing something for each item
+
+A `for` loop runs its indented block once per item:
+
+```python
+for name in names:
+    print(f"Hello, {name}")
+```
+
+That prints three lines. On each pass, `name` holds the next item. To repeat something a set number of times, use `range`: `for i in range(3):` gives 0, 1, 2.
+
+## The patterns you'll see everywhere
+
+Almost every loop in real code is one of a few shapes:
+
+```python
+# Running total
+total = 0
+for price in prices:
+    total = total + price
+
+# Counting
+count = 0
+for score in scores:
+    if score >= 50:
+        count = count + 1
+
+# Building a new list
+passed = []
+for score in scores:
+    if score >= 50:
+        passed.append(score)
+```
+
+Spotting the pattern is most of reading a loop. Notice that the variable always starts **before** the loop, the work happens **inside**, and the result is used **after**.
+
+<Callout title="Python's shortcuts">
+Python has built-in shortcuts for common jobs: `sum(prices)`, `max(scores)`, `min(scores)`, and `sorted(names)`. Experienced programmers use them a lot, but they're doing the same loops underneath. Knowing the loop helps you read both.
+</Callout>
+
+<ConsultantNote>
+Loops are where performance problems hide. A loop that asks the database a question for every one of 10,000 customers can turn a one-second page into a one-minute page. When a client says "it's slow", look for loops doing expensive work.
+</ConsultantNote>

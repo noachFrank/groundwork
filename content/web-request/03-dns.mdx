@@ -1,0 +1,155 @@
+---
+id: dns
+title: "DNS: the internet's address book"
+order: 3
+topic: networks-and-the-web
+minutes: 45
+summary: How names become addresses, why DNS changes take time, and how to run lookups against a real DNS server.
+connectivity: offline
+prerequisites: [addresses-and-ports]
+predict:
+  id: p1
+  type: mcq
+  prompt: A company moves its website to a new server and updates its DNS. An hour later, some customers see the new site and others still see the old one. Why?
+  options:
+    - The new server is broken
+    - DNS answers are saved for a while, and those customers still have the old answer saved
+    - Those customers need to install an update
+    - The internet is slow today
+  answer: 1
+  why: DNS answers get cached in many places, each for a set time. Until a saved copy expires, that person keeps getting the old address. This is often called "DNS propagation".
+tasks:
+  - id: run-dns
+    type: lab
+    lab: dns
+    title: Query a real DNS server
+    instructions: |
+      Groundwork runs a real, small DNS server on your computer. It speaks the actual DNS protocol, so Windows's own `nslookup` tool can talk to it, with no internet needed. Adding `127.0.0.1` at the end of the command tells `nslookup` to ask this server instead of your usual one.
+
+      In the results, the `Server` and `Address` lines say who answered. The `Name` and `Address` after them are the answer.
+  - id: explain-dns
+    type: explain
+    title: Explain it to a client
+    instructions: Being able to explain this simply is half of consulting. Try it without looking back at the lesson.
+    prompt: |
+      Your client runs a small bakery. They ask: "My nephew moved my website to a new host yesterday. I see the new site, but my customers still see the old one. Is something broken? And what even is DNS?" Write what you'd say back.
+    rubric:
+      - Uses plain language or an everyday comparison, with no unexplained jargon
+      - Says what DNS does (turns a name into an address)
+      - Explains that answers are saved (cached) for a while, so people update at different times
+      - Tells the client what to expect, and that it should sort itself out without anything being broken
+    minScore: 3
+    modelAnswer: |
+      Nothing's broken. Think of DNS as the internet's phone book: it turns your website's name into the address of the computer hosting it. Your nephew updated that entry, but to save time, computers keep a copy of the old entry for a while before checking again. So people update at different times. Your computer has checked, but some customers' computers haven't yet. It usually clears up within a day or so. If people still see the old site after 48 hours, let me know and I'll look into it.
+    gradingPrompt: |
+      I'm learning to be a software consultant. Here's how I explained DNS to a non-technical bakery owner, whose customers still see their old website after a move to a new host. Please check whether it's accurate and whether a non-technical person would understand it, then suggest one improvement.
+
+      My explanation:
+      {{ANSWER}}
+  - id: real-dns
+    type: lab
+    lab: real-dns
+    title: Look up a real domain
+    connectivity: needs-internet
+    required: false
+    instructions: Same idea, but out on the real internet. This asks your computer's normal DNS servers for a real domain's address.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What does an A record do?
+    options: [Maps a name to an IPv4 address, Says where email goes, Encrypts the website, Stores the web page]
+    answer: 0
+    why: A records map names to IPv4 addresses. AAAA does the same for IPv6, and MX records say where email goes.
+  - id: r2
+    type: short
+    prompt: What's the name of the number that says how long a DNS answer may be cached?
+    accept: ['\bttl\b', 'time to live']
+    answerText: TTL (time to live)
+  - id: r3
+    type: mcq
+    prompt: Which server is the final source of truth for a domain's records?
+    options: [The root server, The resolver, The authoritative name server, Your laptop]
+    answer: 2
+    why: The authoritative server holds the domain's records. The others just point the way or keep copies.
+  - id: r4
+    type: self
+    prompt: A client is moving their site next week and wants as little disruption as possible. What would you do with the TTL beforehand, and why?
+    modelAnswer: Lower the TTL a day or two before the move, for example to 5 minutes. Old answers then expire quickly, so when you change the record, everyone picks it up fast. Raise it again afterward.
+cards:
+  - id: what
+    front: What does DNS do?
+    back: It turns human-friendly names (example.com) into the IP addresses computers use to connect.
+  - id: ttl
+    front: What is a TTL, and why does it matter when moving a website?
+    back: Time to live, or how many seconds a DNS answer can be cached. Lowering it before a move means old answers expire quickly, so the change spreads faster.
+  - id: records
+    front: What do A, CNAME and MX records do?
+    back: "A: name to IPv4 address. CNAME: name to another name (an alias). MX: where a domain's email should go."
+  - id: order
+    front: A resolver has nothing cached. Who does it ask, in order?
+    back: A root server, then the top-level domain server (like .com), then the domain's authoritative server.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: You changed a DNS record, but users still reach the old server. What's the most likely cause?
+    options: [Cached answers that haven't expired yet, A broken database, The browser's cookies, An expired certificate]
+    answer: 0
+    why: Resolvers and devices keep old answers until the TTL runs out.
+  - id: t2
+    type: mcq
+    prompt: Which record type tells the internet where to deliver a domain's email?
+    options: [A, CNAME, MX, TXT]
+    answer: 2
+    why: MX stands for mail exchange.
+docs:
+  - title: "MDN: DNS"
+    url: https://developer.mozilla.org/en-US/docs/Glossary/DNS
+  - title: "Microsoft: the nslookup command"
+    url: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/nslookup
+  - title: "RFC 1035: the DNS specification (deep, not required)"
+    url: https://www.rfc-editor.org/rfc/rfc1035
+videos:
+  - id: mpQZVYPuDGU
+    title: How a DNS Server (Domain Name System) works
+    channel: PowerCert Animated Videos
+    note: A short animated overview.
+---
+
+## Names for people, numbers for computers
+
+Nobody wants to remember `142.250.190.78`. **DNS**, the Domain Name System, is the worldwide directory that turns names into addresses.
+
+No single computer holds the whole thing. It's split among many servers, arranged in a hierarchy. Here's a full lookup:
+
+<Viz name="dns-lookup" />
+
+## The cast
+
+- **Resolver:** does the legwork for you. It's usually run by your internet provider, or a public service like `1.1.1.1`.
+- **Root servers:** the top of the tree. They don't know addresses, just who handles `.com`, `.org`, and so on.
+- **Top-level domain (TLD) servers:** know who handles each domain under `.com`.
+- **Authoritative server:** the source of truth for one domain. When you "edit DNS" in a domain's control panel, this is what you're changing.
+
+## The records you'll actually use
+
+| Type | What it does | Example |
+| --- | --- | --- |
+| A | Name to IPv4 address | `shop.example` → `93.184.216.34` |
+| AAAA | Name to IPv6 address | `shop.example` → `2606:2800::1` |
+| CNAME | Name to another name | `www.shop.example` → `shop.example` |
+| MX | Where email goes | `shop.example` → `mail.provider.example` |
+| TXT | Free text, often for proving you own a domain | `v=spf1 include:...` |
+
+## Caching, and why changes aren't instant
+
+Going through all those servers on every lookup would be slow. So every answer comes with a **TTL** (time to live): how many seconds it may be saved. Your laptop and your resolver both keep copies.
+
+That's what the opening question was about. After you change a record, anyone holding a saved copy keeps the old answer until it expires. Different people's copies expire at different times, so a change seems to spread gradually.
+
+<Callout title="A useful trick">
+Moving a site next week? Lower the TTL now, for example to 300 seconds. Once the old, longer TTL has passed, everyone's copies expire quickly, so the actual move takes effect within minutes. Raise it again afterward.
+</Callout>
+
+<ConsultantNote>
+"It's always DNS" is a running joke in IT because so many outages trace back to it. A site suddenly unreachable, email going missing after a host change, a domain that expired because nobody renewed it: all DNS. Asking "who controls your DNS, and when does the domain renew?" is a great early question with a new client.
+</ConsultantNote>

@@ -1,0 +1,5 @@
+id: web-request
+title: How a web request really works
+summary: What actually happens between pressing Enter and seeing a page. It covers addresses, DNS, HTTP, HTTPS, APIs, CORS and live updates, using real servers on your own computer. No experience needed.
+stage: stage-2
+order: 1

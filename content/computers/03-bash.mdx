@@ -1,0 +1,195 @@
+---
+id: bash-basics
+title: "Bash: the language of servers"
+order: 3
+topic: how-computers-run-software
+minutes: 40
+summary: Most servers run Linux and are controlled with Bash. The commands you need to recognize, how they map to PowerShell, and the ways Bash can bite.
+connectivity: offline
+prerequisites: [the-terminal]
+predict:
+  id: p1
+  type: mcq
+  prompt: You delete a file on a Linux server with `rm`. Where can you get it back from?
+  options:
+    - The Recycle Bin
+    - Nowhere. `rm` deletes immediately, with no undo, unless there's a backup
+    - The server keeps the last 10 deleted files
+    - Typing `undo`
+  answer: 1
+  why: Terminals generally have no Recycle Bin. That's why it pays to read a delete command carefully before pressing Enter, on Windows too.
+tasks:
+  - id: deploy-script
+    type: flaw
+    title: The deploy script that deleted the wrong thing
+    language: bash
+    instructions: |
+      A small company uses this Bash script to put a new version of their website live. It worked every day for months. Then one day, after someone tidied up the server's folders, it deleted the home folder of the person who ran it.
+
+      Which line made that possible? (`cd` changes folder, `rm -rf *` deletes everything in the current folder, and `cp -r` copies.)
+    code: |
+      #!/bin/bash
+      # Put the new version of the website live
+      APP_DIR=/var/www/shop
+      echo "Deploying to $APP_DIR"
+      cd $APP_DIR/releases
+      rm -rf *
+      cp -r ~/build/* .
+      echo "Deployed!"
+    flawLines: [5]
+    lineNotes:
+      "1": This first line just says "run me with Bash". It's normal.
+      "3": Storing the folder in a variable is good practice.
+      "4": This only prints a message.
+      "6": This line does the damage, but it's only dangerous because of where it runs. What decides which folder it's in?
+      "7": Copying the new files in is the point of the script.
+      "8": This prints "Deployed!" even when things went wrong, which is misleading, but it's not what deleted the files.
+    explanation: |
+      If the `releases` folder no longer exists, `cd` fails, prints an error, and **the script carries on anyway**, still in whatever folder it started in. Usually that's the user's home folder. Then `rm -rf *` deletes everything there.
+
+      The fix is to stop if `cd` fails: `cd "$APP_DIR/releases" || exit 1`. Many scripts also start with `set -e`, which stops the script at the first failed command. Putting the path in quotes protects against spaces, too.
+
+      The lesson works for any script, Bash or PowerShell: ask "what happens if this step fails?" before trusting the steps after it.
+  - id: which-command
+    type: case
+    title: Reading a server's instructions
+    instructions: A client sends you instructions their old developer left. Work out what each line does.
+    scenario: |
+      The note says: "To check the website on the server, log in, then run: `cd /var/www/shop`, `ls -la`, `cat config.yml`, and `tail -f logs/app.log`. Never run anything with sudo unless you know what it does."
+    questions:
+      - prompt: What does `ls -la` do?
+        choices:
+          - text: Lists the files in the current folder, with details, including hidden ones
+            score: 2
+            why: Right. `ls` lists files, `-l` shows details and `-a` includes hidden files, which start with a dot on Linux.
+          - text: Deletes all files
+            score: 0
+            why: That would be `rm`. `ls` only lists.
+          - text: Logs you out
+            score: 0
+            why: That's `exit` or `logout`.
+      - prompt: What does `tail -f logs/app.log` do?
+        choices:
+          - text: Shows the end of the log file and keeps showing new lines as they're written
+            score: 2
+            why: Right. `tail` shows the last lines, and `-f` follows the file live. Press Ctrl+C to stop. It's a key tool for watching a server.
+          - text: Deletes the log file
+            score: 0
+            why: Nothing here deletes anything.
+          - text: Edits the log file
+            score: 0
+            why: It only reads.
+      - prompt: Why the warning about `sudo`?
+        choices:
+          - text: sudo runs a command as the all-powerful administrator, so a mistake can damage the whole server
+            score: 2
+            why: Right. sudo means "do this as the superuser". It's needed sometimes, but it removes the safety net.
+          - text: sudo is slow
+            score: 0
+            why: Speed isn't the concern. Power is.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: 'What''s the Bash equivalent of PowerShell''s `Get-ChildItem`?'
+    options: [cat, ls, cd, pwd]
+    answer: 1
+    why: "`ls` lists files. (PowerShell also accepts `ls`, as a short name.)"
+  - id: r2
+    type: short
+    prompt: Which Bash command shows the contents of a file?
+    accept: ['\bcat\b', '\bless\b', '\bmore\b', '\bhead\b', '\btail\b']
+    answerText: cat (or less, head, tail)
+  - id: r3
+    type: mcq
+    prompt: On Linux, are `Notes.txt` and `notes.txt` the same file?
+    options: [Yes, No. Linux file names are case-sensitive]
+    answer: 1
+    why: Windows ignores case in file names, but Linux doesn't. This catches out code that works on a Windows laptop and fails on a Linux server.
+  - id: r4
+    type: self
+    prompt: Why should a script stop when a step like `cd` fails?
+    modelAnswer: Because later steps assume the earlier ones worked. If cd fails, the script is in the wrong folder, and a later command like a delete then acts on the wrong files.
+cards:
+  - id: bash-cmds
+    front: "Bash: list files, change folder, where am I, show a file, delete?"
+    back: "`ls`, `cd`, `pwd`, `cat`, `rm`. Add `-r` to rm for folders, and be careful."
+  - id: sudo
+    front: What does `sudo` do?
+    back: Runs a command as the superuser (administrator). Needed sometimes, dangerous always.
+  - id: case-sensitive
+    front: What's different about file names on Linux?
+    back: They're case-sensitive. Paths use forward slashes `/`, and there's no drive letter. Everything starts from `/`.
+  - id: fail-stop
+    front: How do you stop a Bash script when a step fails?
+    back: "`set -e` at the top, or `command || exit 1` after a risky step."
+testOut:
+  - id: t1
+    type: mcq
+    prompt: What does `rm -rf old-site` do?
+    options:
+      - Moves old-site to the trash
+      - Deletes the folder old-site and everything in it, without asking and with no undo
+      - Renames old-site
+      - Lists old-site
+    answer: 1
+    why: "`-r` means recursive (everything inside) and `-f` means force (don't ask)."
+  - id: t2
+    type: mcq
+    prompt: Code works on a developer's Windows laptop but fails on the Linux server with "file not found" for `Logo.png`. What's a likely cause?
+    options:
+      - The file is really named logo.png, and Linux cares about case
+      - Linux can't open PNG files
+      - The server is offline
+      - Windows is faster
+    answer: 0
+    why: Windows treats Logo.png and logo.png as the same file. Linux doesn't.
+docs:
+  - title: "GNU: Bash Reference Manual"
+    url: https://www.gnu.org/software/bash/manual/bash.html
+  - title: "Ubuntu: The Linux command line for beginners"
+    url: https://ubuntu.com/tutorials/command-line-for-beginners
+videos: []
+---
+
+## Why Bash matters even on Windows
+
+Most of the servers that run websites and apps use **Linux**, and Linux is controlled through a shell called **Bash**. Macs use a very similar shell called zsh. So documentation, tutorials and AI answers are full of Bash commands, and sooner or later a client will ask you to look at a Linux server.
+
+You don't need to master it now. You need to **recognize** the common commands and know where the dangers are.
+
+## PowerShell and Bash side by side
+
+| Job | PowerShell | Bash |
+| --- | --- | --- |
+| Where am I? | `Get-Location` (`pwd`) | `pwd` |
+| List files | `Get-ChildItem` (`ls`) | `ls` (`ls -la` for details and hidden files) |
+| Change folder | `cd folder` | `cd folder` |
+| Show a file | `Get-Content file` | `cat file` |
+| Make a folder | `mkdir name` | `mkdir name` |
+| Copy | `Copy-Item a b` | `cp a b` |
+| Move or rename | `Move-Item a b` | `mv a b` |
+| Delete | `Remove-Item file` | `rm file` |
+| Watch a log live | `Get-Content log -Wait` | `tail -f log` |
+
+## What's different on Linux
+
+- **Forward slashes**, and no drive letters. Everything starts from `/`, called the root. Your home folder is `~`.
+- **Case matters.** `Logo.png` and `logo.png` are different files.
+- **Hidden files** start with a dot, like `.env` or `.git`.
+- **Scripts** end in `.sh`, start with a line like `#!/bin/bash`, and must be marked as runnable with `chmod +x script.sh` before you run them with `./script.sh`.
+- **sudo** runs a command as the administrator, called root. It's sometimes necessary, and always worth a second look.
+
+<Callout kind="warn" title="No undo">
+`rm` deletes immediately. There's no Recycle Bin. `rm -rf` deletes a folder and everything in it without asking. Read any delete command twice, and be especially wary of `*`, which means "everything here".
+</Callout>
+
+## Where you'll use Bash
+
+- **Logging in to a server** with `ssh user@server`, which gives you a Bash prompt on that machine.
+- **Git Bash**, which comes with Git for Windows, the Git and GitHub module's tool. It gives you Bash on your own laptop.
+- **Automated builds and deployments.** Services like GitHub Actions run Bash scripts to test and publish code.
+
+<ConsultantNote>
+When you audit a client's setup, deploy scripts are worth reading. Scripts that keep going after an error, delete with `*`, or run everything with sudo are common, and they're exactly the kind of risk a client won't know they have until something breaks.
+</ConsultantNote>

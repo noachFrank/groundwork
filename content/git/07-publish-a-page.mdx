@@ -1,0 +1,176 @@
+---
+id: publish-a-page
+title: "Milestone: put your page on the internet"
+order: 7
+topic: git-and-github
+minutes: 60
+summary: The Stage 1 milestone. Use AI to help build a small page, push it to GitHub, and publish it free with GitHub Pages, so anyone in the world can open it.
+connectivity: needs-internet
+prerequisites: [undo-mistakes, asking-good-questions]
+predict:
+  id: p1
+  type: mcq
+  prompt: You push your website's files to a public GitHub repository and turn on GitHub Pages. Who can see the page?
+  options:
+    - Only you
+    - Only people you invite
+    - Anyone on the internet who has the address, and anyone can read the files in the repository too
+    - Nobody until you pay
+  answer: 2
+  why: A public repository and a GitHub Pages site are both visible to everyone. That's the point for a portfolio page, and also why secrets and private details must never go in.
+tasks:
+  - id: publish
+    type: terminal
+    title: Publish your page with GitHub Pages
+    connectivity: needs-internet
+    instructions: |
+      This needs the internet throughout. Take your time, because it's the first thing you've put on the public internet.
+
+      **Your page is public.** Don't put your address, phone number or anything private on it.
+    steps:
+      - text: "Make a free GitHub account at github.com, if you don't have one. Use the same email you gave Git in the first Git lesson."
+      - text: "On GitHub, click **+** (top right) → **New repository**. Name it `my-first-site`, choose **Public**, leave everything else unticked, and click **Create repository**."
+      - text: "Use AI to improve your page. Ask for a simple, single-file HTML page about yourself and what you're learning, using only HTML and CSS. Then **read the code it gives you**, and ask about anything you don't understand. Remember the routine from the first module."
+      - text: Open your website's repository in PowerShell.
+        command: cd $HOME\Groundwork-Practice\git-lesson\my-site
+      - text: Open the home page in Notepad, replace everything with the page you built, save, and close Notepad.
+        command: notepad index.html
+      - text: "Open the page in your browser to check it. Then commit it."
+        command: start index.html; git add index.html; git commit -m "Build my homepage"
+      - text: "Connect your repository to GitHub. `origin` is already used by the practice shared copy, so call this remote `github`. **Replace YOUR-USERNAME** with your GitHub username."
+        command: git remote add github https://github.com/YOUR-USERNAME/my-first-site.git
+      - text: "Push. The first time, a window opens asking you to sign in to GitHub. Choose **Sign in with your browser** and approve it."
+        command: git push -u github main
+      - text: "Refresh your repository page on GitHub. Your files are there."
+      - text: "Turn on Pages: in the repository, click **Settings** → **Pages**. Under **Branch**, choose **main** and **/(root)**, then **Save**. Wait a minute or two, then refresh. GitHub shows your site's address, like `https://YOUR-USERNAME.github.io/my-first-site/`."
+      - text: Open the address. Your page is live. Save the address, putting your real one in the quotes, and save the list of remotes.
+        command: Set-Content ..\my-url.txt "https://YOUR-USERNAME.github.io/my-first-site/"; git remote -v > ..\remotes.txt
+      - text: "Optional: change something on the page, commit, and `git push github`. Refresh the live site after a minute. That's a deployment."
+    checks:
+      - path: git-lesson/remotes.txt
+        contains: github.com
+        hint: Run `git remote add github https://github.com/...` with your username, then `git remote -v > ..\remotes.txt`.
+      - path: git-lesson/my-url.txt
+        contains: github.io
+        hint: Put your site's address, from Settings → Pages, into the `Set-Content ..\my-url.txt` step.
+  - id: share-it
+    type: explain
+    title: Tell someone what you built
+    instructions: Practice explaining technical work to a non-technical person, a skill you'll use with every client.
+    prompt: |
+      A friend who doesn't work in tech asks: "You put a website online? How does that work, and did it cost anything?" Explain what you did in a few sentences.
+    rubric:
+      - Explains that the files were saved with Git and uploaded to GitHub
+      - Explains that GitHub Pages serves those files as a website at a public address
+      - Says it was free, and that updating means pushing changes
+      - Uses everyday language, with any technical words explained
+    minScore: 3
+    modelAnswer: |
+      I wrote a simple web page, which is just a text file in a format browsers understand. I used a tool called Git to save versions of it, then uploaded it to GitHub, a website where people store code. GitHub has a free feature called Pages that turns those files into a real website with its own address, so anyone can open it. It didn't cost anything. When I want to change it, I edit the file, save a new version and upload it again, and the site updates in a minute or two.
+    gradingPrompt: |
+      I'm learning to explain technical things to non-technical people. A friend asked how I put a website online and whether it cost anything. Here's my answer. Is it accurate, and would a non-technical person follow it? Suggest one improvement.
+
+      My answer:
+      {{ANSWER}}
+recall:
+  - id: r1
+    type: mcq
+    prompt: What does GitHub Pages do?
+    options:
+      - Writes web pages for you
+      - Publishes the files in a repository as a website, for free
+      - Hides your repository
+      - Tests your code
+    answer: 1
+    why: It serves HTML, CSS and JavaScript files straight from a repository. It's ideal for simple sites and portfolios.
+  - id: r2
+    type: mcq
+    prompt: After you push a change to your published site's main branch, what happens?
+    options:
+      - Nothing, you must turn Pages on again
+      - GitHub republishes the site automatically, usually within a minute or two
+      - The site goes offline
+      - You need to pay
+    answer: 1
+    why: Pushing is the deployment. Many hosting services work this way.
+  - id: r3
+    type: self
+    prompt: What should never go into a public repository?
+    modelAnswer: Secrets like passwords and API keys, .env files, private personal information like addresses and phone numbers, and clients' private code or data unless they've agreed.
+cards:
+  - id: pages
+    front: What is GitHub Pages?
+    back: Free hosting for static websites (HTML, CSS, JavaScript) straight from a GitHub repository. Pushing to the branch republishes the site.
+  - id: deploy
+    front: What does "deploy" mean?
+    back: Putting a new version of software where people use it. For your page, that's pushing to GitHub so Pages republishes it.
+  - id: public
+    front: What does "public repository" mean?
+    back: Anyone on the internet can see all its files and its full history.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: A client wants a simple five-page brochure website with no logins or database. What's a reasonable, cheap option?
+    options:
+      - A large cloud server running all the time
+      - A static site on a free or cheap static host like GitHub Pages, Netlify or Cloudflare Pages
+      - A custom mobile app
+      - No website
+    answer: 1
+    why: Static hosting is cheap or free, fast and secure, which suits simple sites perfectly.
+  - id: t2
+    type: mcq
+    prompt: Your push asks you to sign in. What should you use?
+    options:
+      - Your GitHub password typed into the terminal
+      - The browser sign-in window that Git Credential Manager opens
+      - A friend's account
+      - Skip it
+    answer: 1
+    why: GitHub doesn't accept account passwords for Git any more. Git for Windows opens a secure browser sign-in instead.
+docs:
+  - title: "GitHub Docs: Creating a GitHub Pages site"
+    url: https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site
+  - title: "GitHub Docs: Adding locally hosted code to GitHub"
+    url: https://docs.github.com/en/migrations/importing-source-code/using-the-command-line-to-import-source-code/adding-locally-hosted-code-to-github
+videos: []
+---
+
+## Stage 1's milestone
+
+This is where it comes together: the terminal, Git, asking AI good questions and checking what it gives you. By the end, you'll have a real page on the public internet, with an address you can send to anyone.
+
+## How it fits together
+
+```text
+your laptop                GitHub                       the world
+my-site/index.html  ──push──▶  my-first-site repo  ──Pages──▶  https://you.github.io/my-first-site/
+```
+
+1. **Git** tracks your page's versions on your laptop.
+2. **Pushing** copies those commits to a repository on **GitHub**.
+3. **GitHub Pages** serves the files in that repository as a website.
+
+Every time you push a change, Pages republishes the site, usually within a minute or two. That's a **deployment**, and plenty of professional hosting works exactly the same way.
+
+## Using AI for this, the right way
+
+It's fine, and realistic, to have AI help write the page. But it's *your* page:
+
+- **Read the code** before you publish it, and ask about anything you don't understand.
+- **Change something yourself**, like the colors, a heading or a section.
+- **Check what's in it.** AI sometimes adds links to outside scripts or images you didn't ask for. For this page, it should be one HTML file with no outside links.
+
+## Signing in from Git
+
+GitHub doesn't accept your account password from the terminal. Git for Windows includes **Git Credential Manager**, which opens a browser window to sign in securely the first time you push. After that, it remembers.
+
+## Static sites
+
+Your page is a **static site**: files that are sent to the browser exactly as they are. There's no server code and no database. Static sites are cheap or free to host, very fast, and hard to hack, because there's very little to attack. Many real business websites are static.
+
+When a site needs logins, a database or payments, it needs a server too. That's Stage 3.
+
+<ConsultantNote>
+"Do we really need a server for this?" is a question that saves clients money. Many small business sites would be faster, safer and nearly free as static sites. Recognizing when the simple option is enough is good consulting.
+</ConsultantNote>

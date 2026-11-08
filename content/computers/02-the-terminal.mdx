@@ -1,0 +1,181 @@
+---
+id: the-terminal
+title: Getting comfortable in the terminal
+order: 2
+topic: how-computers-run-software
+minutes: 50
+summary: How a command is put together, the shortcuts that save you typing, pipes that connect commands, and how to read an error instead of panicking.
+connectivity: offline
+prerequisites: [files-and-paths]
+predict:
+  id: p1
+  type: mcq
+  prompt: 'In the command `Copy-Item notes.txt backup.txt -Force`, what is `-Force`?'
+  options:
+    - The name of a file
+    - An option that changes how the command behaves
+    - A second command
+    - An error
+  answer: 1
+  why: Words starting with a dash are options, also called parameters or flags. `-Force` tells Copy-Item to overwrite backup.txt if it already exists.
+tasks:
+  - id: pipes-and-errors
+    type: terminal
+    title: Commands, pipes and errors
+    instructions: |
+      Try the shortcuts as you go. They're what make the terminal fast. Press **Tab** to finish a word, and the **Up arrow** to bring back your last command.
+    steps:
+      - text: Open PowerShell and go to your practice folder, then make and enter a folder for this lesson.
+        command: cd $HOME\Groundwork-Practice; mkdir terminal-lesson; cd terminal-lesson
+      - text: "Try Tab completion: type `Get-Chi` and press **Tab**. PowerShell finishes it as `Get-ChildItem`. Press Enter to run it. (The folder is empty, so nothing prints.)"
+      - text: PowerShell commands are named "verb-noun". Find every command that works on items, like files, and save the list.
+        command: Get-Command *-Item | Out-File item-commands.txt
+      - text: Read that list. You'll recognize Copy-Item and Remove-Item.
+        command: Get-Content item-commands.txt
+      - text: "The `|` symbol is a **pipe**. It passes one command's result into the next. This takes every running program, sorts them by how much processor time they've used, keeps the top 5, and saves them."
+        command: Get-Process | Sort-Object CPU -Descending | Select-Object -First 5 | Out-File top.txt
+      - text: "`>` is a shortcut that sends output to a file. This writes the word hello into greeting.txt."
+        command: '"hello" > greeting.txt'
+      - text: Now make a mistake on purpose. Read the red text. It names the command, the problem, and the path it couldn't find.
+        command: Get-Content does-not-exist.txt
+      - text: Ask for help on a command. If it offers to download the full help, press **N**, because the short version is enough.
+        command: Get-Help Copy-Item
+      - text: Clear the screen. Your files are untouched.
+        command: cls
+    checks:
+      - path: terminal-lesson/item-commands.txt
+        contains: Remove-Item
+        hint: This is created by the `Get-Command *-Item | Out-File item-commands.txt` step.
+      - path: terminal-lesson/top.txt
+        contains: ProcessName
+        hint: This is created by the long `Get-Process | ...` step. Check you copied all of it.
+      - path: terminal-lesson/greeting.txt
+        contains: hello
+        hint: This is created by the `"hello" > greeting.txt` step.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What does the `|` (pipe) do?
+    options:
+      - Ends the command
+      - Sends the result of one command into the next
+      - Saves to a file
+      - Comments out the rest of the line
+    answer: 1
+    why: Pipes let you build bigger jobs out of small commands, each doing one thing.
+  - id: r2
+    type: short
+    prompt: Which key finishes a command or file name for you?
+    accept: ['\btab\b']
+    answerText: Tab
+  - id: r3
+    type: mcq
+    prompt: A command is running and won't stop. What do you press?
+    options: [Escape, Ctrl+C, Ctrl+Z, Delete]
+    answer: 1
+    why: Ctrl+C stops the running command. It's the terminal's emergency brake.
+  - id: r4
+    type: self
+    prompt: You see red error text in the terminal. What do you do with it?
+    modelAnswer: Read it, slowly. It usually says which command failed, what went wrong, and where, such as which file or line. Often the answer is right there. If not, copy the exact text and search for it or ask about it.
+cards:
+  - id: anatomy
+    front: What are the parts of `Copy-Item notes.txt backup.txt -Force`?
+    back: "The command (`Copy-Item`), its arguments (the two file names), and an option or flag (`-Force`) that changes its behavior."
+  - id: shortcuts
+    front: What do Tab, Up arrow and Ctrl+C do in a terminal?
+    back: Tab finishes a word. Up arrow brings back earlier commands. Ctrl+C stops the running command.
+  - id: pipe-redirect
+    front: "What's the difference between `|` and `>`?"
+    back: "`|` passes output into another command. `>` writes output into a file."
+  - id: shells
+    front: What are PowerShell, Command Prompt and Bash?
+    back: Different shells, the programs that read your commands. PowerShell is modern Windows. Command Prompt (cmd) is old Windows. Bash is Linux and Mac.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: What does `Get-Process | Select-Object -First 3` do?
+    options:
+      - Starts three programs
+      - Lists running programs, then keeps only the first three
+      - Stops three programs
+      - Saves three files
+    answer: 1
+    why: The pipe sends the full list into Select-Object, which keeps the first three.
+  - id: t2
+    type: mcq
+    prompt: 'You run `dir > files.txt`. What happens?'
+    options:
+      - The list of files prints on screen
+      - The list of files is written into files.txt instead of the screen
+      - files.txt is deleted
+      - It's an error
+    answer: 1
+    why: "`>` redirects the output to a file."
+docs:
+  - title: "Microsoft: PowerShell: Discover commands"
+    url: https://learn.microsoft.com/en-us/powershell/scripting/learn/ps101/02-help-system
+  - title: "Microsoft: about Pipelines"
+    url: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_pipelines
+videos: []
+---
+
+## A command is a sentence
+
+Almost every command has the same shape:
+
+```text
+Copy-Item   notes.txt backup.txt   -Force
+└ command   └ arguments            └ option (flag)
+```
+
+- The **command** is the verb: what to do.
+- **Arguments** are what to do it to.
+- **Options**, also called flags or parameters, start with a dash and change how it's done.
+
+PowerShell names its commands **verb-noun**: `Get-ChildItem`, `Copy-Item`, `Remove-Item`, `Get-Process`. Once you know that, you can often guess a command's name. Many also have short names borrowed from older systems, like `ls`, `cd`, `cat` and `pwd`.
+
+## The shortcuts that matter
+
+| Key | What it does |
+| --- | --- |
+| **Tab** | Finishes a command or file name. Press it again to cycle through matches. |
+| **Up arrow** | Brings back your previous commands. |
+| **Ctrl+C** | Stops whatever is running. |
+| **cls** | Clears the screen. Nothing is deleted. |
+| **Right-click** | Pastes, in PowerShell's window. |
+
+Tab completion also prevents typos. If Tab doesn't complete a file name, the file probably isn't where you think.
+
+## Connecting commands
+
+Two symbols turn small commands into powerful ones:
+
+- `|`, the **pipe**, sends one command's output into another. `Get-Process | Sort-Object CPU` lists programs, then sorts them.
+- `>`, **redirect**, sends output into a file instead of the screen.
+
+## Reading errors
+
+Red text isn't the computer shouting at you. It's a message, and usually a precise one:
+
+```text
+Get-Content : Cannot find path 'C:\...\does-not-exist.txt' because it does not exist.
+```
+
+That says which command failed (`Get-Content`), what went wrong (it can't find the path), and the exact path it tried. Most of the time the fix is in the message.
+
+## Which shell is which?
+
+A **shell** is the program that reads your commands. You'll meet three:
+
+| Shell | Where |
+| --- | --- |
+| **PowerShell** | Modern Windows. What we use in this course. |
+| **Command Prompt** (cmd) | Older Windows. Still used by `.bat` files. |
+| **Bash** | Linux servers and Mac. Most servers on the internet run Linux, so you'll meet it next. |
+
+The ideas are the same everywhere. Only the command names differ.
+
+<ConsultantNote>
+Setup instructions, documentation and fixes are written as commands. A consultant who's comfortable in the terminal can follow any project's instructions, and can see exactly what a script is about to do before anyone runs it.
+</ConsultantNote>

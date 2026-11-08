@@ -1,0 +1,196 @@
+---
+id: http
+title: "HTTP: how browsers and servers talk"
+order: 4
+topic: networks-and-the-web
+minutes: 40
+summary: What requests and responses actually look like, what status codes mean, and how to read them.
+connectivity: offline
+prerequisites: [dns]
+predict:
+  id: p1
+  type: mcq
+  prompt: What does an HTTP request actually look like on its way to the server?
+  options:
+    - A compressed file only computers can read
+    - Short lines of plain text, like a very formal note
+    - An image of the page you want
+    - A number code
+  answer: 1
+  why: HTTP was designed to be text that humans can read. (HTTPS encrypts it on the wire, and newer versions package it more compactly, but the same structure is still there.)
+tasks:
+  - id: status-codes
+    type: lab
+    lab: http
+    title: Earn four status codes
+    instructions: |
+      This sends real requests to a practice API on your computer. Use the quick buttons or type your own, and read each response. The lab server is watching for four specific results.
+
+      The goal isn't just to click. Before each Send, predict the status code.
+  - id: parse-status
+    type: python
+    title: Read a status line with Python
+    instructions: |
+      Reading code matters more here than writing it, so this comes with plenty of help. Code runs right here in the app, with nothing to install.
+
+      Finish the two functions. Three things you'll need: `"a b c".split()` gives the list `["a", "b", "c"]`. Putting `[1]` after a list picks its second item, because counting starts at 0. And `int("404")` turns text into the number `404`.
+
+      Stuck? Paste the task into an AI assistant and ask it to **explain** the idea, not hand over the answer. Then write it yourself.
+    starter: |
+      def status_code(line):
+          # line looks like: "HTTP/1.1 404 Not Found"
+          # Return the status code as a number, like 404.
+          pass
+
+
+      def is_error(code):
+          # Return True if the code means something went wrong (400 or above).
+          pass
+
+
+      print(status_code("HTTP/1.1 404 Not Found"))
+      print(is_error(404))
+    tests:
+      - name: status_code finds 404
+        code: |
+          assert status_code("HTTP/1.1 404 Not Found") == 404, "status_code should return the number 404. Note that '404' in quotes is text, and int() turns it into a number."
+      - name: status_code works on other lines
+        code: |
+          assert status_code("HTTP/1.1 200 OK") == 200, "It should work for any line, not just the example."
+          assert status_code("HTTP/2 503 Service Unavailable") == 503, "It should work for a 503 line too."
+      - name: is_error says yes to 404 and 500
+        code: |
+          assert is_error(404) is True, "A 404 is an error, so is_error(404) should be True."
+          assert is_error(500) is True, "A 500 is an error."
+      - name: is_error says no to 200 and 301
+        code: |
+          assert is_error(200) is False, "A 200 is success, so is_error(200) should be False."
+          assert is_error(301) is False, "A 301 is a redirect, not an error."
+    solution: |
+      def status_code(line):
+          return int(line.split()[1])
+
+
+      def is_error(code):
+          return code >= 400
+    wrong: |
+      def status_code(line):
+          return line.split()[1]
+
+
+      def is_error(code):
+          return code > 400
+recall:
+  - id: r1
+    type: mcq
+    prompt: A page says **500 Internal Server Error**. Whose problem is it most likely to be?
+    options: [The server's, The user's browser, The user's typing, The DNS system]
+    answer: 0
+    why: 5xx codes mean the server failed. 4xx codes mean the request was the problem.
+  - id: r2
+    type: short
+    prompt: Which status code means "not found"?
+    accept: ['\b404\b']
+    answerText: "404"
+  - id: r3
+    type: mcq
+    prompt: Which HTTP method would you use to create a new order?
+    options: [GET, POST, DELETE, HEAD]
+    answer: 1
+    why: GET reads, POST creates, PUT replaces or updates, and DELETE removes.
+  - id: r4
+    type: mcq
+    prompt: What's the difference between 401 and 403?
+    options:
+      - They mean the same thing
+      - "401: we don't know who you are. 403: we know who you are, and you're not allowed."
+      - "401: server broken. 403: page missing."
+    answer: 1
+    why: Despite the name "Unauthorized", 401 really means you aren't authenticated. 403 means you are, but you lack permission.
+cards:
+  - id: families
+    front: What do the 2xx, 3xx, 4xx and 5xx status code families mean?
+    back: "2xx: success. 3xx: go somewhere else. 4xx: the request was the problem. 5xx: the server failed."
+  - id: methods
+    front: What do GET, POST, PUT and DELETE each do?
+    back: "GET reads. POST creates. PUT replaces or updates. DELETE removes."
+  - id: parts
+    front: What are the parts of an HTTP response?
+    back: A status line (like `HTTP/1.1 200 OK`), headers (information about the response), and a body (the content).
+  - id: 401-403
+    front: 401 or 403, which is which?
+    back: "401: not logged in, or no valid credentials. 403: you're known, but not allowed."
+testOut:
+  - id: t1
+    type: mcq
+    prompt: An API returns 429. What's going on?
+    options: [Too many requests in a short time, The server crashed, The page moved, You logged out]
+    answer: 0
+    why: 429 means Too Many Requests, or rate limiting. The fix is to slow down and retry later.
+  - id: t2
+    type: mcq
+    prompt: Where do details like content type and cookies travel in an HTTP message?
+    options: [The status code, The headers, The IP address, The port]
+    answer: 1
+    why: Headers carry metadata about the message.
+docs:
+  - title: "MDN: An overview of HTTP"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Overview
+  - title: "MDN: HTTP response status codes"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status
+videos: []
+---
+
+## A very polite text conversation
+
+**HTTP** is the language browsers and servers use. Here's a real request. It really is just text:
+
+```
+GET /orders/102 HTTP/1.1
+Host: localhost:4314
+Accept: application/json
+```
+
+- `GET` is the **method**: what you want to do.
+- `/orders/102` is the **path**: what you want to do it to.
+- The lines after it are **headers**: extra information about the request.
+
+And the response:
+
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{ "id": 102, "customer": "Grace", "item": "Monitor" }
+```
+
+- `200 OK` is the **status**: how it went.
+- Then come headers, a blank line, and the **body**: the actual content.
+
+## Methods: what do you want to do?
+
+| Method | Meaning | Example |
+| --- | --- | --- |
+| GET | Read something | See order 102 |
+| POST | Create something | Place a new order |
+| PUT | Replace or update | Change an order |
+| DELETE | Remove | Cancel an order |
+
+## Status codes: how did it go?
+
+The first digit tells you who to look at:
+
+| Family | Meaning | Common examples |
+| --- | --- | --- |
+| **2xx** | It worked | `200 OK`, `201 Created` |
+| **3xx** | Go elsewhere | `301 Moved Permanently`, `302 Found` |
+| **4xx** | Your request has a problem | `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `429 Too Many Requests` |
+| **5xx** | The server has a problem | `500 Internal Server Error`, `502 Bad Gateway`, `503 Service Unavailable` |
+
+<Callout title="Stateless">
+HTTP has no memory: each request stands alone, and the server doesn't recall the last one. So how do websites keep you logged in? **Cookies**. The server gives your browser a small piece of text, and the browser sends it back with every request after that.
+</Callout>
+
+<ConsultantNote>
+A status code cuts through a confusing bug report fast. "The app is broken" could be a 401 (their login expired), a 404 (a wrong link), or a 503 (the server's down), and each one is a completely different problem. Opening the browser's Network tab (F12) and reading the status code is often step one of a diagnosis.
+</ConsultantNote>

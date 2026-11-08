@@ -1,0 +1,245 @@
+---
+id: python-dicts-data
+title: "Python: dictionaries and real data"
+order: 5
+topic: reading-code
+minutes: 50
+summary: Dictionaries, lists of dictionaries, and JSON. This is the shape of nearly all real data, from APIs to databases to spreadsheets.
+connectivity: offline
+prerequisites: [python-functions]
+predict:
+  id: p1
+  type: mcq
+  prompt: 'With `order = {"customer": "Ada", "total": 49}`, what does `order["total"]` give?'
+  options: ['"total"', "49", '"Ada"', An error]
+  answer: 1
+  why: A dictionary stores values under **keys**. Looking up the key "total" gives its value, 49. Real data, like an order from an API, almost always arrives in this shape.
+tasks:
+  - id: orders-report
+    type: python
+    title: Report on a day's orders
+    instructions: |
+      The data comes in as JSON text, as it would from an API. `json.loads` turns it into Python lists and dictionaries.
+
+      Each order is a dictionary with a "customer", a "city", and a list of "items". Each item is a dictionary with a "name" and a "price".
+    starter: |
+      import json
+
+      data = """
+      [
+        {"customer": "Ada", "city": "London", "items": [{"name": "Keyboard", "price": 49}, {"name": "Mouse", "price": 9}]},
+        {"customer": "Grace", "city": "New York", "items": [{"name": "Monitor", "price": 189}]},
+        {"customer": "Linus", "city": "London", "items": [{"name": "Cable", "price": 5}, {"name": "Stand", "price": 30}, {"name": "Lamp", "price": 22}]}
+      ]
+      """
+      orders = json.loads(data)
+
+
+      def order_total(order):
+          # Add up the price of every item in this order.
+          pass
+
+
+      def biggest_spender(orders):
+          # Return the customer name of the order with the highest total.
+          pass
+
+
+      def customers_in(orders, city):
+          # Return a list of customer names whose city matches.
+          pass
+
+
+      print(order_total(orders[0]))
+      print(biggest_spender(orders))
+      print(customers_in(orders, "London"))
+    tests:
+      - name: order_total adds the items
+        code: |
+          assert order_total(orders[0]) == 58, f"Ada's items cost 49 + 9 = 58, but you got {order_total(orders[0])}."
+          assert order_total(orders[2]) == 57, "Linus's items cost 5 + 30 + 22 = 57."
+      - name: biggest_spender
+        code: |
+          assert biggest_spender(orders) == "Grace", f"Grace's 189 order is the biggest, but you got {biggest_spender(orders)!r}. Compare totals, not the number of items."
+      - name: customers_in
+        code: |
+          assert customers_in(orders, "London") == ["Ada", "Linus"], f'Expected ["Ada", "Linus"], got {customers_in(orders, "London")!r}.'
+          assert customers_in(orders, "Paris") == [], "No one is in Paris, so this should be an empty list."
+    solution: |
+      import json
+
+      data = """
+      [
+        {"customer": "Ada", "city": "London", "items": [{"name": "Keyboard", "price": 49}, {"name": "Mouse", "price": 9}]},
+        {"customer": "Grace", "city": "New York", "items": [{"name": "Monitor", "price": 189}]},
+        {"customer": "Linus", "city": "London", "items": [{"name": "Cable", "price": 5}, {"name": "Stand", "price": 30}, {"name": "Lamp", "price": 22}]}
+      ]
+      """
+      orders = json.loads(data)
+
+
+      def order_total(order):
+          total = 0
+          for item in order["items"]:
+              total = total + item["price"]
+          return total
+
+
+      def biggest_spender(orders):
+          best = orders[0]
+          for order in orders:
+              if order_total(order) > order_total(best):
+                  best = order
+          return best["customer"]
+
+
+      def customers_in(orders, city):
+          names = []
+          for order in orders:
+              if order["city"] == city:
+                  names.append(order["customer"])
+          return names
+    wrong: |
+      import json
+
+      data = """
+      [
+        {"customer": "Ada", "city": "London", "items": [{"name": "Keyboard", "price": 49}, {"name": "Mouse", "price": 9}]},
+        {"customer": "Grace", "city": "New York", "items": [{"name": "Monitor", "price": 189}]},
+        {"customer": "Linus", "city": "London", "items": [{"name": "Cable", "price": 5}, {"name": "Stand", "price": 30}, {"name": "Lamp", "price": 22}]}
+      ]
+      """
+      orders = json.loads(data)
+
+
+      def order_total(order):
+          total = 0
+          for item in order["items"]:
+              total = total + item["price"]
+          return total
+
+
+      def biggest_spender(orders):
+          best = orders[0]
+          for order in orders:
+              if len(order["items"]) > len(best["items"]):
+                  best = order
+          return best["customer"]
+
+
+      def customers_in(orders, city):
+          names = []
+          for order in orders:
+              if order["city"] == city:
+                  names.append(order["customer"])
+          return names
+recall:
+  - id: r1
+    type: mcq
+    prompt: 'What happens with `order["phone"]` if the dictionary has no "phone" key?'
+    options: [It gives None, It gives an empty string, KeyError, It adds the key]
+    answer: 2
+    why: 'Square brackets demand the key exists. `order.get("phone")` returns None instead of crashing.'
+  - id: r2
+    type: mcq
+    prompt: 'In `orders[2]["items"][0]["price"]`, what are you reading?'
+    options:
+      - The price of the first item in the third order
+      - The third price
+      - The second order's items
+      - An error
+    answer: 0
+    why: Read left to right. orders[2] is the third order, ["items"] its item list, [0] the first item, ["price"] its price.
+  - id: r3
+    type: short
+    prompt: Which function from Python's json module turns JSON text into Python data?
+    accept: ['json\.loads', '\bloads\b']
+    answerText: json.loads
+  - id: r4
+    type: self
+    prompt: How do JSON's objects and arrays map onto Python?
+    modelAnswer: JSON objects, in curly brackets, become Python dictionaries. JSON arrays, in square brackets, become Python lists. Strings, numbers, true, false and null become str, int or float, True, False and None.
+cards:
+  - id: dict
+    front: What's a dictionary?
+    back: 'Values stored under keys: `{"name": "Ada", "total": 49}`. Read with `d["name"]`, or `d.get("name")` to avoid a KeyError.'
+  - id: nested
+    front: How do you read nested data like `orders[0]["items"][1]["price"]`?
+    back: Left to right, one step at a time. Each `[...]` goes one level deeper into a list (by position) or dictionary (by key).
+  - id: json-python
+    front: JSON and Python, side by side?
+    back: object ↔ dict, array ↔ list, true/false ↔ True/False, null ↔ None. `json.loads` reads JSON, and `json.dumps` writes it.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: 'With `p = {"name": "Mouse", "price": 9}`, how do you change the price to 12?'
+    options: ['p["price"] = 12', 'p.price = 12', 'price(p) = 12', 'p[1] = 12']
+    answer: 0
+    why: Assigning to a key sets its value.
+  - id: t2
+    type: mcq
+    prompt: 'What type is `json.loads(''[{"a": 1}]'')`?'
+    options: [A string, A list containing a dictionary, A dictionary, A number]
+    answer: 1
+    why: The outer square brackets make a list, and the curly brackets inside make a dictionary.
+docs:
+  - title: "Python tutorial: Dictionaries"
+    url: https://docs.python.org/3/tutorial/datastructures.html#dictionaries
+  - title: "Python docs: json"
+    url: https://docs.python.org/3/library/json.html
+videos: []
+---
+
+## Values with labels
+
+A list stores values by position. A **dictionary** stores them by **key**, a label:
+
+```python
+order = {"customer": "Ada", "total": 49, "paid": True}
+
+order["customer"]          # "Ada"
+order["total"] = 55        # change a value
+order["city"] = "London"   # add a new key
+order.get("phone")         # None, because there's no phone, but no crash either
+```
+
+`order["phone"]` would crash with a **KeyError**, one of the most common errors in real code, because real data is often missing fields.
+
+## The shape of real data
+
+Real data is lists and dictionaries **nested inside each other**:
+
+```python
+orders = [
+    {"customer": "Ada", "items": [{"name": "Keyboard", "price": 49}, {"name": "Mouse", "price": 9}]},
+    {"customer": "Grace", "items": [{"name": "Monitor", "price": 189}]},
+]
+
+orders[0]["items"][1]["price"]    # 9
+```
+
+Read nested lookups **one step at a time**, left to right: the first order, its items, the second item, its price.
+
+Looping over this kind of data is the bread and butter of programming:
+
+```python
+for order in orders:
+    for item in order["items"]:
+        print(order["customer"], item["name"])
+```
+
+## JSON is the same shape
+
+**JSON**, which you met in the APIs lesson, is how this data travels between programs. It maps directly onto Python:
+
+| JSON | Python |
+| --- | --- |
+| `{ "key": value }` (object) | dictionary |
+| `[ 1, 2, 3 ]` (array) | list |
+| `true`, `false`, `null` | `True`, `False`, `None` |
+
+`json.loads(text)` turns JSON text into Python data, and `json.dumps(data)` turns it back.
+
+<ConsultantNote>
+Most "integration" work, connecting one system to another, is exactly this: reading nested data from one system, picking out fields, and reshaping it for another. And most integration bugs are a missing key, a field that's sometimes null, or a number that arrives as text.
+</ConsultantNote>

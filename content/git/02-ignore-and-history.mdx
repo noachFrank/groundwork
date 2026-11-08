@@ -1,0 +1,154 @@
+---
+id: ignore-and-history
+title: "Keeping secrets out, and reading history"
+order: 2
+topic: git-and-github
+minutes: 45
+summary: Using .gitignore so passwords and installed packages never get committed, and looking back through a project's history.
+connectivity: offline
+prerequisites: [first-commits, env-and-path]
+predict:
+  id: p1
+  type: mcq
+  prompt: You commit a file containing a password, and the next day you delete the password and commit again. Is the password gone?
+  options:
+    - Yes, the latest version doesn't have it
+    - No. It's still in the earlier commit, and anyone with the repository can see it
+    - Only if you delete the file too
+    - Git never stores passwords
+  answer: 1
+  why: Git keeps every version, which is the whole point. That includes the version with the password. The safest approach is never committing secrets in the first place.
+tasks:
+  - id: gitignore
+    type: terminal
+    title: Ignore a secret, then explore the history
+    instructions: |
+      This continues with the `my-site` repository from the last lesson.
+    steps:
+      - text: Open PowerShell and go into your website's repository.
+        command: cd $HOME\Groundwork-Practice\git-lesson\my-site
+      - text: Create a pretend secrets file, like a real project's `.env`.
+        command: Set-Content .env "API_KEY=pretend-secret-123"
+      - text: Look at the status. Git has noticed `.env` and would happily commit it. That's the danger.
+        command: git status
+      - text: Create a `.gitignore` file listing things Git should never track. Each line is a name or pattern.
+        command: Set-Content .gitignore ".env", "node_modules/"
+      - text: Check the status again. `.env` has disappeared from the list, and only `.gitignore` is new.
+        command: git status
+      - text: Commit the `.gitignore` itself, so everyone working on the project shares the same rules.
+        command: git add .gitignore; git commit -m "Ignore secrets and installed packages"
+      - text: Add a stylesheet and commit it.
+        command: 'Set-Content style.css "h1 { color: teal; }"; git add style.css; git commit -m "Add a stylesheet"'
+      - text: Save the history, and the list of files Git actually tracks.
+        command: git log --oneline > ..\history-2.txt; git ls-files > ..\tracked.txt; Get-Content ..\tracked.txt
+      - text: Look at an older commit. `HEAD` means "the latest commit", and `HEAD~1` means one before it. This shows what that commit changed.
+        command: git show --stat HEAD~1
+      - text: "See who last changed each line of a file, and when. Press **Q** if it fills the screen."
+        command: git blame index.html
+    checks:
+      - path: git-lesson/my-site/.gitignore
+        contains: .env
+        hint: This is created by `Set-Content .gitignore ".env", "node_modules/"`, inside my-site.
+      - path: git-lesson/tracked.txt
+        contains: style.css
+        notContains: .env
+        hint: Create .gitignore before committing anything else, commit the stylesheet, then run `git ls-files > ..\tracked.txt`. If `.env` is listed, it was committed. Ask for help on undoing that, or start this lesson's repository again.
+      - path: git-lesson/history-2.txt
+        contains: Ignore secrets
+        hint: Commit the .gitignore with the message shown, then run the `git log --oneline > ..\history-2.txt` step.
+recall:
+  - id: r1
+    type: mcq
+    prompt: Which of these belongs in `.gitignore`?
+    options: [index.html, package.json, ".env", README.md]
+    answer: 2
+    why: .env holds secrets. The others are part of the project and should be committed.
+  - id: r2
+    type: short
+    prompt: Which folder of installed JavaScript packages should always be in .gitignore?
+    accept: ['node_modules']
+    answerText: node_modules
+  - id: r3
+    type: mcq
+    prompt: What does `HEAD` mean in Git?
+    options: [The first commit ever, The latest commit on the branch you're on, The project's main file, The person in charge]
+    answer: 1
+    why: HEAD is "where you are now". HEAD~1 is one commit before, HEAD~2 two before, and so on.
+  - id: r4
+    type: self
+    prompt: A secret got committed and pushed to GitHub. Is deleting it in a new commit enough? What should happen?
+    modelAnswer: No. It's still in the history, and it may already have been copied. The secret must be treated as leaked, so change it (rotate the key or password) straight away. Cleaning it out of the history is a secondary step.
+cards:
+  - id: gitignore
+    front: What is `.gitignore` for?
+    back: Listing files Git should never track, like `.env` (secrets), `node_modules/` (installed packages) and build output.
+  - id: secret-committed
+    front: A secret was committed. What's the first thing to do?
+    back: Treat it as leaked and change it (rotate it). Git history keeps it forever, and it may already have been copied.
+  - id: head
+    front: What do `HEAD` and `HEAD~1` mean?
+    back: HEAD is the latest commit where you are. HEAD~1 is the one before it.
+  - id: blame
+    front: What does `git blame file` show?
+    back: Who last changed each line of a file, in which commit, and when. Useful for understanding why code is the way it is.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: A teammate's `git status` shows `.env` as a new file. What's missing?
+    options: [A .gitignore entry for .env, A commit, A branch, The internet]
+    answer: 0
+    why: Without the .gitignore entry, Git offers to track it, and it'll eventually get committed by accident.
+  - id: t2
+    type: mcq
+    prompt: What does `git show HEAD~2` show?
+    options: [The commit two before the latest, Two files, The second branch, The last two lines]
+    answer: 0
+    why: "`~2` counts back two commits from HEAD."
+docs:
+  - title: "Git: gitignore documentation"
+    url: https://git-scm.com/docs/gitignore
+  - title: "GitHub Docs: Ignoring files"
+    url: https://docs.github.com/en/get-started/git-basics/ignoring-files
+videos: []
+---
+
+## Not everything belongs in Git
+
+Some files should **never** be committed:
+
+| Never commit | Why |
+| --- | --- |
+| `.env` and other secrets | Anyone with the code would get the keys |
+| `node_modules/`, `.venv/` | Huge, and rebuilt from package.json or requirements.txt |
+| `dist/`, `build/` | Generated by the build, not written by people |
+| Personal settings and junk | Like `.vscode/` settings or Windows' `Thumbs.db` |
+
+A file called **`.gitignore`**, at the top of the project, lists them. Git then acts as if they don't exist. The `.gitignore` itself is committed, so the whole team shares it.
+
+```text
+# .gitignore
+.env
+node_modules/
+dist/
+```
+
+<Callout kind="warn" title="Git never forgets">
+Git keeps every version, which means a secret committed once stays in the history even after you delete it. If a password or key is ever committed, especially to GitHub, **change it immediately**. Bots scan public repositories for keys within minutes.
+</Callout>
+
+## Reading history
+
+The history is one of Git's most useful features, especially in someone else's project.
+
+| Command | Shows |
+| --- | --- |
+| `git log --oneline` | Every commit, one per line |
+| `git show HEAD~1` | What a particular commit changed |
+| `git diff` | Changes you haven't committed yet |
+| `git blame file` | Who last changed each line, and in which commit |
+
+`HEAD` means "the latest commit where I am". `HEAD~1` is one before that, `HEAD~2` two before, and so on. Every commit also has an ID, like `ca05569`, which you can use instead.
+
+<ConsultantNote>
+On a security review, one of the first checks is searching a client's Git history for secrets, not just the current code. Tools exist for exactly this. Finding a live database password in a commit from three years ago is depressingly common.
+</ConsultantNote>

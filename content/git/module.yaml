@@ -1,0 +1,5 @@
+id: git
+title: Git and GitHub
+summary: How developers save, share and undo their work. You'll make commits, branches and conflicts on purpose, recover from mistakes, and finish by putting a page on the public internet.
+stage: stage-1
+order: 3

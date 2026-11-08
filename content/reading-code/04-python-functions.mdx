@@ -1,0 +1,226 @@
+---
+id: python-functions
+title: "Python: functions, and return versus print"
+order: 4
+topic: reading-code
+minutes: 50
+summary: Packaging code into reusable functions with inputs and outputs, and the return-versus-print confusion that trips up nearly every beginner.
+connectivity: offline
+prerequisites: [python-lists-loops]
+predict:
+  id: p1
+  type: mcq
+  prompt: 'A function `add(a, b)` does `print(a + b)` but has no `return`. What is `result` after `result = add(2, 3)`?'
+  options: ["5", "None", '"5"', An error]
+  answer: 1
+  why: The function **shows** 5 on screen, but gives nothing **back**, so result is None, Python's word for "nothing". Printing is for people to read. Returning hands a value to the code that called the function.
+tasks:
+  - id: name-tools
+    type: python
+    title: Fix and finish three small functions
+    instructions: |
+      `full_name` is written, but it prints instead of returning, so other code can't use its answer. Fix it, then finish the other two.
+
+      `name[0]` is the first letter of a string. `f"{amount:.2f}"` shows a number with exactly two decimal places.
+    starter: |
+      def full_name(first, last):
+          print(first + " " + last)
+
+
+      def initials(first, last):
+          # "Ada", "Lovelace" should give "A.L."
+          pass
+
+
+      def format_price(amount):
+          # 12.5 should give "$12.50", and 3 should give "$3.00"
+          pass
+
+
+      print(full_name("Ada", "Lovelace"))
+      print(initials("Ada", "Lovelace"))
+      print(format_price(12.5))
+    tests:
+      - name: full_name returns the name
+        code: |
+          result = full_name("Ada", "Lovelace")
+          assert result is not None, "full_name gave back None. It prints the name, but other code needs it returned. Change print(...) to return ..."
+          assert result == "Ada Lovelace", f'Expected "Ada Lovelace", got "{result}".'
+      - name: initials
+        code: |
+          assert initials("Ada", "Lovelace") == "A.L.", f'Expected "A.L.", got {initials("Ada", "Lovelace")!r}. Use first[0] and last[0].'
+          assert initials("grace", "hopper") == "G.H.", "Initials should be capitals, even if the name isn't. Try .upper()."
+      - name: format_price
+        code: |
+          assert format_price(12.5) == "$12.50", f'Expected "$12.50", got {format_price(12.5)!r}.'
+          assert format_price(3) == "$3.00", f'Expected "$3.00", got {format_price(3)!r}. Try f"${{amount:.2f}}".'
+    solution: |
+      def full_name(first, last):
+          return first + " " + last
+
+
+      def initials(first, last):
+          return f"{first[0].upper()}.{last[0].upper()}."
+
+
+      def format_price(amount):
+          return f"${amount:.2f}"
+    wrong: |
+      def full_name(first, last):
+          return first + " " + last
+
+
+      def initials(first, last):
+          return f"{first[0]}.{last[0]}."
+
+
+      def format_price(amount):
+          return f"${amount}"
+  - id: missing-return
+    type: flaw
+    title: Why is the discount None?
+    language: python
+    instructions: |
+      This crashes on the last line with `TypeError: unsupported operand type(s) for -: 'int' and 'NoneType'`. Which line is really to blame?
+    code: |
+      def discount_for(total):
+          if total >= 100:
+              return total * 0.1
+          if total >= 50:
+              total * 0.05
+
+      price = 60
+      discount = discount_for(price)
+      print(price - discount)
+    flawLines: [5]
+    lineNotes:
+      "1": Defining a function that takes the total is fine.
+      "2": The condition for 100 or more is fine.
+      "3": This returns the discount correctly for big orders.
+      "4": The condition for 50 or more is fine, and 60 matches it.
+      "7": Setting the price is fine.
+      "8": Calling the function and storing its result is fine, if the function returns something.
+      "9": This is where it crashes, but the cause is earlier. Why is discount None?
+    explanation: |
+      Line 5 works out `total * 0.05` and then throws the answer away, because there's no `return`. When a function ends without returning, Python returns **None**. So `discount` is None, and line 9 crashes trying to subtract None from 60.
+
+      The fix is `return total * 0.05`. Also notice that orders under 50 also fall off the end and return None. A final `return 0` would handle them.
+
+      The line that crashes is often not the line that's wrong. Errors show where the problem was **noticed**. Then you work backwards to where it **started**.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What's the difference between print and return?
+    options:
+      - They're the same
+      - print shows a value on screen. return hands a value back to the code that called the function
+      - return shows it on screen. print saves it
+      - print is faster
+    answer: 1
+    why: Use return when other code needs the answer. Printing is just for people to read.
+  - id: r2
+    type: short
+    prompt: What does a Python function give back if it never reaches a return?
+    accept: ['\bnone\b']
+    answerText: None
+  - id: r3
+    type: mcq
+    prompt: 'In `def greet(name):`, what is `name`?'
+    options:
+      - The function's name
+      - A parameter, a name for whatever value is passed in
+      - A global variable
+      - A string, always
+    answer: 1
+    why: Parameters are the function's inputs. When you call greet("Ada"), name holds "Ada" inside the function.
+  - id: r4
+    type: self
+    prompt: Why do programmers split code into functions?
+    modelAnswer: To reuse the same logic in many places without copying it, to give a chunk of code a clear name that explains what it does, to test pieces separately, and to make big programs easier to read and change. Fix a bug in one function and it's fixed everywhere it's used.
+cards:
+  - id: def
+    front: 'What are the parts of `def add(a, b): return a + b`?'
+    back: "`def` starts a function, `add` is its name, `a` and `b` are parameters (inputs), and `return` gives back the result."
+  - id: return-print
+    front: return or print?
+    back: return hands a value to the calling code. print only shows it on screen. Functions that compute something should usually return it.
+  - id: none
+    front: Where does None often come from unexpectedly?
+    back: A function that ended without a return, often on one branch of an if. Using that None later causes a crash somewhere else.
+  - id: crash-vs-cause
+    front: Is the line that crashes always the line that's wrong?
+    back: No. It's where the problem was noticed. Work backwards to where the bad value came from.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: 'What does `def double(x): return x * 2` then `print(double(double(3)))` show?'
+    options: ["6", "12", "9", An error]
+    answer: 1
+    why: double(3) is 6, and double(6) is 12. The inner call runs first.
+  - id: t2
+    type: mcq
+    prompt: 'A function prints the right answer, but `total = my_function()` makes total None. Why?'
+    options:
+      - The function prints instead of returning
+      - Python is broken
+      - total is a reserved word
+      - The function is too long
+    answer: 0
+    why: Printing doesn't give a value back. It needs a return.
+docs:
+  - title: "Python tutorial: Defining functions"
+    url: https://docs.python.org/3/tutorial/controlflow.html#defining-functions
+  - title: "Python tutorial: Fancier output formatting"
+    url: https://docs.python.org/3/tutorial/inputoutput.html#fancier-output-formatting
+videos: []
+---
+
+## A function is a named recipe
+
+A **function** packages some code under a name, so you can use it again and again:
+
+```python
+def shipping_cost(order_total):
+    if order_total >= 50:
+        return 0
+    return 5
+
+print(shipping_cost(20))   # 5
+print(shipping_cost(80))   # 0
+```
+
+- `def` starts it. `shipping_cost` is its name.
+- `order_total` is a **parameter**: a name for whatever value is passed in.
+- `return` hands the answer back, and ends the function right there.
+- `shipping_cost(20)` **calls** it with 20 as the input.
+
+## return versus print
+
+This is the most common beginner confusion, so it's worth getting firmly:
+
+| | `print(x)` | `return x` |
+| --- | --- | --- |
+| Who is it for? | A person looking at the screen | The code that called the function |
+| Can other code use the value? | No | Yes |
+| Does the function stop? | No | Yes |
+
+```python
+def add_printing(a, b):
+    print(a + b)       # shows 5, gives back None
+
+def add_returning(a, b):
+    return a + b       # gives back 5
+
+x = add_printing(2, 3)    # screen shows 5, but x is None
+y = add_returning(2, 3)   # y is 5, and you can keep using it
+```
+
+A function that falls off its end without a `return` gives back **None**. That's often how None sneaks into a program and causes a crash somewhere far away.
+
+## Why functions matter for reading code
+
+Real programs are made of hundreds of functions calling each other. Good function names make code readable: `calculate_tax(order)` tells you what's happening without reading inside. When you read unfamiliar code, start with the function names and what they return, and only dig into the inside of the ones you need.
+
+<ConsultantNote>
+A function called `get_user` that also deletes old records, or `calculate_total` that quietly sends an email, is a warning sign in a code review. Functions should do what their name says, and nothing surprising. Spotting names that lie is part of judging code quality.
+</ConsultantNote>

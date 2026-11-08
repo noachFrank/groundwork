@@ -1,0 +1,215 @@
+---
+id: python-decisions
+title: "Python: making decisions with if"
+order: 2
+topic: reading-code
+minutes: 50
+summary: Comparisons, if, elif and else, and why indentation matters in Python. Plus the boundary bugs that catch everyone.
+connectivity: offline
+prerequisites: [python-first-steps]
+predict:
+  id: p1
+  type: mcq
+  prompt: 'Free shipping is for "orders of 50 or more". A developer writes `if total > 50:`. What happens with a 50.00 order?'
+  options:
+    - Free shipping, correctly
+    - It's charged shipping, which is a bug
+    - Python crashes
+    - It depends on the day
+  answer: 1
+  why: '`>` means "more than", so exactly 50 doesn''t count. "50 or more" needs `>=`. Mistakes at the edges like this, called boundary bugs, are some of the most common in all software.'
+tasks:
+  - id: shipping
+    type: python
+    title: Work out the shipping cost
+    instructions: |
+      This code is wrapped in a **function**, so the checks can try it with lots of different orders. You'll learn functions properly in a later lesson. For now, write your code inside it, indented, and use `return` to give back the answer.
+
+      The rules: international orders always cost **15**. Domestic orders of **50 or more** ship free (**0**). Other domestic orders cost **5**.
+    starter: |
+      def shipping_cost(order_total, is_international):
+          # Your if / elif / else goes here.
+          # Use return to give back the cost, for example: return 5
+          return 0
+
+
+      print(shipping_cost(20, False))   # should print 5
+      print(shipping_cost(50, False))   # should print 0
+      print(shipping_cost(20, True))    # should print 15
+    tests:
+      - name: small domestic order costs 5
+        code: |
+          assert shipping_cost(20, False) == 5, f"A 20 domestic order should cost 5, but your function returned {shipping_cost(20, False)}."
+      - name: exactly 50 ships free
+        code: |
+          assert shipping_cost(50, False) == 0, "An order of exactly 50 should ship free. Check whether you used > or >=."
+      - name: just under 50 still pays
+        code: |
+          assert shipping_cost(49.99, False) == 5, "49.99 is under 50, so it should cost 5."
+      - name: international always costs 15
+        code: |
+          assert shipping_cost(20, True) == 15, "International orders cost 15."
+          assert shipping_cost(500, True) == 15, "International orders cost 15, even big ones. Check the international rule comes first."
+    solution: |
+      def shipping_cost(order_total, is_international):
+          if is_international:
+              return 15
+          elif order_total >= 50:
+              return 0
+          else:
+              return 5
+    wrong: |
+      def shipping_cost(order_total, is_international):
+          if is_international:
+              return 15
+          elif order_total > 50:
+              return 0
+          else:
+              return 5
+  - id: login-check
+    type: flaw
+    title: The login check that lets everyone in
+    language: python
+    instructions: |
+      This should only let in a user whose password is right **and** whose account isn't locked. A tester found that locked accounts can still log in. Which line is wrong?
+    code: |
+      def can_log_in(password_ok, account_locked):
+          if password_ok or not account_locked:
+              return True
+          return False
+
+      print(can_log_in(True, False))   # True, correct
+      print(can_log_in(True, True))    # True, but this account is locked!
+    flawLines: [2]
+    lineNotes:
+      "1": Taking the two facts as inputs is fine.
+      "3": Returning True to allow the login is fine, if the condition is right.
+      "4": Returning False otherwise is fine.
+      "6": This test case behaves correctly.
+      "7": This shows the bug, but it doesn't cause it.
+    explanation: |
+      `or` means **either one** is enough. So a correct password lets a locked account in. The rule needs **both** to be true: `if password_ok and not account_locked:`.
+
+      `and` and `or` mix-ups are common, and in login and permission checks they become security holes. When you read a condition, try it with each combination of True and False.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What's the difference between `=` and `==`?
+    options:
+      - They're the same
+      - "`=` stores a value. `==` checks whether two values are equal"
+      - "`==` stores a value twice"
+      - "`=` is for numbers, `==` for text"
+    answer: 1
+    why: '`x = 5` stores. `x == 5` asks "is x equal to 5?" and gives True or False.'
+  - id: r2
+    type: mcq
+    prompt: Why does indentation matter in Python?
+    options:
+      - It doesn't, it's just style
+      - It decides which lines belong inside an if, a loop or a function
+      - It makes the code run faster
+      - Python removes it
+    answer: 1
+    why: Python uses indentation instead of brackets to group lines. The indented lines under an `if` only run when the condition is true.
+  - id: r3
+    type: short
+    prompt: Which comparison means "more than or equal to"?
+    accept: ['>=']
+    answerText: ">="
+  - id: r4
+    type: mcq
+    prompt: '`if a and b:` runs its block when...'
+    options: [Either a or b is true, Both a and b are true, Neither is true, Always]
+    answer: 1
+    why: '`and` needs both. `or` needs at least one.'
+cards:
+  - id: if-elif-else
+    front: How do if, elif and else work?
+    back: Python checks each condition from the top and runs the block under the first true one. `else` runs if none were true. Only one block runs.
+  - id: comparisons
+    front: Python's comparison operators?
+    back: "`==` equal, `!=` not equal, `<` `>` less/more than, `<=` `>=` or equal."
+  - id: and-or
+    front: and, or, not?
+    back: "`and`: both true. `or`: at least one true. `not`: flips True and False."
+  - id: boundary
+    front: What is a boundary bug?
+    back: A mistake at the edge of a range, like `>` instead of `>=`. Always test the exact boundary value, such as exactly 50.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: 'With `x = 7`, what does `x > 5 and x < 10` give?'
+    options: ["True", "False", "7", An error]
+    answer: 0
+    why: Both parts are true.
+  - id: t2
+    type: mcq
+    prompt: 'The code says `if temp > 30` print "hot", `elif temp > 20` print "warm", `else` print "cold". What prints when temp is 25?'
+    options: [hot, warm, cold, warm and cold]
+    answer: 1
+    why: 25 isn't over 30, but it is over 20. Python stops at the first true condition.
+docs:
+  - title: "Python tutorial: if statements"
+    url: https://docs.python.org/3/tutorial/controlflow.html#if-statements
+  - title: "Python docs: Boolean operations"
+    url: https://docs.python.org/3/reference/expressions.html#boolean-operations
+videos: []
+---
+
+## Programs that choose
+
+Most useful programs make decisions: free shipping or not, logged in or not, in stock or not. In Python, that's `if`:
+
+```python
+if order_total >= 50:
+    shipping = 0
+elif order_total >= 20:
+    shipping = 2.5
+else:
+    shipping = 5
+```
+
+Python checks each condition **from the top** and runs the block under the **first** one that's true. If none are, it runs `else`. Only one block ever runs.
+
+## Indentation is part of the code
+
+The indented lines belong to the `if` above them. Python uses this indentation, usually 4 spaces, instead of brackets. Get it wrong and the program either crashes with an `IndentationError` or, worse, quietly runs lines at the wrong time.
+
+## Comparisons
+
+| Operator | Means |
+| --- | --- |
+| `==` | is equal to |
+| `!=` | is not equal to |
+| `<`, `>` | less than, more than |
+| `<=`, `>=` | less than or equal to, more than or equal to |
+
+<Callout kind="warn" title="= and ==">
+`=` **stores** a value. `==` **asks** whether two values are equal. Mixing them up is one of the classic mistakes, and you'll see a nasty version of it in JavaScript later.
+</Callout>
+
+## Combining conditions
+
+- `and`: **both** must be true.
+- `or`: **at least one** must be true.
+- `not`: flips it.
+
+```python
+if password_ok and not account_locked:
+    allow_login()
+```
+
+## Test the edges
+
+When you read or test a condition, try:
+
+- A value clearly inside the range, like 20.
+- A value clearly outside it, like 100.
+- **Exactly the boundary**, like 50, and just either side of it, like 49.99.
+
+The boundary is where `>` versus `>=` bugs hide. Testers call this **boundary testing**.
+
+<ConsultantNote>
+Business rules, like "free shipping over 50", "discount for members", or "managers can approve refunds", end up as `if` statements. When a client says "the system is charging people wrongly", the bug is very often one condition with the wrong operator or a missing case.
+</ConsultantNote>

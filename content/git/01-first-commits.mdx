@@ -1,0 +1,178 @@
+---
+id: first-commits
+title: "Install Git and make your first commits"
+order: 1
+topic: git-and-github
+minutes: 50
+summary: What Git is for, installing it, and saving the first versions of a tiny website with commits.
+connectivity: needs-internet
+prerequisites: [the-terminal]
+predict:
+  id: p1
+  type: mcq
+  prompt: A developer says "I'll commit that". What are they about to do?
+  options:
+    - Promise to finish it
+    - Save a snapshot of the project's files, with a note about what changed, that they can return to later
+    - Upload it to the internet
+    - Delete the old version
+  answer: 1
+  why: A **commit** is a saved snapshot, like a save point in a game. Git keeps every one, so you can always see what changed, when, by whom and why, and go back.
+tasks:
+  - id: install-and-commit
+    type: terminal
+    title: Install Git, then make two commits
+    connectivity: needs-internet
+    instructions: |
+      Installing Git needs the internet, about 70 MB. Everything after that works offline, including the rest of this module except the last lesson.
+
+      If Git is already installed, skip to the step that opens a new PowerShell window.
+    steps:
+      - text: "Go to git-scm.com/download/win in your browser. The download should start. If it doesn't, click the link for the 64-bit **Git for Windows Setup**. (Settings in Groundwork also has the link.)"
+      - text: "Run the installer. The default answer on every screen is fine, with one change: on the screen titled **Choosing the default editor used by Git**, pick **Use Notepad as Git's default editor**. The default, Vim, is famously hard to exit."
+      - text: Close any open PowerShell windows and open a **new** one, so it picks up the new PATH.
+      - text: Go to your practice folder, make a folder for the Git lessons, and check Git is installed.
+        command: cd $HOME\Groundwork-Practice; mkdir git-lesson; cd git-lesson; git --version > git-version.txt; Get-Content git-version.txt
+      - text: Tell Git who you are. This name and email are written into each commit. Put your own name in the quotes.
+        command: git config --global user.name "Your Name"
+      - text: Put your email in the quotes. If you'll use GitHub later, use the same email.
+        command: git config --global user.email "you@example.com"
+      - text: Name the first branch `main`, the modern standard.
+        command: git config --global init.defaultBranch main
+      - text: Make a folder for a tiny website, and turn it into a Git **repository**.
+        command: mkdir my-site; cd my-site; git init
+      - text: Create the website's first page.
+        command: Set-Content index.html "<h1>My first page</h1>"
+      - text: Ask Git what's going on. It sees a new file that it's not tracking yet.
+        command: git status
+      - text: "**Stage** the file: tell Git you want it in the next snapshot."
+        command: git add index.html
+      - text: "**Commit**: take the snapshot, with a message saying what changed."
+        command: git commit -m "Add a first page"
+      - text: Change the page, then ask Git to show exactly what's different. Lines starting with `+` were added.
+        command: Add-Content index.html "<p>Made by me.</p>"; git diff
+      - text: Stage and commit again. `git add .` stages every change in this folder.
+        command: git add .; git commit -m "Add a line about me"
+      - text: See the history, one line per commit, and save it.
+        command: git log --oneline > ..\history.txt; Get-Content ..\history.txt
+    checks:
+      - path: git-lesson/git-version.txt
+        contains: git version
+        hint: Open a new PowerShell window after installing Git, then run the step with `git --version`.
+      - path: git-lesson/my-site/.git/HEAD
+        hint: Run `mkdir my-site; cd my-site; git init` inside the git-lesson folder.
+      - path: git-lesson/history.txt
+        contains: Add a first page
+        hint: Make both commits, then run `git log --oneline > ..\history.txt` from inside my-site.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What's the difference between `git add` and `git commit`?
+    options:
+      - They do the same thing
+      - add chooses what goes into the next snapshot. commit takes the snapshot
+      - add uploads, commit downloads
+      - add creates a file, commit deletes one
+    answer: 1
+    why: Staging with add lets you choose exactly which changes go into each commit.
+  - id: r2
+    type: short
+    prompt: Which command shows which files have changed and what's staged?
+    accept: ['git status']
+    answerText: git status
+  - id: r3
+    type: mcq
+    prompt: What's a repository?
+    options:
+      - A website
+      - A project folder that Git is tracking, including its full history of commits
+      - A type of commit
+      - A backup drive
+    answer: 1
+    why: The history lives in a hidden `.git` folder inside the project.
+  - id: r4
+    type: self
+    prompt: Why is Git useful even if you work alone?
+    modelAnswer: It keeps every saved version, so I can see what changed and when, undo mistakes, and go back to a version that worked. It also lets me try ideas safely, and makes it easy to back up and share the project later.
+cards:
+  - id: commit
+    front: What is a commit?
+    back: A saved snapshot of the project, with a message, an author and a date. Git keeps every commit, so you can always go back.
+  - id: three-steps
+    front: What's the basic Git routine?
+    back: "Change files → `git status` to see what changed → `git add` to stage → `git commit -m \"message\"` to save."
+  - id: repo
+    front: What does `git init` do?
+    back: Turns the current folder into a Git repository by creating a hidden `.git` folder, where all history is stored.
+  - id: log-diff
+    front: What do `git log` and `git diff` show?
+    back: log shows the history of commits. diff shows exactly what changed but isn't committed yet.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: You changed three files but only want to commit one. What do you do?
+    options:
+      - git add only that one file, then commit
+      - Commit everything, then delete two
+      - Make a new repository
+      - It's not possible
+    answer: 0
+    why: Staging lets you pick exactly what goes into each commit.
+  - id: t2
+    type: mcq
+    prompt: What does `git log --oneline` show?
+    options: [Uncommitted changes, The commit history with one line per commit, The current branch's files, Who's online]
+    answer: 1
+    why: Each line shows a commit's short ID and its message.
+docs:
+  - title: "Pro Git book: Getting Started, What is Git?"
+    url: https://git-scm.com/book/en/v2/Getting-Started-What-is-Git%3F
+  - title: "Pro Git book: Recording Changes to the Repository"
+    url: https://git-scm.com/book/en/v2/Git-Basics-Recording-Changes-to-the-Repository
+videos: []
+---
+
+## The problem Git solves
+
+You've probably seen folders like this:
+
+```text
+report.docx
+report-final.docx
+report-final-v2.docx
+report-final-v2-REALLY-final.docx
+```
+
+Now imagine that with hundreds of files and five people editing at once. That's why nearly every software team in the world uses **Git**. It keeps every version of every file, records who changed what and why, and lets people work on the same project without overwriting each other.
+
+## Three words to know
+
+- **Repository** (or repo): a project folder that Git tracks. The history lives in a hidden `.git` folder inside it.
+- **Commit**: a saved snapshot of the project, with a short message saying what changed. Like a save point in a game.
+- **Staging**: choosing which changes go into the next commit.
+
+## The routine
+
+```text
+edit files  →  git status  →  git add  →  git commit -m "what changed"
+```
+
+Why the extra `add` step? Because you often change several things at once, but they're different pieces of work. Staging lets you commit them separately, so each commit tells one clear story.
+
+## Good commit messages
+
+Your future self, and your teammates, will read these. Write what the change does, in a few words:
+
+| Not helpful | Helpful |
+| --- | --- |
+| `stuff` | `Add a contact form` |
+| `fix` | `Fix prices showing without tax` |
+| `changes` | `Rename the title on the homepage` |
+
+## Git and GitHub aren't the same thing
+
+**Git** is the program on your computer that tracks history. **GitHub** is a website that stores Git repositories online so people can share them, like Google Drive for code. You can use Git without GitHub, which is what you'll do for most of this module, and you'll connect to GitHub at the end.
+
+<ConsultantNote>
+Git history is a goldmine when you're new to a client's project. `git log` shows who works on what, how often things change, and when problems started. Clients with no version control at all, still emailing zip files around, are common, and getting them onto Git is valuable work.
+</ConsultantNote>

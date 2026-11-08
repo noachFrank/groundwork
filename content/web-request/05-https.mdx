@@ -1,0 +1,153 @@
+---
+id: https
+title: "HTTPS: keeping it private"
+order: 5
+topic: networks-and-the-web
+minutes: 35
+summary: What HTTPS protects and doesn't, how certificates work, and a dangerous "fix" AI tools often suggest.
+connectivity: offline
+prerequisites: [http]
+predict:
+  id: p1
+  type: mcq
+  prompt: A site shows the padlock icon. What does that actually tell you?
+  options:
+    - The site is safe and trustworthy
+    - The company behind the site has been verified as honest
+    - Your connection to that site is encrypted, and you're talking to the site named in the address
+    - The site can't be hacked
+  answer: 2
+  why: A padlock says nothing about honesty. Scam sites have padlocks too. It only means the connection is private and the certificate matches the name.
+tasks:
+  - id: spot-verify-false
+    type: flaw
+    title: Spot the hole in AI-written code
+    language: python
+    instructions: |
+      A client's developer hit a certificate error while connecting to a payment service. They asked an AI assistant for help and pasted this in. Now it works. One line is a serious security hole. Which one?
+    code: |
+      import requests
+
+      API_URL = "https://payments.example/api/charge"
+
+      def charge_card(card_number, amount):
+          response = requests.post(
+              API_URL,
+              json={"card": card_number, "amount": amount},
+              verify=False,  # fixes the SSL error
+          )
+          return response.json()
+    flawLines: [9]
+    lineNotes:
+      "1": Importing a library for web requests is normal.
+      "3": This is good, in fact. The address uses https.
+      "5": Defining a function is fine. Handling card numbers needs care, but this line isn't the immediate problem.
+      "6": Sending a POST to create a charge is the right method.
+      "8": Sending this as JSON over HTTPS would be fine, if the connection could be trusted. So what's undermining that?
+      "11": Reading the JSON response is normal.
+    explanation: |
+      `verify=False` turns off the certificate check. The connection is still encrypted, but the code no longer checks **who it's talking to**. Anyone in the middle, on a compromised network for example, can pretend to be the payment service and collect every card number.
+
+      The error was a real warning, and this silenced it. The real fix is to find out why the certificate fails: an expired certificate, a wrong hostname, or a missing certificate chain.
+
+      This is a common pattern with AI-written code: it makes the error disappear, which isn't the same as fixing the problem. Be suspicious of any fix that works by turning a check off.
+recall:
+  - id: r1
+    type: mcq
+    prompt: Someone on the same café Wi-Fi is watching traffic while you use an HTTPS site. What can they see?
+    options:
+      - Your passwords and everything on the page
+      - Which site you're visiting, but not what you're sending or reading
+      - Nothing at all, not even that you're online
+    answer: 1
+    why: The content is encrypted, but the site's name is generally still visible, and so is the fact that traffic is flowing.
+  - id: r2
+    type: short
+    prompt: What's the name of the organization type that signs website certificates?
+    accept: ['certificate authorit', '\bca\b', 'certification authorit']
+    answerText: A Certificate Authority (CA)
+  - id: r3
+    type: mcq
+    prompt: Which is the safest response to a certificate error on a site you're building?
+    options:
+      - Turn off certificate checking so it works
+      - Find out why it's failing, like an expiry or a wrong name, and fix that
+      - Switch the site to plain HTTP
+    answer: 1
+    why: The error is telling you something real. Hiding it removes your protection.
+  - id: r4
+    type: self
+    prompt: Explain the difference between what encryption gives you and what the certificate gives you.
+    modelAnswer: Encryption keeps the conversation private, so nobody in between can read it. The certificate proves who you're talking to. Without that check, you could have a perfectly private conversation with an attacker.
+cards:
+  - id: gives
+    front: What two things does HTTPS provide?
+    back: Privacy, and protection against tampering (the connection is encrypted), plus proof of identity (the certificate shows the server really is that site).
+  - id: padlock
+    front: What does a padlock NOT tell you about a website?
+    back: That the site is honest or safe. Scam sites can get certificates too. It only covers the connection.
+  - id: verify
+    front: AI suggests `verify=False` to fix a certificate error. What's wrong with that?
+    back: It turns off the identity check, so anyone in the middle could impersonate the server and read everything. Fix the certificate problem itself.
+  - id: free
+    front: Are HTTPS certificates expensive?
+    back: Usually not. Let's Encrypt issues them free, and most hosting platforms handle them automatically.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: A certificate is valid and the connection is encrypted. Which is still possible?
+    options: [The site is a scam, An onlooker reads your password, The site's name doesn't match, The data is sent unencrypted]
+    answer: 0
+    why: HTTPS only secures the connection. It says nothing about whether the site's owner is honest.
+  - id: t2
+    type: mcq
+    prompt: Why does a server sign part of the handshake with its private key?
+    options: [To prove it owns the certificate it showed, To compress the page, To speed up the connection, To store your password]
+    answer: 0
+    why: Certificates are public, so anyone can present a copy. Only the real owner holds the private key.
+docs:
+  - title: "MDN: Transport Layer Security (TLS)"
+    url: https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Transport_Layer_Security
+  - title: "Let's Encrypt: How it works"
+    url: https://letsencrypt.org/how-it-works/
+videos:
+  - id: j9QmMEWmcfo
+    title: SSL, TLS, HTTPS Explained
+    channel: ByteByteGo
+    note: A little more technical than this lesson, and worth it if you're curious.
+---
+
+## Plain HTTP is a postcard
+
+With plain HTTP, every computer between you and the server can read and change your messages: the café's Wi-Fi, your internet provider, anyone along the path. Passwords and all.
+
+**HTTPS** is HTTP inside an encrypted tunnel. The encryption itself is called **TLS** (you may also hear the older name, SSL). The requests and responses you learned last lesson are unchanged. They're just unreadable to anyone in between.
+
+## The two jobs of HTTPS
+
+1. **Privacy:** nobody in between can read or alter the conversation.
+2. **Identity:** you really are talking to `bank.example`, and not someone pretending to be it.
+
+Both matter. Privacy alone isn't enough: an encrypted chat with an attacker is still a chat with an attacker.
+
+<Viz name="https-handshake" />
+
+## Certificates: the ID card
+
+A **certificate** is a small file saying "this server is `bank.example`", signed by a **Certificate Authority (CA)**, an organization that browsers are built to trust. Your browser checks three things:
+
+- Is it for the exact name in the address bar?
+- Has it expired?
+- Is it signed by an authority I trust?
+
+If any answer is no, you get a full-page warning.
+
+Most certificates last 90 days or less, because they're renewed automatically. When that automation quietly breaks, a site suddenly shows scary warnings to every visitor. Forgetting to renew is one of the most common causes of outages.
+
+<Callout kind="warn" title="What a padlock doesn't mean">
+A padlock means the connection is private and the name matches. It doesn't mean the business is honest. Anyone can get a certificate for `totally-real-bank.example`.
+</Callout>
+
+<ConsultantNote>
+A quick audit question for any client: "Who gets the alert if a certificate fails to renew?" If nobody knows, you've found a real risk in thirty seconds. Also, check that their site redirects plain `http://` to `https://`.
+</ConsultantNote>

@@ -1,0 +1,158 @@
+---
+id: install-python
+title: Installing Python by hand
+order: 9
+topic: how-computers-run-software
+minutes: 45
+summary: Install a real programming language yourself, avoid the two traps that catch most people, and set up a virtual environment the way professionals do.
+connectivity: needs-internet
+prerequisites: [npm-run-dev]
+predict:
+  id: p1
+  type: mcq
+  prompt: 'On a new Windows laptop with no Python installed, you type `python` in PowerShell. What happens?'
+  options:
+    - Python starts
+    - '"not recognized as a command"'
+    - Windows offers to install Python from the Microsoft Store, or prints a message saying so
+    - The computer restarts
+  answer: 2
+  why: Windows includes a shortcut called an "app execution alias" named python that just points at the Microsoft Store. It confuses a lot of people, because a "python" command exists but isn't Python.
+tasks:
+  - id: install-it
+    type: terminal
+    title: Install Python and make a virtual environment
+    connectivity: needs-internet
+    instructions: |
+      This needs the internet for the download, about 30 MB, and for installing a package. Afterwards, Python works offline.
+
+      If Python is already installed on this laptop, skip the download steps, but do check its version.
+    steps:
+      - text: "Go to python.org/downloads in your browser and click the big yellow **Download Python** button. (Settings in Groundwork also has the link.)"
+      - text: "Run the installer. **Before anything else**, tick the box at the bottom: **Add python.exe to PATH**. Then click **Install Now**."
+      - text: When it finishes, close the installer. Then close any PowerShell windows that were open, and open a **new** one, so it picks up the new PATH.
+      - text: Go to your practice folder and make a folder for this lesson.
+        command: cd $HOME\Groundwork-Practice; mkdir python-lesson; cd python-lesson
+      - text: Check it worked, and save the version.
+        command: python --version > python-version.txt; Get-Content python-version.txt
+      - text: Write a Python script and run it with the real Python.
+        command: Set-Content hello.py 'print("Hello from real Python")'; python hello.py > from-python.txt
+      - text: Make a **virtual environment**, a private folder of packages just for this project, called `.venv`.
+        command: python -m venv .venv
+      - text: Install a package into it. This uses the project's own Python, inside `.venv`, so the package goes there and nowhere else.
+        command: .\.venv\Scripts\python.exe -m pip install requests
+      - text: Record what's installed, the usual way Python projects list their packages.
+        command: .\.venv\Scripts\python.exe -m pip freeze > requirements.txt; Get-Content requirements.txt
+    checks:
+      - path: python-lesson/python-version.txt
+        contains: Python 3
+        hint: 'Run `python --version > python-version.txt`. If it says Python wasn''t found, open a new PowerShell window, or rerun the installer and tick "Add python.exe to PATH".'
+      - path: python-lesson/from-python.txt
+        contains: Hello from real Python
+        hint: This is created by the `Set-Content hello.py ...; python hello.py > from-python.txt` step.
+      - path: python-lesson/.venv/pyvenv.cfg
+        hint: This is created by `python -m venv .venv`, inside the python-lesson folder.
+      - path: python-lesson/requirements.txt
+        contains: requests
+        hint: Install requests into the virtual environment, then run the `pip freeze` step.
+recall:
+  - id: r1
+    type: mcq
+    prompt: Which box must you tick in the Python installer so the `python` command works in PowerShell?
+    options: [Install for all users, Add python.exe to PATH, Disable path length limit, Install documentation]
+    answer: 1
+    why: Without it, Python is installed, but Windows can't find it when you type `python`.
+  - id: r2
+    type: mcq
+    prompt: What is a virtual environment?
+    options:
+      - A virtual computer
+      - A private folder of packages for one project, so projects don't interfere with each other
+      - Python running in the cloud
+      - A type of package
+    answer: 1
+    why: Project A might need an old version of a package and project B a new one. Separate environments keep both happy.
+  - id: r3
+    type: short
+    prompt: What file name do Python projects traditionally use to list their packages?
+    accept: ['requirements\.txt', 'requirements']
+    answerText: requirements.txt
+  - id: r4
+    type: self
+    prompt: Python installed fine, but `python` still opens the Microsoft Store. What's going on, and what would you try?
+    modelAnswer: Windows' app execution alias for python is being found before the real Python, or the real Python isn't in PATH. Open a new terminal first. If it still happens, rerun the installer and tick Add python.exe to PATH, or turn off the python aliases under Settings, Apps, Advanced app settings, App execution aliases. The `py` launcher usually works too.
+cards:
+  - id: install-traps
+    front: What are the two classic traps when installing Python on Windows?
+    back: Forgetting to tick "Add python.exe to PATH", and Windows' Microsoft Store alias for python. Plus using a terminal that was open before the install.
+  - id: venv
+    front: How do you make and use a virtual environment?
+    back: "`python -m venv .venv` makes one. Run its Python with `.venv\\Scripts\\python.exe`, or activate it first, then `pip install` puts packages there."
+  - id: pip-freeze
+    front: What does `pip freeze > requirements.txt` do?
+    back: Saves the exact list of installed packages and versions, so others can install the same with `pip install -r requirements.txt`.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Two Python projects need different versions of the same package. What's the standard solution?
+    options:
+      - Install both versions globally
+      - Give each project its own virtual environment
+      - Use two computers
+      - Rename one package
+    answer: 1
+    why: That's exactly what virtual environments are for.
+  - id: t2
+    type: mcq
+    prompt: Python's `.venv` folder is like which JavaScript folder?
+    options: [package.json, node_modules, dist, src]
+    answer: 1
+    why: Both hold a project's installed packages, both can be rebuilt from a list, and neither should be committed to Git.
+docs:
+  - title: "Python: Using Python on Windows"
+    url: https://docs.python.org/3/using/windows.html
+  - title: "Python: venv, creating virtual environments"
+    url: https://docs.python.org/3/library/venv.html
+videos: []
+---
+
+## Installing things is part of the job
+
+So far, Groundwork has run Python for you, inside the app. Real projects need Python installed on the computer. Installing tools, and fixing installs that went wrong, is a skill you'll use constantly, for yourself and for clients.
+
+## The two traps
+
+Almost every "Python doesn't work" problem on Windows is one of these.
+
+### 1. The PATH box
+
+The python.org installer has a checkbox at the bottom of its first screen: **Add python.exe to PATH**. It's **not ticked** by default. Without it, Python is installed, but typing `python` gives "not recognized", because Windows doesn't know which folder to look in. You learned exactly why in the PATH lesson.
+
+### 2. The Microsoft Store alias
+
+Windows comes with a fake `python` command that just opens the Microsoft Store. If the real Python isn't on PATH, or comes later in PATH, you get the Store instead. You can switch these off in **Settings → Apps → Advanced app settings → App execution aliases**.
+
+Python on Windows also installs `py`, a launcher that finds whichever Python versions you have. `py --version` is a good fallback.
+
+## Virtual environments
+
+Imagine two projects: one needs version 1 of a package, and one needs version 2. If packages were installed for the whole computer, they'd fight. A **virtual environment** solves this: a folder, usually called `.venv`, with its own private set of packages.
+
+```powershell
+python -m venv .venv                          # make it
+.\.venv\Scripts\python.exe -m pip install X   # install into it
+```
+
+You'll often see instructions say to **activate** it first, with `.venv\Scripts\Activate.ps1`. That's a PowerShell script, so the execution policy may block it. Running `.venv\Scripts\python.exe` directly does the same job without activating.
+
+| Python | JavaScript |
+| --- | --- |
+| `pip` | `npm` |
+| `.venv` folder | `node_modules` folder |
+| `requirements.txt` | `package.json` and its lockfile |
+
+As with node_modules, `.venv` is never committed to Git. The `requirements.txt` file is.
+
+<ConsultantNote>
+Clear setup instructions are a gift. When you hand a project to a client, include exactly which version of Python or Node to install, which boxes to tick, and the commands to run, in order. Most "it doesn't work" calls after a handover come from a missing setup step.
+</ConsultantNote>

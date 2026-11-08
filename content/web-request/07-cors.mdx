@@ -1,0 +1,218 @@
+---
+id: cors
+title: "CORS: the error everyone hits"
+order: 7
+topic: networks-and-the-web
+minutes: 45
+summary: Why browsers block some requests, why it works in Postman but not your site, and the right way to fix it.
+connectivity: offline
+prerequisites: [apis]
+predict:
+  id: p1
+  type: mcq
+  prompt: A web page calls an API on another address and gets a CORS error. The API's logs show it answered 200 OK. How can both be true?
+  options:
+    - The logs must be wrong
+    - The server answered, but the browser refused to give the response to the page
+    - The internet lost the response on the way back
+    - The API crashed right after answering
+  answer: 1
+  why: CORS is enforced by the browser, not the server. The request often goes through just fine. It's the page that isn't allowed to read the answer.
+tasks:
+  - id: cors-lab
+    type: lab
+    lab: cors
+    title: Cause a real CORS error, then fix it
+    instructions: |
+      Two real servers are running on different ports, so they're different origins: a website on `localhost:4311` and an API on `localhost:4312`. This is your actual browser enforcing the actual rule.
+
+      **Part 1, break it.** Click **Fetch the data** in the website panel, with the header empty. Watch the panel on the right: the API says it sent 200 OK, but the page is blocked.
+
+      **Part 2, fix it.** In the API's settings, set the header to the page's exact origin, click Save, then fetch again.
+
+      Try `*` along the way if you're curious, and see what happens.
+  - id: spot-cors-flaw
+    type: flaw
+    title: Spot the hole in this AI "fix"
+    language: javascript
+    instructions: |
+      A developer asked AI to fix a CORS error on a banking-style app where users stay logged in. It worked. One line is a serious problem. Which one?
+
+      (`credentials` means the browser sends the user's login cookies along.)
+    code: |
+      const express = require("express");
+      const cors = require("cors");
+      const app = express();
+
+      // Fix for the CORS error
+      app.use(cors({ origin: true, credentials: true }));
+
+      app.get("/api/account", requireLogin, (req, res) => {
+        res.json(getAccount(req.user));
+      });
+    flawLines: [6]
+    lineNotes:
+      "1": Loading a web framework is normal.
+      "2": Using a CORS library is the normal way to do this, not the problem by itself.
+      "8": Requiring a login here is good. But look at what could be getting around it.
+      "9": Returning the account of the logged-in user is the point of this route.
+    explanation: |
+      `origin: true` tells the library to approve **every** origin by echoing it back, and `credentials: true` allows the user's login cookies to be sent.
+
+      Together, this means any website can read this API while using the visitor's login. A user logged in here who visits a malicious page in another tab could have their account data silently read by that page. Note that the login check doesn't help, because the request really is sent with the user's cookies.
+
+      The fix is a short list of trusted origins: `origin: ["https://app.example"]`. Keep in mind that the error went away, and that's exactly why nobody noticed the problem.
+  - id: cors-case
+    type: case
+    title: "Client call: \"the API is broken\""
+    instructions: Your client calls about this problem. Choose how you'd handle it.
+    scenario: |
+      A client's new website can't load its product list. Their developer says the API is broken and wants a new API vendor. The browser console says: "Access to fetch at 'https://api.vendor.example/products' from origin 'https://shop.client.example' has been blocked by CORS policy." They're about to sign a contract with a new vendor.
+    questions:
+      - prompt: What do you do first?
+        choices:
+          - text: Agree to switch vendors, since the error mentions the API
+            score: 0
+            why: This signs them up for a costly migration over what's likely a configuration setting.
+          - text: Call the same API with curl to see if it answers normally
+            score: 2
+            why: Right. curl doesn't enforce CORS. If it works there, the API isn't broken and the issue is browser permission.
+          - text: Ask the developer to rewrite the site
+            score: 0
+            why: There's no evidence the site is the problem, and it's a big, expensive step.
+      - prompt: The curl call returns 200 OK with the products. What's your conclusion?
+        choices:
+          - text: The API works. It just doesn't allow this website's origin yet
+            score: 2
+            why: Right. A working response plus a CORS error means the API needs to allow this origin.
+          - text: The vendor's server is failing intermittently
+            score: 0
+            why: A CORS message is specific. It doesn't point to server failure.
+          - text: The client's Wi-Fi is the problem
+            score: 0
+            why: The network carried the request and the response just fine.
+      - prompt: What do you recommend?
+        choices:
+          - text: Ask the vendor to allow `https://shop.client.example`, or call the API from the client's own server
+            score: 2
+            why: Both are standard fixes. The second one also keeps any API key away from browsers.
+          - text: Tell customers to install a browser extension that disables CORS
+            score: 0
+            why: You can't ask every customer to weaken their browser, and it wouldn't be safe if you could.
+          - text: Ask the vendor to allow all origins with `*`, whatever the API does
+            score: 1
+            why: This can be fine for public, read-only data, but not as a default. It should be a decision made after checking what the API exposes.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: Which of these is a different origin from `https://shop.example`?
+    options: [https://shop.example/about, https://shop.example/, http://shop.example, https://shop.example/?a=1]
+    answer: 2
+    why: "An origin is the scheme, host and port together. Changing http or https makes it different. Paths don't count."
+  - id: r2
+    type: short
+    prompt: What response header does a server send to allow another origin?
+    accept: ['access-control-allow-origin']
+    answerText: Access-Control-Allow-Origin
+  - id: r3
+    type: mcq
+    prompt: Where does a real CORS fix belong?
+    options: [On the server responding to the request, In the page's JavaScript, In a browser extension, In DNS]
+    answer: 0
+    why: The server has to say who's allowed. The page can't grant itself permission, or the rule would protect nothing.
+  - id: r4
+    type: self
+    prompt: Why does a request work in curl or Postman but fail with a CORS error in a browser?
+    modelAnswer: CORS is a browser rule that protects users from malicious pages. curl and Postman aren't browsers and have no such rule, so they just show the response.
+cards:
+  - id: what
+    front: What is CORS, in one or two sentences?
+    back: A browser rule that blocks a page from reading responses from another origin, unless that server says it's allowed, using an `Access-Control-Allow-Origin` header.
+  - id: origin
+    front: What makes up an origin?
+    back: The scheme, host and port. `http://localhost:4311` and `http://localhost:4312` are different origins.
+  - id: postman
+    front: Why does it work in Postman but not the browser?
+    back: Browsers enforce CORS to protect users, and tools like Postman and curl don't. So the API works, but hasn't allowed that website's origin.
+  - id: danger
+    front: Why is approving every origin with credentials dangerous?
+    back: Any website could then read the API using the visitor's login. Allow a specific list of origins instead.
+  - id: preflight
+    front: What's a CORS preflight?
+    back: For requests beyond simple ones, the browser first sends an OPTIONS request to ask whether the real request is allowed.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Who enforces CORS?
+    options: [The browser, The API server, DNS, The operating system]
+    answer: 0
+    why: The server only states the policy. The browser enforces it.
+  - id: t2
+    type: mcq
+    prompt: A page at `http://localhost:3000` calls `http://localhost:8080`. Is CORS involved?
+    options: [Yes, the ports differ so the origins differ, "No, it's the same computer", "No, it's only for HTTPS", Only for POST requests]
+    answer: 0
+    why: The port is part of the origin. This catches developers out all the time.
+docs:
+  - title: "MDN: Cross-Origin Resource Sharing"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS
+  - title: "MDN: Access-Control-Allow-Origin"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Allow-Origin
+videos:
+  - id: 4KHiSt0oLJ0
+    title: CORS in 100 Seconds
+    channel: Fireship
+---
+
+## Why does this rule exist?
+
+Imagine you're logged in to your bank in one tab, and you open a shady site in another. Without any rule, that site's JavaScript could call your bank's API and read the answer, using your login, and you'd never know.
+
+Browsers stop this with the **same-origin policy**: by default, a page can only read responses from its own **origin**.
+
+An origin is three things together:
+
+```
+https://shop.example:443
+scheme  host         port
+```
+
+Change any one of them and it's a different origin. `http://localhost:4311` and `http://localhost:4312` are different origins, even on the same computer.
+
+## CORS is the permission slip
+
+Often, cross-origin calls are exactly what you want, like when your site's frontend calls your API. **CORS** (Cross-Origin Resource Sharing) lets a server say who's allowed, with a response header:
+
+```
+Access-Control-Allow-Origin: https://shop.example
+```
+
+Step through what the browser decides:
+
+<Viz name="cors-decision" />
+
+## The confusing part
+
+Three things trip up nearly everyone:
+
+1. **The browser enforces it, not the server.** The server answers normally, then the browser withholds the answer from the page.
+2. **Postman and curl don't care.** They aren't browsers, so "it works in Postman" tells you the API is fine, and nothing more.
+3. **The fix is on the server.** Nothing you put in the page can grant permission. If it could, the rule would be pointless.
+
+## Preflights
+
+For anything beyond a simple request, like one that sends JSON, the browser first sends a small **preflight**: an `OPTIONS` request that asks "may I send this?" You can trigger one in the lab with the Send JSON button, then watch for it in the log.
+
+## Fixing it well
+
+| Approach | When |
+| --- | --- |
+| Allow your specific origin | The usual right answer |
+| Keep a short list of allowed origins | When you have several sites |
+| Allow `*` (any origin) | Only for public data with no login, like an open dataset |
+| Call the API from your own server | When you don't control the API, or it needs a secret key |
+
+<ConsultantNote>
+CORS errors look alarming and get misdiagnosed as "the API is broken" all the time. A calm "let's try that with curl" can save a client from a needless project. And when you review AI-written code, treat wildcard origins as a thing to question.
+</ConsultantNote>

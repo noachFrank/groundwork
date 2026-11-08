@@ -1,0 +1,5 @@
+id: reading-code
+title: Reading code with Python, then JavaScript
+summary: Enough Python and JavaScript to read real code, fix errors, debug and write small scripts. The goal is reading and judging code, including code that AI writes.
+stage: stage-1
+order: 4

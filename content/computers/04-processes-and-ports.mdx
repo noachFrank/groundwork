@@ -1,0 +1,171 @@
+---
+id: processes-and-ports
+title: Programs, processes and ports
+order: 4
+topic: how-computers-run-software
+minutes: 50
+summary: What's actually happening when a program runs, how servers wait on ports, and how to find out which program is using a port, using Groundwork itself as the example.
+connectivity: offline
+prerequisites: [the-terminal]
+predict:
+  id: p1
+  type: mcq
+  prompt: You close the black Groundwork window. What happens to the app in your browser?
+  options:
+    - Nothing, because the browser has a copy
+    - It stops working, because the server program that answers the browser has ended
+    - It keeps working until you restart the computer
+    - It moves to the internet
+  answer: 1
+  why: The window is a running program, a **process**, that answers your browser's requests. Close it and nothing is listening any more. Pages that are already loaded stay on screen, but nothing new works.
+tasks:
+  - id: find-groundwork
+    type: terminal
+    title: Find the program behind a port
+    instructions: |
+      Keep Groundwork running for this one. You'll find its server process from the terminal, then start and stop a harmless program yourself.
+    steps:
+      - text: Open PowerShell, go to your practice folder, and make a folder for this lesson.
+        command: cd $HOME\Groundwork-Practice; mkdir ports-lesson; cd ports-lesson
+      - text: Groundwork's server listens on port 4310. Ask Windows what's listening there, and save the answer.
+        command: Get-NetTCPConnection -LocalPort 4310 -State Listen | Out-File groundwork-port.txt
+      - text: Read it. `127.0.0.1` means only this computer can connect, and the last column, OwningProcess, is the ID number of the process that owns the port.
+        command: Get-Content groundwork-port.txt
+      - text: Look up that process by its ID. You'll see the program's name is **node**, the program that runs Groundwork.
+        command: Get-Process -Id (Get-NetTCPConnection -LocalPort 4310 -State Listen).OwningProcess | Out-File groundwork-process.txt
+      - text: Start a harmless program that runs until it's stopped. It opens a small window that keeps checking it can reach this computer.
+        command: Start-Process ping -ArgumentList "-t", "localhost"
+      - text: Find it in the list of running processes and save what you find.
+        command: Get-Process ping | Out-File ping.txt
+      - text: Stop it. Its window closes.
+        command: Stop-Process -Name ping
+      - text: "Optional: press **Ctrl+Shift+Esc** to open Task Manager. It's the same list of processes, with buttons. Look for Node.js."
+    checks:
+      - path: ports-lesson/groundwork-port.txt
+        contains: "4310"
+        hint: This is created by the `Get-NetTCPConnection` step. Is Groundwork still running?
+      - path: ports-lesson/groundwork-process.txt
+        contains: node
+        hint: This is created by the `Get-Process -Id ...` step. Copy the whole line.
+      - path: ports-lesson/ping.txt
+        contains: ping
+        hint: This is created by `Get-Process ping | Out-File ping.txt`. Run it while the ping window is still open.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What's the difference between a program and a process?
+    options:
+      - They're the same
+      - A program is the file on disk. A process is a running copy of it
+      - A process is a kind of virus
+      - A program runs on servers, and a process on laptops
+    answer: 1
+    why: The program is the recipe. The process is the cooking, happening right now. One program can run as several processes at once.
+  - id: r2
+    type: mcq
+    prompt: 'You start a server and get "port 3000 is already in use". What does that mean?'
+    options:
+      - The internet is down
+      - Another process is already listening on port 3000, often an older copy of the same server
+      - Port 3000 is broken
+      - You need a new computer
+    answer: 1
+    why: Only one process can listen on a port at a time. Find what's using it and stop it, or use a different port.
+  - id: r3
+    type: short
+    prompt: Which PowerShell command stops a process?
+    accept: ['stop-process', '\bkill\b', 'taskkill']
+    answerText: Stop-Process
+  - id: r4
+    type: self
+    prompt: Why does closing the Groundwork window stop the app?
+    modelAnswer: The window is the server process. While it runs, it listens on port 4310 and answers the browser's requests. Closing the window ends the process, so nothing is listening on that port and the browser gets no answers.
+cards:
+  - id: process
+    front: What is a process?
+    back: A running copy of a program. Each has an ID number (PID), and uses memory and processor time while it runs.
+  - id: server-process
+    front: What is a server, as far as the computer is concerned?
+    back: A process that stays running and listens on a port, waiting for requests.
+  - id: port-in-use
+    front: How do you find what's using a port on Windows?
+    back: "`Get-NetTCPConnection -LocalPort 3000` shows the OwningProcess ID. Then `Get-Process -Id <that ID>` shows the program."
+  - id: stop
+    front: How do you stop a process?
+    back: "Ctrl+C in the window running it, `Stop-Process -Id <ID>` or `-Name <name>` in PowerShell, or End task in Task Manager."
+testOut:
+  - id: t1
+    type: mcq
+    prompt: A developer's server crashed, and now restarting it says "address already in use". What's the likely cause?
+    options:
+      - A copy of the old server process is still running and holding the port
+      - The code has a typo
+      - The database is full
+      - Windows needs updating
+    answer: 0
+    why: Crashed or forgotten processes often keep running in the background. Stop that process and the port is free.
+  - id: t2
+    type: mcq
+    prompt: A server listens on `127.0.0.1:8080`. Who can connect to it?
+    options:
+      - Anyone on the internet
+      - Only programs on the same computer
+      - Anyone on the same Wi-Fi
+      - No one
+    answer: 1
+    why: 127.0.0.1 is this computer only. To accept other computers, a server listens on `0.0.0.0` or a specific network address.
+docs:
+  - title: "Microsoft: Get-NetTCPConnection"
+    url: https://learn.microsoft.com/en-us/powershell/module/nettcpip/get-nettcpconnection
+  - title: "Microsoft: Get-Process"
+    url: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/get-process
+videos: []
+---
+
+## A program is a recipe. A process is the cooking.
+
+A **program** is a file on disk, like `node.exe` or `chrome.exe`. When you run it, the computer loads it into memory and starts following its instructions. That running copy is a **process**.
+
+- One program can run as many processes. Chrome runs dozens.
+- Each process has an ID number, its **PID**.
+- Each uses some memory and processor time while it runs.
+- When a process ends, whatever it was doing stops.
+
+Task Manager (**Ctrl+Shift+Esc**) shows them all. So does `Get-Process` in PowerShell.
+
+## Servers are processes that wait
+
+Most programs do something and finish. A **server** is different: it starts, then waits, often for weeks, listening on a **port** for requests.
+
+That's what the black Groundwork window is. It's a Node.js process listening on port 4310. Your browser sends requests to `localhost:4310`, and that process answers. Close the window and the process ends, so the browser's requests go unanswered.
+
+```text
+Browser ──request──▶ localhost:4310 ──▶ node (process 24688) ──▶ answer
+```
+
+## "Port already in use"
+
+Only one process can listen on a given port at a time. If a second program tries, it fails with an error like:
+
+```text
+Error: listen EADDRINUSE: address already in use :::3000
+```
+
+The usual cause is an old copy of the same server still running, perhaps in a terminal window you forgot about. The fix:
+
+1. Find out what owns the port: `Get-NetTCPConnection -LocalPort 3000`.
+2. Look at the process: `Get-Process -Id <OwningProcess>`.
+3. If it's safe to stop, stop it: `Stop-Process -Id <OwningProcess>`, or close its window.
+
+## Who can connect?
+
+The address a server listens on decides who can reach it:
+
+| Listens on | Who can connect |
+| --- | --- |
+| `127.0.0.1` (localhost) | Only this computer. Groundwork does this. |
+| `0.0.0.0` | Any computer that can reach this one, which is why Windows Firewall asks for permission |
+
+<ConsultantNote>
+"The site is down" sometimes just means the server process crashed and nothing restarted it. Real servers use a **process manager** or a hosting platform that restarts crashed processes automatically. "What restarts it if it dies?" is a good question to ask about any client system.
+</ConsultantNote>
