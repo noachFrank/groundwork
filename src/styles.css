@@ -338,3 +338,59 @@ code, pre, .mono, .output, .editor .cm-scroller, .code-line code, .command code 
 .status-completed, .status-tested_out { color: var(--good); }
 .lesson-num { color: var(--muted); }
 .filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 16px; }
+
+/* ---- Before this lesson (prerequisites) ---- */
+.prereqs { padding: 12px 16px; }
+.prereqs-missing { border-color: var(--warn); }
+.prereqs-head { display: flex; align-items: baseline; gap: 8px; width: 100%; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; text-align: left; flex-wrap: wrap; }
+.prereqs-caret { margin-left: auto; color: var(--muted); }
+.prereq-list { list-style: none; padding: 0; margin: 10px 0 0; }
+.prereq-list li { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.prereq-main { flex: 1; min-width: 180px; display: flex; flex-direction: column; }
+.prereq-why { margin-top: 2px; }
+.need { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; margin-top: 2px; }
+.need-essential { background: var(--warn-soft); color: var(--warn); }
+.need-helpful { background: var(--surface-2); color: var(--muted); }
+.prereq-status { font-size: .82rem; white-space: nowrap; color: var(--muted); margin-top: 2px; }
+.prereq-status.status-completed, .prereq-status.status-tested_out { color: var(--good); font-weight: 600; }
+.prereq-status.status-in_progress { color: var(--brand); }
+
+/* ---- How clear was this? ---- */
+.clarity fieldset { border: 0; padding: 0; margin: 0 0 14px; }
+.clarity legend { font-weight: 600; margin-bottom: 6px; }
+.clarity-scale { display: flex; flex-wrap: wrap; gap: 6px; }
+.clarity-scale legend { width: 100%; }
+.scale-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; min-width: 74px; text-align: center; }
+.scale-btn input { position: absolute; opacity: 0; pointer-events: none; }
+.scale-btn.on { border-color: var(--brand); background: var(--brand-soft); }
+.scale-btn:focus-within { outline: 2px solid var(--brand); }
+.scale-num { font-weight: 700; font-size: 1.1rem; }
+.scale-label { color: var(--muted); line-height: 1.2; }
+.concept-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 14px; }
+.concept-check { display: flex; gap: 6px; align-items: flex-start; cursor: pointer; }
+.block-label { display: block; font-weight: 600; margin-bottom: 12px; }
+.block-label textarea { display: block; width: 100%; margin-top: 6px; font-weight: normal; }
+
+/* ---- Terms with definitions in lesson text ---- */
+.term { position: relative; }
+.term-word { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: help; text-decoration: underline dotted var(--brand); text-underline-offset: 3px; }
+.term-pop { position: absolute; left: 0; top: 1.6em; z-index: 20; width: min(320px, 80vw); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25); font-size: .9rem; display: block; }
+.term-pop a { display: block; margin-top: 6px; }
+
+/* ---- Feedback for the developer ---- */
+.feedback-list { list-style: none; padding: 0; margin: 12px 0 0; }
+.feedback-list > li { border-top: 1px solid var(--line); padding: 10px 0; }
+.feedback-list .fb-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.feedback-list .fb-body { margin: 6px 0; white-space: pre-wrap; }
+.feedback-list textarea { width: 100%; }
+.tag-sent { background: var(--good-soft); color: var(--good); }
+.tag-unsent { background: var(--warn-soft); color: var(--warn); }
+.tag-rewritten { background: var(--brand-soft); color: var(--brand); }
+
+/* ---- Quick checks inside lessons ---- */
+.prose details { border: 1px solid var(--line); border-left: 4px solid var(--brand); border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 1em 0; background: var(--surface-2); }
+.prose details > summary { cursor: pointer; font-weight: 600; }
+.prose details[open] > summary { margin-bottom: 8px; }
+.prose details > :last-child { margin-bottom: 0; }
+.earlier-concepts { margin-top: 10px; }
+.earlier-concepts > summary { cursor: pointer; color: var(--muted); margin-bottom: 6px; }

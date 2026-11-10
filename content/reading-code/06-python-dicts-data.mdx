@@ -1,12 +1,24 @@
 ---
 id: python-dicts-data
 title: "Python: dictionaries and real data"
-order: 5
+order: 6
 topic: reading-code
-minutes: 50
+minutes: 65
 summary: Dictionaries, lists of dictionaries, and JSON. This is the shape of nearly all real data, from APIs to databases to spreadsheets.
 connectivity: offline
-prerequisites: [python-functions]
+prerequisites:
+  - id: python-functions
+    need: essential
+    why: The exercise is three functions, one of which calls another.
+  - id: python-lists-loops
+    need: essential
+    why: You'll loop over lists, using the running-total and building-a-list patterns.
+  - id: config-files
+    need: essential
+    why: Introduces JSON, which this lesson turns into Python data.
+revision: 2
+teaches: [dictionary, dict-key-access, dict-change, keyerror, dict-get, nested-data, nested-loop, best-so-far, import-module, triple-quoted-string, json-loads, api-intro]
+uses: [json, json-object, json-array, json-values, nesting, list, list-index, for-loop, running-total, build-list-pattern, append, function, return-statement, nested-calls, if-statement, comparison-operators, str-type, none-value, error-message, python-m]
 predict:
   id: p1
   type: mcq
@@ -19,9 +31,11 @@ tasks:
     type: python
     title: Report on a day's orders
     instructions: |
-      The data comes in as JSON text, as it would from an API. `json.loads` turns it into Python lists and dictionaries.
+      You'll use: dictionaries, nested lookups, loops inside loops and the "best so far" pattern, all from this lesson, plus `json.loads`.
 
-      Each order is a dictionary with a "customer", a "city", and a list of "items". Each item is a dictionary with a "name" and a "price".
+      The data arrives as JSON text, the way it would from another program. `json.loads` turns it into Python lists and dictionaries. Each order is a dictionary with a "customer", a "city", and a list of "items". Each item is a dictionary with a "name" and a "price".
+
+      Tip: `biggest_spender` can call `order_total`, the function you wrote first.
     starter: |
       import json
 
@@ -190,37 +204,79 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- **Dictionaries**: storing values by label instead of by position.
+- What happens when a label is missing, and how to handle it safely.
+- **Nested data**: lists of dictionaries holding more lists, the shape of nearly all real data.
+- How to turn **JSON** text into Python data, and loop through it.
+- The "best so far" pattern, for finding the biggest or the best.
+
 ## Values with labels
 
-A list stores values by position. A **dictionary** stores them by **key**, a label:
+A list stores values by **position**: item 0, item 1, item 2. That's fine for a list of scores. But think about one order in a shop: it has a customer, a total, and whether it's paid. Remembering that "position 1 is the total" would be awful.
+
+A **dictionary** stores values by **key**: a label you choose. It's written with curly braces, and each entry is a key, a colon, and a value:
 
 ```python
 order = {"customer": "Ada", "total": 49, "paid": True}
-
-order["customer"]          # "Ada"
-order["total"] = 55        # change a value
-order["city"] = "London"   # add a new key
-order.get("phone")         # None, because there's no phone, but no crash either
 ```
 
-`order["phone"]` would crash with a **KeyError**, one of the most common errors in real code, because real data is often missing fields.
+If that looks familiar, it should: it's exactly the shape of a JSON object from *Settings files*. Keys are usually strings.
+
+### Using a dictionary
+
+You get a value by putting its key in square brackets:
+
+| Code | What it does |
+| --- | --- |
+| `order["customer"]` | Gives `"Ada"` |
+| `order["total"] = 55` | Changes the total to 55 |
+| `order["city"] = "London"` | Adds a new key, city, with the value "London" |
+| `order.get("phone")` | Gives `None`, because there's no phone key. No crash. |
+| `order["phone"]` | **Crashes** with `KeyError: 'phone'` |
+
+**KeyError** is one of the most common errors in real code. It means "you asked for a key this dictionary doesn't have". Real data often has missing fields: a customer with no phone number, an order with no discount. When a key might be missing, `.get()` is the safe choice. You can even give it a fallback value: `order.get("discount", 0)` gives 0 if there's no discount.
+
+<details>
+<summary>Quick check: with `person = {"name": "Grace", "age": 85}`, what's `person["age"]`? What about `person.get("email")`?</summary>
+
+`person["age"]` is `85`. `person.get("email")` is `None`, because there's no email key.
+</details>
 
 ## The shape of real data
 
-Real data is lists and dictionaries **nested inside each other**:
+Real data is lists and dictionaries **nested inside each other**. A day's orders might be a list, where each order is a dictionary, and each order's items are a list of more dictionaries:
 
 ```python
 orders = [
     {"customer": "Ada", "items": [{"name": "Keyboard", "price": 49}, {"name": "Mouse", "price": 9}]},
     {"customer": "Grace", "items": [{"name": "Monitor", "price": 189}]},
 ]
+```
 
+To reach something deep inside, chain the lookups:
+
+```python
 orders[0]["items"][1]["price"]    # 9
 ```
 
-Read nested lookups **one step at a time**, left to right: the first order, its items, the second item, its price.
+Read it **one step at a time**, left to right, like directions:
 
-Looping over this kind of data is the bread and butter of programming:
+1. `orders[0]`: the first order (Ada's).
+2. `["items"]`: its list of items.
+3. `[1]`: the second item in that list (the mouse).
+4. `["price"]`: its price, 9.
+
+<details>
+<summary>Quick check: in the orders above, what's `orders[1]["items"][0]["name"]`?</summary>
+
+`"Monitor"`. The second order is Grace's, its first item is the monitor, and its name is "Monitor".
+</details>
+
+## Loops inside loops
+
+To go through every item of every order, you put one loop **inside** another:
 
 ```python
 for order in orders:
@@ -228,18 +284,74 @@ for order in orders:
         print(order["customer"], item["name"])
 ```
 
-## JSON is the same shape
+The outer loop runs once per order. For each order, the inner loop runs once per item in **that** order. So this prints Ada's two items, then Grace's one:
 
-**JSON**, which you met in the APIs lesson, is how this data travels between programs. It maps directly onto Python:
+```text
+Ada Keyboard
+Ada Mouse
+Grace Monitor
+```
+
+Watch the indentation: the inner `for` is indented inside the outer one, and its body is indented again.
+
+## The "best so far" pattern
+
+To find the biggest of something, keep track of the best one you've seen so far, and replace it whenever you find a better one:
+
+```python
+best = orders[0]                  # start with the first one
+for order in orders:
+    if order_total(order) > order_total(best):
+        best = order              # found a better one: remember it
+# after the loop, best is the biggest
+```
+
+It's the same shape as the running total: set up before the loop, update inside, use after. You'll need it in the exercise.
+
+## JSON in, Python out
+
+When data travels between programs, it travels as JSON **text**. Python has a built-in module for it. A **module** is a bundle of extra functions that comes with Python, and `import` makes one available:
+
+```python
+import json
+
+text = '{"customer": "Ada", "total": 49, "paid": true}'
+order = json.loads(text)        # now a real Python dictionary
+order["customer"]               # "Ada"
+```
+
+`json.loads` ("load from string") turns JSON text into Python data. `json.dumps` turns Python data back into JSON text.
 
 | JSON | Python |
 | --- | --- |
-| `{ "key": value }` (object) | dictionary |
-| `[ 1, 2, 3 ]` (array) | list |
+| object `{ "key": value }` | dictionary |
+| array `[ 1, 2, 3 ]` | list |
 | `true`, `false`, `null` | `True`, `False`, `None` |
 
-`json.loads(text)` turns JSON text into Python data, and `json.dumps(data)` turns it back.
+### Text over several lines
+
+The exercise's starter code holds its JSON in a string with **three** quote marks at each end: `"""...."""`. A triple-quoted string can run over many lines, which makes long text readable. Otherwise it's an ordinary string.
+
+### Where this data comes from
+
+Programs constantly ask other programs for data: a shop's website asks a payment company whether a card was accepted, a weather app asks a weather service for today's forecast. The way one program offers data to others is called an **API**, and the answers almost always come back as JSON. You'll learn how APIs work in Stage 2. The skill you're learning here, reading nested JSON data, is the same either way.
 
 <ConsultantNote>
 Most "integration" work, connecting one system to another, is exactly this: reading nested data from one system, picking out fields, and reshaping it for another. And most integration bugs are a missing key, a field that's sometimes null, or a number that arrives as text.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Dictionary** | Values stored by key (a label), in curly braces |
+| **Key** | The label for a value in a dictionary, like `"customer"` |
+| **KeyError** | The error when a key doesn't exist |
+| **`.get()`** | Looks up a key safely, giving None (or a fallback) if it's missing |
+| **Nested data** | Lists and dictionaries inside each other |
+| **Nested loop** | A loop inside another loop |
+| **Best so far** | Remember the best item seen, and replace it when a better one comes along |
+| **Module / `import`** | A bundle of extra functions, and how you make it available |
+| **`json.loads()`** | Turns JSON text into Python data |
+| **Triple-quoted string** | A string that can run over several lines |
+| **API** | How one program offers data to other programs. More in Stage 2. |

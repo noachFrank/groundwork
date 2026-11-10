@@ -3,10 +3,16 @@ id: the-terminal
 title: Getting comfortable in the terminal
 order: 2
 topic: how-computers-run-software
-minutes: 50
+minutes: 55
 summary: How a command is put together, the shortcuts that save you typing, pipes that connect commands, and how to read an error instead of panicking.
 connectivity: offline
-prerequisites: [files-and-paths]
+prerequisites:
+  - id: files-and-paths
+    need: essential
+    why: Introduces the terminal, PowerShell, paths and your first commands.
+revision: 2
+teaches: [command-parts, verb-noun, tab-completion, command-history, ctrl-c, pipe, redirect, reading-errors, shell, process-list-intro]
+uses: [terminal, powershell, command, path, current-directory, file, error-message, practice-folder]
 predict:
   id: p1
   type: mcq
@@ -120,62 +126,160 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- How every command is put together, so you can read ones you've never seen.
+- The keyboard shortcuts that make the terminal fast.
+- How to connect commands so one feeds the next.
+- How to read an error message calmly, instead of panicking.
+- What a **shell** is, and which ones you'll meet.
+
+In the last lesson you typed your first commands. Now you'll learn the rules behind them.
+
 ## A command is a sentence
 
-Almost every command has the same shape:
+Almost every command has the same shape. Look at this one:
 
 ```text
 Copy-Item   notes.txt backup.txt   -Force
-└ command   └ arguments            └ option (flag)
+└ command   └ arguments            └ option
 ```
 
-- The **command** is the verb: what to do.
-- **Arguments** are what to do it to.
-- **Options**, also called flags or parameters, start with a dash and change how it's done.
+It has three kinds of parts:
 
-PowerShell names its commands **verb-noun**: `Get-ChildItem`, `Copy-Item`, `Remove-Item`, `Get-Process`. Once you know that, you can often guess a command's name. Many also have short names borrowed from older systems, like `ls`, `cd`, `cat` and `pwd`.
+- The **command** is the verb: **what** to do. Here, copy a file.
+- **Arguments** say what to do it **to**. Here, copy `notes.txt` to `backup.txt`. Arguments are separated by spaces, which is why paths with spaces need quotes.
+- **Options** start with a dash and change **how** it's done. `-Force` means "overwrite backup.txt if it already exists". Options are also called **flags** or **parameters**. Some options take a value after them, like `-First 5`.
+
+Reading a new command, ask three questions: what's the verb, what's it working on, and which options change its behavior?
+
+<details>
+<summary>Quick check: in `Get-ChildItem Documents -Recurse`, what's the argument and what's the option?</summary>
+
+The argument is `Documents`, the folder to list. The option is `-Recurse`, which means "look inside folders inside it too".
+</details>
+
+### Verb-noun names
+
+PowerShell names its commands **verb-noun**, joined with a dash:
+
+| Verb | Examples |
+| --- | --- |
+| Get (look at something) | `Get-ChildItem`, `Get-Content`, `Get-Location`, `Get-Process` |
+| Set (change or create something) | `Set-Content`, `Set-Location` |
+| Copy, Move, Remove | `Copy-Item`, `Move-Item`, `Remove-Item` |
+
+Once you know that, you can often guess a command's name. **Get** commands only look, so they're safe to experiment with. **Remove** commands delete.
+
+Many commands also have short names borrowed from older systems, like `ls` for `Get-ChildItem`, `cat` for `Get-Content`, and `pwd` for `Get-Location`. They do exactly the same thing.
 
 ## The shortcuts that matter
 
 | Key | What it does |
 | --- | --- |
-| **Tab** | Finishes a command or file name. Press it again to cycle through matches. |
-| **Up arrow** | Brings back your previous commands. |
-| **Ctrl+C** | Stops whatever is running. |
-| **cls** | Clears the screen. Nothing is deleted. |
-| **Right-click** | Pastes, in PowerShell's window. |
+| **Tab** | Finishes the command or file name you've started typing. Press it again to cycle through other matches. |
+| **Up arrow** | Brings back your previous command, so you can run it again or fix a typo. Press it again to go further back. |
+| **Ctrl+C** | Stops whatever command is running. The terminal's emergency brake. |
+| `cls` | Clears the screen. Nothing is deleted, the window just gets tidy. |
+| **Right-click** | Pastes, in the PowerShell window. |
 
-Tab completion also prevents typos. If Tab doesn't complete a file name, the file probably isn't where you think.
+**Tab** also prevents typos. Type the first few letters of a file name and press Tab. If it doesn't complete, the file probably isn't where you think it is, and that's useful information too.
+
+**Ctrl+C** in a terminal means "stop", not "copy". That surprises everyone at first. Some commands keep running until you stop them, and Ctrl+C is how.
 
 ## Connecting commands
 
-Two symbols turn small commands into powerful ones:
+Two symbols turn small commands into powerful ones.
 
-- `|`, the **pipe**, sends one command's output into another. `Get-Process | Sort-Object CPU` lists programs, then sorts them.
-- `>`, **redirect**, sends output into a file instead of the screen.
+### The pipe: `|`
+
+Most commands produce some **output**: the text or list they show when they finish. The **pipe**, `|` (on most keyboards, Shift plus the backslash key), sends one command's output into the next command, instead of to the screen.
+
+```powershell
+Get-Process | Sort-Object CPU -Descending | Select-Object -First 5
+```
+
+Read it left to right, like an assembly line:
+
+1. `Get-Process` lists every program running on the computer right now.
+2. `| Sort-Object CPU -Descending` sorts that list by how much processor time each one has used, biggest first.
+3. `| Select-Object -First 5` keeps only the first five.
+
+Each command does one small job. The pipe joins them into something bigger. You'll see a long pipe in the task below.
+
+### Redirect: `>`
+
+`>` sends a command's output into a **file** instead of to the screen:
+
+```powershell
+"hello" > greeting.txt
+```
+
+That writes the word hello into a new file called `greeting.txt`. Be careful: if the file already exists, `>` replaces everything in it.
+
+`| Out-File name.txt` does the same job as `> name.txt`. You'll see both.
+
+<details>
+<summary>Quick check: what's the difference between `|` and `>`?</summary>
+
+`|` passes output into another command. `>` writes output into a file.
+</details>
 
 ## Reading errors
 
-Red text isn't the computer shouting at you. It's a message, and usually a precise one:
+When a command fails, PowerShell prints an error message in red. Red text isn't the computer shouting at you. It's a message, and usually a precise one:
 
 ```text
-Get-Content : Cannot find path 'C:\...\does-not-exist.txt' because it does not exist.
+Get-Content : Cannot find path 'C:\Users\sam\Groundwork-Practice\does-not-exist.txt'
+because it does not exist.
 ```
 
-That says which command failed (`Get-Content`), what went wrong (it can't find the path), and the exact path it tried. Most of the time the fix is in the message.
+Read it piece by piece:
+
+- **Which command failed:** `Get-Content`, at the start.
+- **What went wrong:** it "cannot find path".
+- **Where:** the exact path it tried.
+
+So the fix is either to correct the file name, or to `cd` into the folder where the file really is. Most of the time, the answer is in the message.
+
+A good habit for any error: read it slowly, once, all the way through. If it still makes no sense, copy the exact text and search for it, or ask about it using the four-part question from the *Asking good questions* lesson.
+
+## Getting help on a command
+
+`Get-Help` followed by a command name shows what that command does and which options it takes:
+
+```powershell
+Get-Help Copy-Item
+```
+
+The first time, it may offer to download fuller help pages. Press **N**: the short version is enough.
 
 ## Which shell is which?
 
-A **shell** is the program that reads your commands. You'll meet three:
+A **shell** is the program that reads the commands you type and runs them. The terminal window is just the frame. The shell inside it does the work. You'll meet three:
 
-| Shell | Where |
+| Shell | Where you'll see it |
 | --- | --- |
 | **PowerShell** | Modern Windows. What we use in this course. |
-| **Command Prompt** (cmd) | Older Windows. Still used by `.bat` files. |
-| **Bash** | Linux servers and Mac. Most servers on the internet run Linux, so you'll meet it next. |
+| **Command Prompt** (also called cmd) | Older Windows. Still used by files ending in `.bat`, like Groundwork's `start.bat`. |
+| **Bash** | Linux and Mac computers, and most of the computers that run websites. That's the next lesson. |
 
-The ideas are the same everywhere. Only the command names differ.
+The ideas are the same everywhere: commands, arguments, options, pipes and errors. Only the command names differ.
 
 <ConsultantNote>
 Setup instructions, documentation and fixes are written as commands. A consultant who's comfortable in the terminal can follow any project's instructions, and can see exactly what a script is about to do before anyone runs it.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Argument** | What a command works on, like a file name |
+| **Option / flag / parameter** | A dash-word that changes how a command works, like `-Force` |
+| **Verb-noun** | PowerShell's naming pattern, like `Get-ChildItem` |
+| **Tab completion** | Pressing Tab to finish a name you've started typing |
+| **Ctrl+C** | Stops the running command |
+| **Output** | What a command shows when it runs |
+| **Pipe** (`\|`) | Sends one command's output into the next command |
+| **Redirect `>`** | Sends a command's output into a file |
+| **Shell** | The program that reads and runs your commands: PowerShell, cmd or Bash |

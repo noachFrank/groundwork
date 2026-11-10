@@ -3,10 +3,16 @@ id: conflicts
 title: Merge conflicts, on purpose
 order: 4
 topic: git-and-github
-minutes: 45
+minutes: 50
 summary: What happens when two people change the same line. You'll cause a conflict deliberately and fix it, so the real ones never scare you.
 connectivity: offline
-prerequisites: [branches]
+prerequisites:
+  - id: branches
+    need: essential
+    why: A conflict happens when merging branches.
+revision: 2
+teaches: [merge-conflict, conflict-markers, resolve-conflict, merge-abort, ps-replace, notepad-from-terminal]
+uses: [branch, git-switch, git-merge, merge-commit, git-status, git-add, git-commit, commit-am, html-tags, head-ref, text-editor, pipe, terminal]
 predict:
   id: p1
   type: mcq
@@ -117,15 +123,26 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- Why merges sometimes stop with a **conflict**, and why that's Git being careful, not broken.
+- How to read the strange markers Git puts in a file.
+- How to resolve a conflict, step by step.
+- How to make conflicts rarer.
+
+You'll cause a conflict deliberately in the task, so the first one you meet at work isn't scary.
+
 ## When Git can't decide
 
-Most of the time, Git merges branches by itself, even when both changed the same file, as long as they changed **different lines**. But when both changed the **same lines** differently, Git can't know which is right. So it stops and asks.
+Most of the time, Git merges branches by itself, even when both branches changed the same file, as long as they changed **different lines**. It just takes both changes.
 
-That's a **merge conflict**. It isn't an error, and nothing is lost. It's Git being careful.
+But when both branches changed the **same line** in different ways, Git has no way of knowing which one is right. Should the title be "My homepage" or "Welcome to my site"? That's a human decision. So Git stops halfway through the merge and asks you.
+
+That's a **merge conflict**. It isn't an error, and nothing is lost. Both versions are kept, waiting for your decision.
 
 ## What a conflict looks like
 
-Git writes both versions into the file between markers:
+Git writes both versions into the file, between markers:
 
 ```text
 <<<<<<< HEAD
@@ -136,29 +153,62 @@ Git writes both versions into the file between markers:
 <p>Made by me.</p>
 ```
 
-- Between `<<<<<<< HEAD` and `=======` is the version on **your current branch**.
-- Between `=======` and `>>>>>>> new-title` is the version from the **branch being merged in**.
-- Everything outside the markers merged fine.
+Read it in three parts:
+
+- Between `<<<<<<< HEAD` and `=======` is the version on **your current branch** (HEAD, where you are).
+- Between `=======` and `>>>>>>> new-title` is the version from the **branch you're merging in**, new-title.
+- Everything outside the markers merged fine. Here, the `<p>` line.
+
+`git status` lists conflicted files under "Unmerged paths", so you can find them all.
+
+<details>
+<summary>Quick check: you're on main, merging a branch called fix-prices. Which version is above the `=======` line?</summary>
+
+Main's version, the branch you're on (HEAD). fix-prices' version is below it.
+</details>
 
 ## Resolving it
 
-1. **Open the file** and find the markers. Editors like VS Code highlight them and add buttons such as "Accept current" and "Accept incoming".
-2. **Decide what it should say.** Keep one side, the other, or a mix of both. It's a judgment, so if it's someone else's code, ask them.
-3. **Delete every marker line.**
-4. **Stage and commit:** `git add file`, then `git commit`.
+1. **Open the file** and find the markers. In the task you'll use Notepad. Code editors like VS Code highlight conflicts and add buttons such as "Accept current" and "Accept incoming".
+2. **Decide what it should say.** Keep one side, the other, or a mix of both. It's a judgment, so if it's someone else's work, ask them.
+3. **Delete every marker line**: the `<<<<<<<`, `=======` and `>>>>>>>` lines.
+4. **Save the file.**
+5. **Stage and commit**: `git add index.html`, then `git commit`. Staging the file is how you tell Git "this conflict is resolved".
 
-Changed your mind halfway? `git merge --abort` puts everything back as it was before the merge.
+Changed your mind halfway? **`git merge --abort`** puts everything back exactly as it was before the merge started.
 
 <Callout kind="warn" title="Check for leftover markers">
-Git won't stop you committing a file that still has `<<<<<<<` in it. Those lines then break the code or appear on the website. Always look over the file before you commit.
+Git won't stop you committing a file that still has `<<<<<<<` in it. Those lines then break the code, or show up on the website for everyone to see. Always look over the file before you commit.
 </Callout>
+
+## Two commands in the task
+
+**Opening a file in Notepad from the terminal:** `notepad index.html`. PowerShell doesn't wait for you to finish editing: it's ready for the next command straight away. So make your changes, save with **Ctrl+S**, and close Notepad **before** running the next command.
+
+**Changing text in a file from PowerShell.** The task makes its changes with one line like this:
+
+```powershell
+(Get-Content index.html) -replace 'My first page', 'My homepage' | Set-Content index.html
+```
+
+Read it left to right: read the file, replace the words "My first page" with "My homepage", and pipe the result into `Set-Content`, which writes it back to the same file. It's a quick way to edit a file without opening it. The brackets around `Get-Content index.html` make PowerShell read the whole file first.
 
 ## Fewer conflicts
 
-- **Merge often.** The longer branches stay apart, the more they drift and the bigger the conflicts.
+- **Merge often.** The longer branches stay apart, the more they drift, and the bigger the conflicts get.
 - **Keep branches small.** One feature or fix per branch.
 - **Talk.** If two people need to rework the same file, a quick message saves a painful merge.
 
 <ConsultantNote>
 A team that dreads merging usually has branches that live for weeks. Suggesting smaller, shorter-lived branches and frequent merges is simple advice that makes a big difference to how quickly a client's team can ship.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Merge conflict** | Two branches changed the same lines differently, so Git needs you to choose |
+| **Conflict markers** | The `<<<<<<<`, `=======` and `>>>>>>>` lines Git writes into the file |
+| **Resolving** | Editing the file to the right version, removing the markers, then staging it |
+| **`git merge --abort`** | Cancels a merge and puts everything back as it was |
+| **`-replace`** | PowerShell's way to swap one piece of text for another |

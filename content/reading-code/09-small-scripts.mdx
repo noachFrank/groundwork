@@ -1,12 +1,24 @@
 ---
 id: small-scripts
 title: "Writing a small, useful script"
-order: 8
+order: 9
 topic: reading-code
-minutes: 50
+minutes: 65
 summary: Put it all together into the kind of script that saves real people real time. Read a spreadsheet export, add it up, and write a report.
 connectivity: offline
-prerequisites: [debugging]
+prerequisites:
+  - id: debugging
+    need: essential
+    why: You'll write a real script, and need to find your own bugs in it.
+  - id: python-dicts-data
+    need: essential
+    why: Rows arrive as dictionaries, and totals are kept in a dictionary.
+  - id: python-functions
+    need: helpful
+    why: Two-decimal formatting with :.2f, which the report needs.
+revision: 2
+teaches: [automation-candidates, read-work-write, csv-format, csv-dictreader, group-by-dict, in-operator, sorted-fn, file-write, with-open, newline-char, write-vs-append, run-on-a-copy]
+uses: [script, dictionary, dict-key-access, dict-change, for-loop, running-total, if-statement, type-conversion, format-decimals, function, return-statement, import-module, triple-quoted-string, json-loads, f-string, str-type, print-fn, file, backend]
 predict:
   id: p1
   type: mcq
@@ -23,7 +35,9 @@ tasks:
     type: python
     title: Summarize expenses from a CSV
     instructions: |
-      **CSV** (comma-separated values) is how spreadsheets export data: one row per line, with values separated by commas. The first line is the column names. Python's `csv` module reads it into dictionaries, one per row.
+      You'll use: grouping with a dictionary, `not in`, `sorted`, and writing a file with `with open`, all from this lesson, plus `float()` and `:.2f`.
+
+      **CSV** (comma-separated values) is how spreadsheets export data. `read_rows` is already written for you: it turns the CSV text into a list of dictionaries, one per row.
 
       Values from a CSV are always **text**, so convert amounts with `float()`.
 
@@ -203,11 +217,25 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- What makes a job worth automating with a small script.
+- The three-step shape of almost every script: read, work it out, write.
+- **CSV**, the format spreadsheets export, and how Python reads it.
+- **Grouping**: totals per category, per customer or per month.
+- Writing results to a file.
+
 ## Small scripts, big savings
 
 You now know enough Python to write genuinely useful programs. The most valuable ones are often tiny: 20 to 50 lines that remove a boring manual job someone does every week.
 
-Good candidates are tasks that are **repetitive**, **follow rules**, and happen **on a computer**: combining spreadsheets, renaming files, checking data, producing reports.
+Good candidates are tasks that are:
+
+- **Repetitive**: the same steps every week or month.
+- **Rule-based**: you could write the steps down for someone else to follow.
+- **On a computer**: combining spreadsheets, renaming files, checking data, producing reports.
+
+If a person spends an hour a week copying numbers from one spreadsheet into another, a 30-line script can save them 50 hours a year.
 
 ## The shape of most scripts
 
@@ -219,24 +247,35 @@ read the data  →  work something out  →  write the result
 
 | Step | Common tools |
 | --- | --- |
-| **Read** | `open()` for text files, `csv` for spreadsheet exports, `json` for API data |
-| **Work it out** | loops, `if`, dictionaries for grouping, `sum`, `sorted` |
-| **Write** | `open(..., "w")`, `print()`, or send it to an API |
+| **Read** | `open()` for text files, `csv` for spreadsheet exports, `json` for data from other programs |
+| **Work it out** | Loops, `if`, dictionaries for grouping, `sum`, `sorted` |
+| **Write** | `open(..., "w")` to save a file, or `print()` to show it |
+
+Keeping these three steps in separate functions, as the exercise does, makes each one easy to test and fix.
 
 ## CSV files
 
-Spreadsheets export as **CSV**: plain text with one row per line and commas between values. The first line is the column names.
+Spreadsheet programs like Excel and Google Sheets can save, or "export", a sheet as **CSV** (comma-separated values). It's plain text: one row per line, with commas between the values. The first line holds the column names.
 
 ```text
-date,category,amount
-2026-03-01,Travel,42.50
+date,category,description,amount
+2026-03-01,Travel,Train to client,42.50
+2026-03-02,Software,Design tool,15.00
 ```
 
-Python's `csv.DictReader` gives you each row as a dictionary: `{"date": "2026-03-01", "category": "Travel", "amount": "42.50"}`. Notice the amount is **text**. Convert it with `float()` before doing maths with it.
+Python's built-in `csv` module reads this. `csv.DictReader` gives you each row as a **dictionary**, using the column names as keys:
+
+```python
+{"date": "2026-03-01", "category": "Travel", "description": "Train to client", "amount": "42.50"}
+```
+
+Notice the amount is `"42.50"`, in quotes: **text**. Everything from a CSV arrives as text, just as you learned in the first Python lesson. Convert it with `float()` before doing maths with it.
+
+In the exercise, `read_rows` does the reading for you. It uses two more tools (`io.StringIO` lets the csv module read from a string instead of a file, and `list(...)` collects all the rows into a list) but you don't need to change it.
 
 ## Grouping with a dictionary
 
-Totals per category, per customer or per month all use the same pattern, a running total with one entry per group:
+"Total spent per category" needs a running total for **each** category. A dictionary does that perfectly: one key per category, holding that category's total so far.
 
 ```python
 totals = {}
@@ -247,19 +286,66 @@ for row in rows:
     totals[key] = totals[key] + float(row["amount"])
 ```
 
+Walk through it:
+
+1. Start with an empty dictionary, `{}`.
+2. For each row, find its category.
+3. `key not in totals` asks: "is there no entry for this category yet?" The word **`in`** checks whether a key exists in a dictionary (or an item is in a list). `not in` is the opposite. If it's a new category, start its total at 0.
+4. Add this row's amount to that category's total.
+
+After the first Travel row, totals is `{"Travel": 42.5}`. After the Software row, `{"Travel": 42.5, "Software": 15.0}`. And so on.
+
+The same pattern gives totals per customer, per month, per anything. It's one of the most useful shapes in all of programming.
+
+<details>
+<summary>Quick check: why does the code set `totals[key] = 0` before adding?</summary>
+
+Because you can't add to a key that doesn't exist yet: `totals["Travel"] + 42.5` would be a KeyError the first time. Starting each new category at 0 avoids that.
+</details>
+
+## Sorting
+
+`sorted(...)` gives back a sorted copy. Given a dictionary, it gives the keys in order, alphabetically for text:
+
+```python
+sorted({"Travel": 94.5, "Food": 31.2, "Software": 24.99})
+# ["Food", "Software", "Travel"]
+```
+
+So `for category in sorted(totals):` goes through the categories alphabetically.
+
 ## Writing files
 
 ```python
 with open("report.txt", "w") as f:
     f.write("Travel: 94.50\n")
+    f.write("Food: 31.20\n")
 ```
 
-`"w"` creates or **replaces** the file. `"a"` adds to the end. `with` closes the file for you when the block ends. `\n` starts a new line.
+- `open("report.txt", "w")` opens a file for **writing**. `"w"` creates the file, or **replaces** everything in it if it exists. `"a"` (append) adds to the end instead.
+- `with ... as f:` names the open file `f` for the indented block, and **closes it properly** when the block ends. Always open files this way.
+- `f.write(...)` writes text into the file. It doesn't add a line break by itself.
+- `\n` inside a string means "new line". So each `write` ending in `\n` produces one line.
+
+Put it together with an f-string and `:.2f`, and you can write a neat report line for each category.
 
 <Callout kind="warn" title="Scripts repeat mistakes perfectly">
-A bug in a script that edits data gets applied to every row, instantly. Always run new scripts on a **copy** of the data first, and keep a backup of the original.
+A bug in a script that changes data gets applied to every row, instantly. Always run new scripts on a **copy** of the data first, and keep a backup of the original.
 </Callout>
 
 <ConsultantNote>
 A script that saves a client's office manager two hours a month is often worth more to them than a big new system. Look for these during discovery: ask "what do you do every week that feels like copying and pasting?" The answers are often quick, cheap wins that build trust.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **CSV** | Comma-separated values: how spreadsheets export data as text |
+| **`csv.DictReader`** | Reads CSV rows as dictionaries, keyed by column name |
+| **Grouping** | One running total per category, kept in a dictionary |
+| **`in` / `not in`** | Checks whether a key is (or isn't) in a dictionary |
+| **`sorted()`** | Gives back a sorted copy |
+| **`open(name, "w")`** | Opens a file for writing, replacing what's there. `"a"` appends. |
+| **`with ... as f:`** | Opens a file and closes it properly afterwards |
+| **`\n`** | A new line, inside a string |

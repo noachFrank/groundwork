@@ -50,12 +50,11 @@ describe('course content', () => {
     const types = new Set(content.lessons.flatMap((l) => l.tasks.map((t) => t.type)));
     expect([...types].sort()).toEqual(['architecture', 'case', 'explain', 'flaw', 'javascript', 'lab', 'python', 'sql', 'terminal']);
   });
-  it('has the plan\'s 180 hours', () => {
-    expect(content.curriculum.stages.map((s) => s.hours)).toEqual([25, 25, 45, 85]);
+  it('has stage hours that match their topics', () => {
     for (const s of content.curriculum.stages) expect(s.topics.reduce((n, t) => n + t.hours, 0)).toBe(s.hours);
   });
   it('detects circular prerequisites', () => {
-    expect(findCycles([{ id: 'a', prerequisites: ['b'] }, { id: 'b', prerequisites: ['a'] }])).toHaveLength(1);
+    expect(findCycles([{ id: 'a', prerequisites: [{ id: 'b' }] }, { id: 'b', prerequisites: [{ id: 'a' }] }])).toHaveLength(1);
   });
 });
 
@@ -179,17 +178,24 @@ describe('study plan', () => {
   const items = buildPlanItems(content, {});
 
   it('covers the whole course, with written lessons first', () => {
-    expect(items.reduce((s, i) => s + i.hours, 0)).toBeCloseTo(180, 0);
+    // Every written lesson counts, and every topic with no lessons yet appears with its full estimate.
+    const writtenHours = content.lessons.reduce((n, l) => n + l.minutes, 0) / 60;
+    expect(items.reduce((s, i) => s + i.hours, 0)).toBeGreaterThanOrEqual(writtenHours - 0.5);
+    const topicsWithLessons = new Set(content.lessons.map((l) => l.topic));
+    for (const t of content.curriculum.stages.flatMap((s) => s.topics)) {
+      if (!topicsWithLessons.has(t.id)) expect(items.find((i) => i.id === `topic:${t.id}`)?.hours).toBe(t.hours);
+    }
     const firstUnwritten = items.findIndex((i) => !i.written);
     expect(firstUnwritten).toBeGreaterThan(0);
     expect(items.slice(firstUnwritten).every((i) => !i.written)).toBe(true);
     expect(items[0].title).toBe('Learning with AI');
   });
 
-  it('takes about 4 months at 10 hours a week and 2 at 20', () => {
+  it('spreads the whole course over the right number of weeks', () => {
     const base = { items, startDate: '2026-06-01', today: '2026-06-01', spentHours: 0, spentThisWeek: 0 };
-    expect(generateSchedule({ ...base, hoursPerWeek: 10 }).weeks).toHaveLength(18);
-    expect(generateSchedule({ ...base, hoursPerWeek: 20 }).weeks).toHaveLength(9);
+    const total = items.reduce((s, i) => s + i.hours, 0);
+    expect(generateSchedule({ ...base, hoursPerWeek: 10 }).weeks).toHaveLength(Math.ceil(total / 10));
+    expect(generateSchedule({ ...base, hoursPerWeek: 20 }).weeks).toHaveLength(Math.ceil(total / 20));
   });
 
   it('never overfills a week', () => {
@@ -226,7 +232,11 @@ describe('study plan', () => {
 });
 
 describe('choosing the next lesson', () => {
-  const L = (id: string, connectivity: 'offline' | 'needs-internet', prerequisites: string[] = []) => ({ id, connectivity, prerequisites });
+  const L = (id: string, connectivity: 'offline' | 'needs-internet', prerequisites: string[] = [], need: 'essential' | 'helpful' = 'essential') => ({
+    id,
+    connectivity,
+    prerequisites: prerequisites.map((p) => ({ id: p, need })),
+  });
   const lessons = [L('a', 'offline'), L('b', 'needs-internet', ['a']), L('c', 'offline', ['a'])];
 
   it('respects prerequisites', () => {
@@ -240,6 +250,9 @@ describe('choosing the next lesson', () => {
   });
   it('offline with only internet lessons left still says what\'s next', () => {
     expect(pickNextLesson(lessons, { a: 'completed', c: 'completed' }, false)).toMatchObject({ lesson: { id: 'b' }, fallback: false });
+  });
+  it('helpful prerequisites never hold a lesson back', () => {
+    expect(pickNextLesson([L('x', 'offline'), L('y', 'offline', ['z'], 'helpful'), L('z', 'offline')], { x: 'completed' }, true).lesson?.id).toBe('y');
   });
   it('skips "come back later"', () => {
     expect(pickNextLesson(lessons, { a: 'completed' }, true, new Set(['b'])).lesson?.id).toBe('c');
@@ -442,5 +455,156 @@ describe('Stage 1 additions', () => {
     const { JS_WORKER_CSP } = await import('../shared/js-harness.ts');
     expect(JS_WORKER_CSP).toContain("default-src 'none'");
     expect(JS_WORKER_CSP).not.toMatch(/connect-src|'self'/);
+  });
+});
+
+describe('prerequisites and the beginner rule', () => {
+  it('reads plain ids as essential and objects as written', async () => {
+    const { normalizePrerequisites } = await import('../server/content.ts');
+    expect(normalizePrerequisites(['a', { id: 'b', need: 'helpful', why: 'background' }, { id: 'c' }])).toEqual([
+      { id: 'a', need: 'essential' },
+      { id: 'b', need: 'helpful', why: 'background' },
+      { id: 'c', need: 'essential' },
+    ]);
+  });
+
+  it('flags a concept used before any lesson teaches it', async () => {
+    const { checkConceptOrder } = await import('../shared/validate.ts');
+    const concepts = ['node', 'npm', 'json'].map((id) => ({ id, name: id, definition: id }));
+    const lesson = (id: string, teaches: string[], uses: string[], prerequisites: { id: string; need: 'essential' | 'helpful' }[] = []) =>
+      ({ id, teaches, uses, prerequisites }) as any;
+    expect(checkConceptOrder({ concepts, lessons: [lesson('a', ['node'], []), lesson('b', ['npm'], ['node', 'npm']), lesson('c', ['json'], [])] })).toEqual([]);
+    expect(checkConceptOrder({ concepts, lessons: [lesson('a', ['node', 'npm'], [])] })).toContain('concept "json" is in concepts.yaml but no lesson teaches it');
+    expect(checkConceptOrder({ concepts, lessons: [lesson('a', ['node', 'npm', 'json'], []), lesson('b', [], ['node'])] })[0]).toMatch(/needs a "teaches" list/);
+    expect(checkConceptOrder({ concepts, lessons: [lesson('a', ['npm'], ['json'])] })[0]).toMatch(/uses "json" but nothing before it teaches it/);
+    expect(checkConceptOrder({ concepts, lessons: [lesson('a', ['node'], [], [{ id: 'b', need: 'essential' }]), lesson('b', [], [])] })[0]).toMatch(/comes later/);
+    expect(checkConceptOrder({ concepts, lessons: [lesson('a', ['node'], []), lesson('b', ['node'], [])] })[0]).toMatch(/already teaches/);
+    expect(checkConceptOrder({ concepts, lessons: [lesson('a', ['nope'], [])] })[0]).toMatch(/unknown concept/);
+  });
+
+  it('every essential prerequisite in the course comes earlier', () => {
+    const position = new Map(content.lessons.map((l, i) => [l.id, i]));
+    for (const l of content.lessons) {
+      for (const p of l.prerequisites.filter((p) => p.need === 'essential')) expect(position.get(p.id)!).toBeLessThan(position.get(l.id)!);
+    }
+  });
+
+  it('lists prerequisites with titles and status', () => {
+    const { store } = makeStore();
+    const withPrereq = content.lessons.find((l) => l.prerequisites.length > 0)!;
+    const first = withPrereq.prerequisites[0];
+    expect(store.prerequisiteInfo(withPrereq.id)[0]).toMatchObject({ id: first.id, status: 'not_started', title: store.lesson(first.id)!.title });
+    passLesson(store, first.id);
+    expect(store.prerequisiteInfo(withPrereq.id)[0].status).toBe('completed');
+  });
+});
+
+describe('rewritten lessons', () => {
+  it('flags a lesson finished at an older revision, until it is re-read', () => {
+    const { db } = makeStore();
+    const id = content.lessons[0].id;
+    const store1 = new Store(db, content);
+    passLesson(store1, id);
+    expect(store1.progress(id).rewritten).toBe(false);
+    const bumped = { ...content, lessons: content.lessons.map((l) => (l.id === id ? { ...l, revision: l.revision + 1 } : l)) };
+    const store2 = new Store(db, bumped);
+    expect(store2.progress(id).rewritten).toBe(true);
+    expect(store2.summaries().find((s) => s.id === id)!.rewritten).toBe(true);
+    expect(store2.today(true).rewritten.map((l) => l.id)).toContain(id);
+    store2.markReread(id);
+    expect(store2.progress(id).rewritten).toBe(false);
+  });
+
+  it('upgrades a version 1 database without losing progress, treating old completions as revision 1', async () => {
+    const { DatabaseSync } = await import('node:sqlite');
+    const { MIGRATIONS } = await import('../server/db.ts');
+    const dir = tempDir();
+    const file = join(dir, 'progress.db');
+    const old = new DatabaseSync(file);
+    old.exec(MIGRATIONS[0]);
+    old.exec('PRAGMA user_version = 1');
+    const id = content.lessons[0].id;
+    old.prepare("INSERT INTO lesson_progress (lesson_id, status, completed_at) VALUES (?, 'completed', '2026-10-01T00:00:00Z')").run(id);
+    old.prepare("INSERT INTO problems (lesson_id, message, created_at) VALUES (?, 'What is npm?', '2026-10-02T00:00:00Z')").run(id);
+    old.close();
+
+    const db = openDatabase(file, join(dir, 'backups'));
+    const store = new Store(db, content);
+    expect(store.progress(id).status).toBe('completed');
+    expect(store.progress(id).rewritten).toBe(content.lessons[0].revision > 1);
+    expect(store.listFeedback()).toMatchObject([{ kind: 'problem', message: 'What is npm?', sentAt: null }]);
+  });
+});
+
+describe('feedback for the developer', () => {
+  it('sends only new items, with the dates they cover, and can unsend', () => {
+    let now = new Date('2026-11-09T10:00:00Z');
+    const { store } = makeStore(() => now);
+    const [a, b] = content.lessons;
+    store.addProblem(a.id, 'What is npm?');
+    now = new Date('2026-11-11T10:00:00Z');
+    store.saveClarity(b.id, { clarity: 2, unclearConcepts: [], assumed: 'package.json', other: '' });
+
+    const first = store.exportFeedback('Moish')!;
+    expect(first.items.map((i) => i.kind).sort()).toEqual(['clarity', 'problem']);
+    expect(first.period).toEqual({ from: localDay(new Date('2026-11-09T10:00:00Z')), to: localDay(new Date('2026-11-11T10:00:00Z')) });
+    expect(first.learner).toBe('Moish');
+    expect(store.listFeedback().every((i) => i.sentAt)).toBe(true);
+    expect(store.exportFeedback('Moish')).toBeNull();
+
+    // A new note, two weeks later: only it goes out.
+    now = new Date('2026-11-23T10:00:00Z');
+    store.addProblem(b.id, 'Lost at the function part');
+    const second = store.exportFeedback('Moish')!;
+    expect(second.items).toHaveLength(1);
+    expect(second.items[0]).toMatchObject({ kind: 'problem', message: 'Lost at the function part' });
+    expect(second.previousSend).toBe('2026-11-11T10:00:00.000Z');
+
+    // Sent items are locked until unmarked, then they can be changed and go out again.
+    const sentProblem = store.listFeedback().find((i) => i.kind === 'problem' && i.message === 'What is npm?')!;
+    expect(store.editFeedback('problem', sentProblem.id, { message: 'changed' })).toBe(false);
+    expect(store.deleteFeedback('problem', sentProblem.id)).toBe(false);
+    expect(store.unsendFeedback('problem', sentProblem.id).ok).toBe(true);
+    expect(store.editFeedback('problem', sentProblem.id, { message: 'What is npm, and what is Node?' })).toBe(true);
+    const third = store.exportFeedback('Moish')!;
+    expect(third.items).toMatchObject([{ kind: 'problem', message: 'What is npm, and what is Node?', key: 'problem-' + sentProblem.id }]);
+  });
+
+  it('keeps one unsent clarity answer per lesson, and starts a new one after sending', () => {
+    const { store } = makeStore();
+    const id = content.lessons[0].id;
+    store.saveClarity(id, { clarity: 3 });
+    store.saveClarity(id, { clarity: 4, assumed: 'x' });
+    expect(store.listFeedback().filter((i) => i.kind === 'clarity')).toHaveLength(1);
+    expect(store.getClarity(id)).toMatchObject({ clarity: 4, assumed: 'x', sentAt: null });
+    store.exportFeedback('');
+    expect(store.getClarity(id)!.sentAt).not.toBeNull();
+    store.saveClarity(id, { clarity: 5 });
+    expect(store.listFeedback().filter((i) => i.kind === 'clarity')).toHaveLength(2);
+    // The older sent one can't be unmarked while a newer unsent one exists.
+    const older = store.listFeedback().find((i) => i.kind === 'clarity' && i.sentAt)!;
+    expect(store.unsendFeedback('clarity', older.id).ok).toBe(false);
+  });
+
+  it('nudges once a week when something is waiting', () => {
+    let now = new Date('2026-11-01T10:00:00Z');
+    const { store } = makeStore(() => now);
+    expect(store.feedbackStatus()).toMatchObject({ unsent: 0, due: false });
+    store.addProblem(content.lessons[0].id, 'x');
+    expect(store.feedbackStatus()).toMatchObject({ unsent: 1, due: false });
+    now = new Date('2026-11-09T10:00:00Z');
+    expect(store.feedbackStatus().due).toBe(true);
+    store.exportFeedback('');
+    store.addProblem(content.lessons[0].id, 'y');
+    expect(store.feedbackStatus()).toMatchObject({ unsent: 1, due: false });
+  });
+
+  it('survives a backup and restore', () => {
+    const { store } = makeStore();
+    store.saveClarity(content.lessons[0].id, { clarity: 2, assumed: 'terminal' });
+    const backup = store.exportAll();
+    const { store: other } = makeStore();
+    other.importAll(JSON.parse(JSON.stringify(backup)));
+    expect(other.getClarity(content.lessons[0].id)).toMatchObject({ clarity: 2, assumed: 'terminal' });
   });
 });

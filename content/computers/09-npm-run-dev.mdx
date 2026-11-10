@@ -1,0 +1,304 @@
+---
+id: npm-run-dev
+title: "What \"npm run dev\" actually does"
+order: 9
+topic: how-computers-run-software
+minutes: 60
+summary: Scripts in package.json, development servers, why the terminal has to stay open, and the difference between dev and a real build. You'll make and run your own tiny server.
+connectivity: offline
+prerequisites:
+  - id: packages
+    need: essential
+    why: Explains npm, package.json and node_modules, which this lesson uses throughout.
+  - id: processes-and-ports
+    need: essential
+    why: A dev server is a process listening on a port, on localhost.
+  - id: env-and-path
+    need: essential
+    why: The task puts Groundwork's Node and npm on PATH for one window.
+  - id: config-files
+    need: helpful
+    why: package.json is JSON. A quick refresher if the braces look confusing.
+revision: 2
+teaches: [npm-scripts, npm-run, npm-init, readme, dev-server, hot-reload, build-step, dist-folder, frontend, backend, curl, vite, project-setup-checklist]
+uses: [npm, package-json, node-modules, npm-install, npm-ci, nodejs, javascript-lang, console-log, server-program, request-response, port, localhost, ip-127, listen-address, program-vs-process, ctrl-c, terminal, path-variable, npm-cmd-workaround, browser, json-object]
+predict:
+  id: p1
+  type: mcq
+  prompt: 'A project''s README says "run `npm run dev`, then open http://localhost:5173". Where does npm find out what "dev" means?'
+  options:
+    - It's built into npm
+    - In the project's package.json, under "scripts"
+    - It downloads instructions from the internet
+    - From the README
+  answer: 1
+  why: '"dev" is just a name. The project''s package.json has a "scripts" section that says which command it stands for, often something like "vite".'
+tasks:
+  - id: own-server
+    type: terminal
+    title: Make and run your own little server
+    instructions: |
+      You'll create a project, give it a `dev` script, start a real server with `npm run dev`, then send it a request from a second window. You'll need two PowerShell windows side by side.
+
+      We type `npm.cmd` instead of `npm` so Windows' script safety setting doesn't get in the way, as explained in the previous lesson.
+    steps:
+      - text: Open PowerShell, go to your practice folder, and make a folder for this project.
+        command: cd $HOME\Groundwork-Practice; mkdir npm-lesson; cd npm-lesson
+      - text: Put Groundwork's Node and npm on PATH for this window.
+        command: $env:PATH = "{{nodeDir}};" + $env:PATH
+      - text: Create a new project. `-y` accepts all the default answers. This makes a `package.json`.
+        command: npm.cmd init -y
+      - text: "Write a tiny web server: one line of JavaScript that answers every request with a short message, on port 4399. The Learn section explains each part. `127.0.0.1` keeps it private to your computer."
+        command: Set-Content server.js 'require("http").createServer((req, res) => res.end("Hello from my own server")).listen(4399, "127.0.0.1", () => console.log("Listening on http://localhost:4399"))'
+      - text: Add a script called `dev` to package.json that starts the server.
+        command: npm.cmd pkg set scripts.dev="node server.js"
+      - text: Look at package.json. Find the "scripts" section and your new "dev" line.
+        command: Get-Content package.json
+      - text: Start it. The window now says "Listening" and **stays busy**. That's the server running. Don't close it.
+        command: npm.cmd run dev
+      - text: "Open a **second** PowerShell window and send your server a request with curl, saving the reply. `-o` means \"save the reply to this file\". You can also open http://localhost:4399 in your browser."
+        command: curl.exe -o $HOME\Groundwork-Practice\npm-lesson\reply.txt http://localhost:4399
+      - text: "Go back to the first window and press **Ctrl+C** to stop the server. If it asks \"Terminate batch job (Y/N)?\", type **Y** and press Enter. Try the browser again: the server is gone."
+    checks:
+      - path: npm-lesson/package.json
+        contains: node server.js
+        hint: Run `npm.cmd init -y`, then the `npm.cmd pkg set scripts.dev=...` step, inside the npm-lesson folder.
+      - path: npm-lesson/server.js
+        contains: "4399"
+        hint: This is created by the `Set-Content server.js ...` step. Copy the whole line.
+      - path: npm-lesson/reply.txt
+        contains: Hello from my own server
+        hint: Start the server with `npm.cmd run dev` in one window, then run the curl step in a second window while it's still running.
+recall:
+  - id: r1
+    type: mcq
+    prompt: Why must the terminal running `npm run dev` stay open?
+    options:
+      - It doesn't need to
+      - The dev server is a process running in that terminal. Closing it stops the server
+      - Closing it deletes the project
+      - npm needs to watch for internet updates
+    answer: 1
+    why: Just like the black Groundwork window. The server lives inside that terminal.
+  - id: r2
+    type: mcq
+    prompt: What's the difference between `npm run dev` and `npm run build`?
+    options:
+      - They're the same
+      - dev runs a development server that reloads as you edit. build creates optimized files to put on a real server
+      - build is for Windows, dev is for Mac
+      - dev is faster to install
+    answer: 1
+    why: The dev server is for working on the code. The build is what gets published.
+  - id: r3
+    type: short
+    prompt: Which section of package.json defines commands like dev and build?
+    accept: ['scripts']
+    answerText: '"scripts"'
+  - id: r4
+    type: self
+    prompt: You run `npm run dev` on a project you just downloaded, and get errors saying packages are missing. What did you forget?
+    modelAnswer: To install the packages first, with npm install (or npm ci if there's a lockfile). Downloading the code doesn't download its packages. node_modules isn't in Git, so it has to be created on each computer.
+cards:
+  - id: npm-run
+    front: What does `npm run dev` do?
+    back: Looks up "dev" in package.json's "scripts" section and runs that command, usually a development server.
+  - id: dev-server
+    front: What is a dev server?
+    back: A server for working on code. It runs on localhost, usually rebuilds and reloads the page when you save, and stops when you close its terminal or press Ctrl+C.
+  - id: usual-steps
+    front: What are the usual steps to run a JavaScript project you just downloaded?
+    back: "`npm install` (or `npm ci`) once, then `npm run dev`. Open the localhost address it prints."
+  - id: build
+    front: What does `npm run build` produce?
+    back: Optimized files, usually in a `dist` or `build` folder, ready to put on a real server. No dev server is involved.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: 'You run `npm run start` and get "Missing script: start". What does it mean?'
+    options:
+      - npm is broken
+      - The project's package.json has no script called "start"
+      - You need the internet
+      - The port is in use
+    answer: 1
+    why: npm only knows the scripts listed in package.json. Check which ones exist, often "dev".
+  - id: t2
+    type: mcq
+    prompt: A dev server is running in a terminal. How do you stop it cleanly?
+    options: [Unplug the computer, Press Ctrl+C in that terminal, Delete node_modules, Run it again]
+    answer: 1
+    why: Ctrl+C stops the running process.
+docs:
+  - title: "npm Docs: scripts"
+    url: https://docs.npmjs.com/cli/using-npm/scripts
+  - title: "Vite: Getting Started"
+    url: https://vite.dev/guide/
+videos: []
+---
+
+## In this lesson
+
+- What `npm run dev` actually does. (It's simpler than it looks.)
+- What a **dev server** is, and why its terminal has to stay open.
+- The difference between **dev** and **build**.
+- The usual steps for getting any JavaScript project running.
+- You'll make your own tiny server, start it with `npm run dev`, and talk to it.
+
+This lesson pulls together a lot of earlier ones: npm and package.json (*Packages*), processes, ports and localhost (*Programs, processes and ports*), and PATH (*Environment variables and PATH*). Check the "Before this lesson" box at the top if any of those are shaky.
+
+## It's just a shortcut
+
+In the last lesson you saw that `package.json` can have a `"scripts"` section. Here's a typical one:
+
+```json
+"scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "test": "vitest"
+}
+```
+
+It's a JSON object. Each name on the left is a short nickname, and the text on the right is the real command it stands for. These are **npm scripts**.
+
+When you type `npm run dev`, npm does exactly this:
+
+1. Opens the `package.json` in the current folder.
+2. Looks in `"scripts"` for the name `dev`.
+3. Runs the command it finds there: in this case, `vite`.
+
+That's it. The names are just conventions that most projects follow, not magic words. If a project's instructions (usually in a file called `README.md`) say `npm run dev` and you get this:
+
+```text
+npm error Missing script: "dev"
+```
+
+it means there's no script called `dev` in that package.json. Open package.json and look at which scripts really exist. Maybe it's called `start` or `serve`.
+
+npm does one extra helpful thing: when it runs a script, it lets the command use programs from the project's own `node_modules`. That's how `vite` runs even though you never installed Vite on its own. It's one of the project's devDependencies, sitting in node_modules.
+
+<details>
+<summary>Quick check: a README says `npm run serve`. Where would you look to see what that actually runs?</summary>
+
+In the project's package.json, in the `"scripts"` section, next to the name `serve`.
+</details>
+
+## The usual routine
+
+For almost any JavaScript project you download:
+
+```text
+npm install      ← once, to download the packages into node_modules
+npm run dev      ← every time you want to work on it
+```
+
+Remember from *Packages*: `node_modules` isn't shared along with the code, because it's huge and can be rebuilt. So when you download a project, you get its package.json and lockfile, but **no packages**. If you skip `npm install` and go straight to `npm run dev`, you'll get errors saying packages or commands can't be found.
+
+(If the project has a `package-lock.json`, `npm ci` is even better than `npm install`, because it installs exactly the locked versions.)
+
+## What a dev server does
+
+Most `dev` scripts start a **development server**, or **dev server**. It's a server program, like Groundwork's, running on your own computer, that serves the website you're working on at an address like:
+
+```text
+http://localhost:5173
+```
+
+You know how to read that now: `localhost` means this computer, and `5173` is the port the dev server is listening on. You open that address in your browser to see the site.
+
+While it runs, a dev server:
+
+- **Watches the project's files** for changes.
+- **Updates the browser the moment you save a change.** Edit some text, press save, and the page in your browser changes by itself a second later. This is called **hot reload**.
+- **Shows detailed error messages**, meant for developers, when something's wrong.
+
+A popular tool for this is **Vite** (said "veet", French for "quick"). When a package.json says `"dev": "vite"`, Vite is the dev server.
+
+### Why the terminal has to stay open
+
+A dev server is a process, like any other. It runs **inside the terminal window you started it from**. While it's running, that window is busy: it shows the server's messages, and you can't type new commands into it.
+
+- **Close that terminal**, and the process ends. The dev server stops, and the browser can't reach it any more.
+- **Ctrl+C** in that terminal stops it cleanly.
+- To type other commands while it runs, **open a second terminal window**. You'll do exactly that in the task.
+
+This is the same reason you keep the black Groundwork window open: it's Groundwork's server process.
+
+<details>
+<summary>Quick check: you start a dev server, then close the terminal window. What happens to the website at localhost:5173?</summary>
+
+It stops working. The dev server was a process running in that window, so closing the window ended it, and nothing is listening on port 5173 any more.
+</details>
+
+## Dev and build
+
+The dev server is for **working on** a website. It's not how a website is published for real visitors.
+
+To publish a website, you run a **build**: usually `npm run build`. A build takes all the project's source code and produces a folder of finished, optimized files, ready to be put on a real server. That folder is usually called `dist` (short for distribution) or `build`. No dev server is involved: the build runs, writes the files, and finishes.
+
+| | `npm run dev` | `npm run build` |
+| --- | --- | --- |
+| What it's for | Working on the code | Making files to publish |
+| What you get | A server running on localhost | A folder, often `dist`, of finished files |
+| When you change code | The browser updates by itself | You run the build again |
+| Error messages | Detailed, for developers | Hidden from visitors |
+| Does it keep running? | Yes, until you stop it | No, it finishes |
+
+Groundwork works the same way. On its first start, `start.bat` ran a build into a `dist` folder. Then it started a small server that hands those finished files to your browser.
+
+## Frontend and backend
+
+You'll often hear that a project has two halves:
+
+- The **frontend** is the part that runs **in the browser**: the pages, buttons and everything you see and click.
+- The **backend** is the part that runs **on a server**: it stores data, checks passwords, talks to other services, and answers the frontend's requests.
+
+Many projects have a dev server for each half, on different ports: for example, Vite serving the frontend on port 5173, and a backend server on port 3000. Groundwork is like this. When developers work on Groundwork itself, its `npm run dev` starts both.
+
+## Your own tiny server
+
+In the task, you'll write a server in one line of JavaScript. You're not expected to write code like this yet. But you can read it, piece by piece:
+
+```javascript
+require("http")
+  .createServer((req, res) => res.end("Hello from my own server"))
+  .listen(4399, "127.0.0.1", () => console.log("Listening on http://localhost:4399"))
+```
+
+| Piece | In plain words |
+| --- | --- |
+| `require("http")` | "Get Node's built-in tools for web servers." |
+| `.createServer(...)` | "Make a server." |
+| `(req, res) => res.end("Hello...")` | "For every request (`req`) that arrives, send back a response (`res`) saying Hello from my own server." |
+| `.listen(4399, "127.0.0.1", ...)` | "Start listening on port 4399, for this computer only." |
+| `() => console.log("Listening...")` | "Once it's listening, print a message." |
+
+You'll also use two new commands:
+
+- **`npm.cmd init -y`** creates a new, empty `package.json` in the current folder. `init` means start a new project, and `-y` means "yes to all the default answers".
+- **`npm.cmd pkg set scripts.dev="node server.js"`** adds a script called `dev` to package.json without you editing the file by hand.
+
+And to talk to your server from a second window:
+
+- **curl** is a program, included with Windows, that sends a request to a web address and shows (or saves) the response. It's like a browser with no window. In PowerShell, type `curl.exe`, because plain `curl` means something different there. You'll use curl much more in Stage 2.
+
+<ConsultantNote>
+"Can you get this project running?" is a common first task with a new client. You now know the checklist: the right Node version, install the packages (`npm ci` or `npm install`), check which scripts package.json has, set any environment variables the project needs (often from a `.env` file), then `npm run dev`. When it fails, the error usually points at one of those steps.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **npm script** | A named command in package.json's `"scripts"` section |
+| **`npm run <name>`** | Runs the script with that name |
+| **README** | A project's instructions file, usually `README.md` |
+| **Dev server** | A server on your own computer for working on a website |
+| **Hot reload** | The browser updating by itself when you save a change |
+| **Vite** | A popular dev server and build tool |
+| **Build** | Producing finished, optimized files ready to publish |
+| **`dist`** | The usual name of the folder a build writes to |
+| **Frontend** | The part of an app that runs in the browser |
+| **Backend** | The part of an app that runs on a server |
+| **`npm init -y`** | Creates a new package.json |
+| **curl** | Sends a request to a web address from the terminal |

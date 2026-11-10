@@ -3,44 +3,44 @@
 stages:
   - id: stage-1
     title: "Stage 1: Get working"
-    hours: 25
+    hours: 34
     color: "#0b5e73"
     milestone: Use AI to build a small page and put it on the public internet.
     topics:
       - id: learning-with-ai
         title: Learning with AI
-        hours: 2
+        hours: 3
         summary: Using it to learn without it doing the thinking.
       - id: how-computers-run-software
         title: How computers run software
-        hours: 7
-        summary: Files and paths, terminal (PowerShell and Bash), processes, ports, environment variables and PATH, .exe / .bat / .sh, compiled vs. interpreted, npm and pip, npm run dev, lockfiles, and installing Python by hand.
+        hours: 10
+        summary: Files and paths, terminal (PowerShell and Bash), programming languages and what runs them, processes, ports, environment variables and PATH, settings files (JSON, YAML, .env), npm and pip, npm run dev, lockfiles, and installing Python by hand.
       - id: git-and-github
         title: Git and GitHub
-        hours: 6
+        hours: 7
         summary: Commits, branches, merges, pull requests, conflicts, and recovering from mistakes.
       - id: reading-code
         title: Reading code with Python, then JavaScript
-        hours: 10
+        hours: 14
         summary: Variables, functions, data, errors and stack traces, debugging, and small scripts.
   - id: stage-2
     title: "Stage 2: How software connects"
-    hours: 25
+    hours: 27
     color: "#2e8b8f"
     note: Completes the fast lane
     milestone: Connect two services in a small app with live updates.
     topics:
       - id: networks-and-the-web
         title: Networks and the web
-        hours: 12
-        summary: IP addresses, ports, TCP/UDP, DNS and domains, HTTPS and certificates, HTTP, cookies, CORS, proxies, CDNs, firewalls, VPNs, and just enough IT.
+        hours: 13
+        summary: IP addresses, ports, TCP/UDP, DNS and domains, HTTPS and certificates, HTTP (including HTTP/2 and HTTP/3), cookies, CORS, proxies, load balancers, CDNs, firewalls, VPNs, and just enough IT.
       - id: software-talking
         title: Software talking to software
-        hours: 13
-        summary: REST APIs, JSON, status codes, API keys, OAuth, webhooks, polling, SSE, WebSockets, SignalR, GraphQL, gRPC, message queues, rate limits, and API docs.
+        hours: 14
+        summary: REST APIs, JSON, status codes, API keys, OAuth, webhooks, polling, SSE, WebSockets, SignalR, GraphQL, gRPC, message queues, pub/sub and event-driven design, API gateways, rate limits, API versioning, and API docs.
   - id: stage-3
     title: "Stage 3: Building and shipping"
-    hours: 45
+    hours: 59
     color: "#b57a1f"
     milestone: A full app with a database, automated tests, and automatic deployment.
     topics:
@@ -50,29 +50,41 @@ stages:
         summary: Frontend vs. backend, HTML/CSS/JS, frameworks, configuration, and testing.
       - id: databases
         title: Databases
-        hours: 10
-        summary: SQL, joins, indexes, transactions, migrations, backups, how SQLite, PostgreSQL, MySQL, SQL Server, NoSQL, and Redis differ, and how to choose.
+        hours: 13
+        summary: SQL, joins, indexes, reading query plans (EXPLAIN), N+1 queries, transactions, race conditions, optimistic and pessimistic locking, connection pooling, replicas, migrations and changing a schema without downtime, caching and cache invalidation, backups, how SQLite, PostgreSQL, MySQL, SQL Server, NoSQL, and Redis differ, and how to choose.
       - id: deployment
         title: Deployment
         hours: 14
-        summary: Environments, builds, containers (Docker), CI/CD with GitHub Actions, secrets, custom domains, rollbacks, monitoring, comparing Vercel, AWS, Azure, Oracle, and Google Cloud, and avoiding surprise bills.
+        summary: Environments, builds, containers (Docker), CI/CD with GitHub Actions, secrets, custom domains, rollbacks, basic monitoring (more in Seeing inside production), comparing Vercel, AWS, Azure, Oracle, and Google Cloud, and avoiding surprise bills.
+      - id: shipping-safely
+        title: Shipping safely
+        hours: 6
+        summary: Version numbers and semantic versioning, keeping dependencies up to date (dependency hell), feature flags, blue-green, canary, and rolling releases, infrastructure as code (Terraform as the example), cron jobs, serverless limits and cold starts, and autoscaling.
+      - id: seeing-production
+        title: Seeing inside production
+        hours: 5
+        summary: Logs, metrics, alerts, health checks, latency vs. throughput, P99 latency, distributed tracing basics, SLIs and SLOs, and what observability means.
       - id: building-with-ai
         title: Building with AI
         hours: 11
         summary: How models work, writing specs, coding agents, reviewing and testing AI code, using AI APIs, RAG, MCP, evaluations, cost, and privacy.
   - id: stage-4
     title: "Stage 4: Thinking like a consultant"
-    hours: 85
+    hours: 92
     color: "#7c4c92"
     topics:
       - id: architecture
         title: Architecture
         hours: 16
         summary: Monolith vs. microservices, layers, caching, queues, scaling, failure handling, trade-offs, diagrams, and decision records, plus design exercises.
+      - id: when-things-fail
+        title: When things fail
+        hours: 6
+        summary: Timeouts, retries with exponential backoff, idempotency, circuit breakers, dead letter queues, failover, backups and disaster recovery (RPO and RTO), handling a production incident, and blameless postmortems.
       - id: security
         title: Security
-        hours: 16
-        summary: Good habits, login and permissions, OWASP Top 10, secrets, risky packages, threat modeling, and hands-on attacks in legal practice labs. Also certifications and the legal rules for security work.
+        hours: 17
+        summary: Good habits, login and permissions (least privilege), JWTs and token expiry, OWASP Top 10, secrets, encryption at rest and in transit, WAF and DDoS protection, risky packages, threat modeling, and hands-on attacks in legal practice labs. Also certifications and the legal rules for security work.
       - id: consulting
         title: Consulting
         hours: 13
@@ -83,5 +95,5 @@ stages:
         summary: A full client-style audit and proposal, a security review, and a portfolio.
 optionalBranch:
   title: "Optional branch: Cybersecurity consultant"
-  hours: "100–150 hours, rough estimate, not in the 180"
+  hours: "100–150 hours, rough estimate, on top of the main path"
   summary: Unlocks after Stage 2 and the Stage 4 security section. Covers penetration testing methods, Linux, network and cloud security, reading logs for attacks, incident response, and writing security reports. It prepares for certification study, but real certifications and experience still come separately, and exams usually cost money.

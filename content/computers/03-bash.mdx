@@ -3,10 +3,16 @@ id: bash-basics
 title: "Bash: the language of servers"
 order: 3
 topic: how-computers-run-software
-minutes: 40
+minutes: 55
 summary: Most servers run Linux and are controlled with Bash. The commands you need to recognize, how they map to PowerShell, and the ways Bash can bite.
 connectivity: offline
-prerequisites: [the-terminal]
+prerequisites:
+  - id: the-terminal
+    need: essential
+    why: How commands, options and errors work, and what a shell is.
+revision: 2
+teaches: [server-computer, operating-system, linux, bash, bash-commands, linux-paths, case-sensitive, hidden-files, sudo, rm-no-undo, wildcard, shell-variable, log-file, config-file-intro, fail-stop, ssh]
+uses: [terminal, command, command-parts, shell, path, absolute-path, home-folder, script, comment, read-before-run]
 predict:
   id: p1
   type: mcq
@@ -152,44 +158,155 @@ docs:
 videos: []
 ---
 
-## Why Bash matters even on Windows
+## In this lesson
 
-Most of the servers that run websites and apps use **Linux**, and Linux is controlled through a shell called **Bash**. Macs use a very similar shell called zsh. So documentation, tutorials and AI answers are full of Bash commands, and sooner or later a client will ask you to look at a Linux server.
+- What a **server** and an **operating system** are, and why most servers run **Linux**.
+- The Bash commands you'll see most, side by side with the PowerShell ones you know.
+- How Linux is different from Windows, in ways that cause real bugs.
+- How to read a short Bash script, and the one question that catches its most dangerous mistakes.
 
-You don't need to master it now. You need to **recognize** the common commands and know where the dangers are.
+You don't need to master Bash now. The goal is to **recognize** the common commands and know where the dangers are.
+
+## Servers and operating systems
+
+Two words first, because the rest of the lesson depends on them.
+
+A **server** is a computer whose job is to provide something to other computers, usually all day and all night. When you open a website, your browser asks a server somewhere for the page, and the server sends it back. Servers are usually kept in big buildings called data centers, with no screen or keyboard attached. People control them remotely, by typing commands.
+
+An **operating system** is the main program that runs a computer: it starts when the computer turns on, manages files and memory, and lets other programs run. Windows is an operating system. So is macOS on Macs, Android on most phones, and **Linux**.
+
+**Linux** is a free operating system that runs most of the world's servers. It's popular because it's free, stable, and easy to control entirely by typing. Linux servers are controlled through a shell called **Bash**. Macs use a very similar shell called zsh.
+
+So documentation, tutorials and AI answers are full of Bash commands, and sooner or later a client will ask you to look at a Linux server.
+
+<details>
+<summary>Quick check: is Linux a program you run on Windows, or an operating system?</summary>
+
+An operating system, like Windows. It's what runs most servers. (There are ways to run Linux programs on Windows too, but Linux itself is an operating system.)
+</details>
 
 ## PowerShell and Bash side by side
 
+Bash commands are short, often just two or three letters. Here they are next to the PowerShell commands you already know:
+
 | Job | PowerShell | Bash |
 | --- | --- | --- |
-| Where am I? | `Get-Location` (`pwd`) | `pwd` |
-| List files | `Get-ChildItem` (`ls`) | `ls` (`ls -la` for details and hidden files) |
+| Where am I? | `Get-Location` (`pwd`) | `pwd` (print working directory) |
+| List files | `Get-ChildItem` (`ls`) | `ls`, or `ls -la` for details and hidden files |
 | Change folder | `cd folder` | `cd folder` |
-| Show a file | `Get-Content file` | `cat file` |
+| Show a file's contents | `Get-Content file` | `cat file` |
 | Make a folder | `mkdir name` | `mkdir name` |
-| Copy | `Copy-Item a b` | `cp a b` |
+| Copy | `Copy-Item a b` | `cp a b` (add `-r` for folders) |
 | Move or rename | `Move-Item a b` | `mv a b` |
-| Delete | `Remove-Item file` | `rm file` |
-| Watch a log live | `Get-Content log -Wait` | `tail -f log` |
+| Delete | `Remove-Item file` | `rm file` (add `-r` for folders) |
+| Print a message | `Write-Host "hi"` | `echo "hi"` |
+| Show the end of a file, and keep watching it | `Get-Content log -Wait` | `tail -f log` |
+
+Bash options work the same way you've seen. Several single-letter options can be squashed together, so `ls -la` means `ls -l -a`: `-l` for the long, detailed listing and `-a` for all files, including hidden ones.
 
 ## What's different on Linux
 
-- **Forward slashes**, and no drive letters. Everything starts from `/`, called the root. Your home folder is `~`.
-- **Case matters.** `Logo.png` and `logo.png` are different files.
-- **Hidden files** start with a dot, like `.env` or `.git`.
-- **Scripts** end in `.sh`, start with a line like `#!/bin/bash`, and must be marked as runnable with `chmod +x script.sh` before you run them with `./script.sh`.
-- **sudo** runs a command as the administrator, called root. It's sometimes necessary, and always worth a second look.
+### Paths
 
-<Callout kind="warn" title="No undo">
-`rm` deletes immediately. There's no Recycle Bin. `rm -rf` deletes a folder and everything in it without asking. Read any delete command twice, and be especially wary of `*`, which means "everything here".
+- Linux uses **forward slashes**, and has **no drive letters**. Everything starts from `/`, called the **root**. A path looks like `/var/www/shop`.
+- Your home folder is usually `/home/your-name`, and `~` is the shortcut for it, just like in PowerShell.
+
+### Case matters
+
+On Linux, `Logo.png` and `logo.png` are **two different files**. Windows treats them as the same file.
+
+This causes a classic bug. A website works perfectly on a developer's Windows laptop, where the code asks for `Logo.png` but the file is called `logo.png`. Windows doesn't care. Then it goes on a Linux server, and the image is suddenly "not found".
+
+### Hidden files
+
+Files whose names start with a dot, like `.env` or `.git`, are **hidden** on Linux. Plain `ls` doesn't show them. `ls -a` does. Many important settings files are hidden like this.
+
+### Scripts
+
+Bash scripts usually end in `.sh`. Their first line often looks like this:
+
+```bash
+#!/bin/bash
+```
+
+That line tells Linux "run this file with Bash". After that, Bash comments start with `#`, the same as in the PowerShell script you saw in *When AI is confidently wrong*.
+
+### sudo
+
+`sudo` in front of a command runs it as the all-powerful administrator account, called **root**. Some jobs need it, like installing software. But root can change or delete anything, so a mistake made with sudo can damage the whole server. Any command starting with `sudo` deserves a second look.
+
+## Deleting with no undo
+
+<Callout kind="warn" title="No Recycle Bin">
+`rm` deletes immediately. There's no Recycle Bin and no undo. `rm -rf folder` deletes a folder and everything in it: `-r` means "and everything inside" (recursive) and `-f` means "don't ask, just do it" (force). Read any delete command twice.
 </Callout>
+
+Be especially wary of `*`, called a **wildcard**. It means "everything here". `rm -rf *` deletes everything in the **current** folder. That's only safe if you're completely sure which folder that is.
+
+## Reading a Bash script
+
+In the task you'll read a short script that puts a new version of a website live. Two more pieces of Bash will help.
+
+**Variables.** A **variable** is a name that stores a value, so you can write the value once and use it many times. In Bash you set one with `NAME=value`, no spaces around the `=`, and use it by putting `$` in front:
+
+```bash
+APP_DIR=/var/www/shop
+echo "Deploying to $APP_DIR"     # prints: Deploying to /var/www/shop
+cd $APP_DIR/releases             # goes into /var/www/shop/releases
+```
+
+**What happens when a step fails.** This is the important part. By default, if a command in a Bash script fails, Bash prints an error and **carries straight on** with the next line. It doesn't stop.
+
+That's fine for harmless commands, and dangerous for scripts where later steps depend on earlier ones. Imagine a script that goes into a folder with `cd`, then deletes everything there. If the `cd` fails, the script is still in whatever folder it started in, and the delete happens **there**.
+
+Two common ways to make a script stop instead:
+
+```bash
+set -e                    # at the top: stop at the first command that fails
+cd "$APP_DIR" || exit 1   # after one risky step: "or else, stop"
+```
+
+`||` means "if the command on the left failed, run the one on the right". `exit 1` ends the script and reports failure.
+
+The question that catches most script bugs, in any language: **"what happens if this step fails?"**
+
+<details>
+<summary>Quick check: a script runs `cd /var/www/site`, then `rm -rf *`. The folder doesn't exist. What gets deleted?</summary>
+
+Everything in whatever folder the script was already in, because `cd` failed and the script carried on.
+</details>
+
+## Logs and settings files
+
+Two kinds of file you'll meet on every server:
+
+- A **log file** is a file where a program writes down what it's doing as it runs: each request, each warning, each error, usually with a time. When something breaks, the log is the first place to look. `tail -f app.log` shows the newest lines and keeps showing new ones as they arrive. Press **Ctrl+C** to stop watching.
+- A **config file** (configuration file) holds a program's settings, like which port to use or where its data is. They often end in `.yml`, `.json`, `.ini` or `.conf`. You'll learn to read these formats later in this module.
 
 ## Where you'll use Bash
 
-- **Logging in to a server** with `ssh user@server`, which gives you a Bash prompt on that machine.
-- **Git Bash**, which comes with Git for Windows, the Git and GitHub module's tool. It gives you Bash on your own laptop.
-- **Automated builds and deployments.** Services like GitHub Actions run Bash scripts to test and publish code.
+- **Logging in to a server.** `ssh user@server` connects you to another computer over the network and gives you a Bash prompt on it. Whatever you type then runs on the server, not your laptop.
+- **Git Bash.** It comes with Git, which you'll install in the Git module, and gives you Bash on your own Windows laptop.
+- **Automated jobs.** Services that build and publish code automatically mostly run Bash scripts.
 
 <ConsultantNote>
-When you audit a client's setup, deploy scripts are worth reading. Scripts that keep going after an error, delete with `*`, or run everything with sudo are common, and they're exactly the kind of risk a client won't know they have until something breaks.
+When you audit a client's setup, deploy scripts are worth reading. Scripts that keep going after an error, delete with `*`, or run everything with sudo are common. They're exactly the kind of risk a client won't know they have until something breaks.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Server** | A computer that provides something, like a website, to other computers, usually around the clock |
+| **Operating system** | The main program that runs a computer: Windows, macOS, Linux |
+| **Linux** | A free operating system that runs most servers |
+| **Bash** | The shell used on Linux. Mac's zsh is very similar. |
+| **Root (`/`)** | The top of the folder tree on Linux. Also the name of the administrator account. |
+| **Case-sensitive** | Treating capital and small letters as different. Linux file names are. |
+| **Hidden file** | On Linux, a file whose name starts with a dot |
+| **sudo** | Runs a command as the administrator. Powerful and risky. |
+| **Wildcard `*`** | Means "everything" in a command |
+| **Variable** | A name that stores a value. In Bash: `NAME=value`, used as `$NAME`. |
+| **Log file** | A file where a program writes down what it's doing |
+| **Config file** | A file holding a program's settings |
+| **ssh** | Connects to another computer's terminal over the network |

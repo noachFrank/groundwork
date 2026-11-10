@@ -3,10 +3,22 @@ id: http
 title: "HTTP: how browsers and servers talk"
 order: 4
 topic: networks-and-the-web
-minutes: 40
+minutes: 50
 summary: What requests and responses actually look like, what status codes mean, and how to read them.
 connectivity: offline
-prerequisites: [dns]
+prerequisites:
+  - id: dns
+    need: essential
+    why: Finding the address comes before sending the request.
+  - id: python-lists-loops
+    need: essential
+    why: The Python task picks an item out of a list by position.
+  - id: python-decisions
+    need: helpful
+    why: The Python task returns True or False from a comparison.
+revision: 2
+teaches: [http, http-method, url-path, http-header, status-code, response-body, status-families, content-type, stateless, cookie, str-split]
+uses: [http-intro, request-response, request-trip, browser, server-program, json, curl, network-tab, function, return-statement, list-index, type-conversion, comparison-operators, bool-type, run-and-check, tutor-not-ghostwriter]
 predict:
   id: p1
   type: mcq
@@ -33,7 +45,7 @@ tasks:
     instructions: |
       Reading code matters more here than writing it, so this comes with plenty of help. Code runs right here in the app, with nothing to install.
 
-      Finish the two functions. Three things you'll need: `"a b c".split()` gives the list `["a", "b", "c"]`. Putting `[1]` after a list picks its second item, because counting starts at 0. And `int("404")` turns text into the number `404`.
+      You'll use: `.split()` from this lesson, list positions (`[1]` is the second item), `int()` to turn text into a number, and a comparison that gives True or False.
 
       Stuck? Paste the task into an AI assistant and ask it to **explain** the idea, not hand over the answer. Then write it yourself.
     starter: |
@@ -141,40 +153,54 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- What an HTTP request and response actually look like. (They're just text.)
+- **Methods**: what a request wants to do.
+- **Status codes**: how it went, and which side to blame when it didn't.
+- **Headers**: the extra information that travels with every request and response.
+- Why HTTP has no memory, and how websites keep you logged in anyway.
+
 ## A very polite text conversation
 
-**HTTP** is the language browsers and servers use. Here's a real request. It really is just text:
+**HTTP** (HyperText Transfer Protocol) is the language browsers and servers speak. A **protocol** is just an agreed set of rules for a conversation. Here's a real HTTP request, exactly as it travels:
 
-```
+```text
 GET /orders/102 HTTP/1.1
 Host: localhost:4314
 Accept: application/json
 ```
 
-- `GET` is the **method**: what you want to do.
-- `/orders/102` is the **path**: what you want to do it to.
-- The lines after it are **headers**: extra information about the request.
+- `GET` is the **method**: what you want to do. GET means "please send me…".
+- `/orders/102` is the **path**: which thing you want. It's the part of a web address after the name and port.
+- `HTTP/1.1` is the version of the rules being used.
+- The lines after that are **headers**: extra information about the request, each one a name, a colon, and a value. `Host` says which site it's for. `Accept` says "I'd like JSON back, please".
 
 And the response:
 
-```
+```text
 HTTP/1.1 200 OK
 Content-Type: application/json
 
 { "id": 102, "customer": "Grace", "item": "Monitor" }
 ```
 
-- `200 OK` is the **status**: how it went.
-- Then come headers, a blank line, and the **body**: the actual content.
+- `200 OK` is the **status**: a number and a short phrase saying how it went.
+- Then come the response's headers. `Content-Type` says what kind of content follows: here, JSON.
+- Then a blank line, and the **body**: the actual content. For a web page, the body is HTML. For an API, it's usually JSON.
+
+That's really all HTTP is: text in a fixed layout. Every page you've ever loaded was a conversation like this.
 
 ## Methods: what do you want to do?
 
 | Method | Meaning | Example |
 | --- | --- | --- |
 | GET | Read something | See order 102 |
-| POST | Create something | Place a new order |
-| PUT | Replace or update | Change an order |
-| DELETE | Remove | Cancel an order |
+| POST | Create something, or send data | Place a new order |
+| PUT | Replace or update something | Change an order |
+| DELETE | Remove something | Cancel an order |
+
+Typing an address in your browser always sends a GET. Submitting a form usually sends a POST.
 
 ## Status codes: how did it go?
 
@@ -183,14 +209,53 @@ The first digit tells you who to look at:
 | Family | Meaning | Common examples |
 | --- | --- | --- |
 | **2xx** | It worked | `200 OK`, `201 Created` |
-| **3xx** | Go elsewhere | `301 Moved Permanently`, `302 Found` |
-| **4xx** | Your request has a problem | `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `429 Too Many Requests` |
-| **5xx** | The server has a problem | `500 Internal Server Error`, `502 Bad Gateway`, `503 Service Unavailable` |
+| **3xx** | Go somewhere else | `301 Moved Permanently`, `302 Found` |
+| **4xx** | **Your request** has a problem | `400 Bad Request`, `401 Unauthorized` (not logged in), `403 Forbidden` (logged in, but not allowed), `404 Not Found`, `429 Too Many Requests` |
+| **5xx** | **The server** has a problem | `500 Internal Server Error`, `502 Bad Gateway`, `503 Service Unavailable` |
 
-<Callout title="Stateless">
-HTTP has no memory: each request stands alone, and the server doesn't recall the last one. So how do websites keep you logged in? **Cookies**. The server gives your browser a small piece of text, and the browser sends it back with every request after that.
-</Callout>
+So a 4xx means look at what was sent: a wrong address, a missing login, bad data. A 5xx means look at the server: a crash, an overload, a broken connection to something behind it.
+
+<details>
+<summary>Quick check: a user gets 403 Forbidden on an admin page. Are they logged in?</summary>
+
+Yes, probably. 401 means "not logged in". 403 means "we know who you are, but you're not allowed in here".
+</details>
+
+## Splitting a status line in Python
+
+The Python task asks you to pull the number out of a status line like `"HTTP/1.1 404 Not Found"`. One new tool does most of the work: **`.split()`**, which breaks text into a list of words, wherever there are spaces:
+
+```python
+"HTTP/1.1 404 Not Found".split()
+# ["HTTP/1.1", "404", "Not", "Found"]
+#      0         1      2       3
+```
+
+From there it's what you already know: pick the item at position 1, and turn the text `"404"` into the number 404 with `int()`.
+
+## HTTP has no memory
+
+HTTP is **stateless**: each request stands completely alone, and the server doesn't remember the last one. So how do websites keep you logged in from one page to the next?
+
+**Cookies.** When you log in, the server's response includes a header asking the browser to store a small piece of text, a cookie, often a long random code that identifies your login. The browser then sends that cookie back, in a header, with every request to the same site. The server sees it and knows it's you.
+
+That's why logging out of one site, or clearing your cookies, logs you out: the browser stops sending the cookie.
 
 <ConsultantNote>
-A status code cuts through a confusing bug report fast. "The app is broken" could be a 401 (their login expired), a 404 (a wrong link), or a 503 (the server's down), and each one is a completely different problem. Opening the browser's Network tab (F12) and reading the status code is often step one of a diagnosis.
+A status code cuts through a confusing bug report fast. "The app is broken" could be a 401 (their login expired), a 404 (a wrong link), or a 503 (the server's down), and each is a completely different problem. Opening the browser's Network tab (F12) and reading the status code is often step one of a diagnosis.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **HTTP** | The protocol (agreed rules) browsers and servers use to talk |
+| **Method** | What a request wants to do: GET, POST, PUT, DELETE |
+| **Path** | Which thing a request is about, like `/orders/102` |
+| **Header** | Extra information on a request or response, as `Name: value` |
+| **Status code** | How it went: 2xx worked, 3xx elsewhere, 4xx your problem, 5xx theirs |
+| **Body** | The content of a request or response |
+| **Content-Type** | The header saying what kind of content the body is |
+| **Stateless** | Each request stands alone, with no memory of the last |
+| **Cookie** | Text the browser stores and sends back with each request, often to keep you logged in |
+| **`.split()`** | Breaks text into a list of words |

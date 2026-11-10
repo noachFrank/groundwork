@@ -3,10 +3,16 @@ id: when-ai-is-wrong
 title: When AI is confidently wrong
 order: 2
 topic: learning-with-ai
-minutes: 40
+minutes: 45
 summary: How AI gets things wrong without sounding unsure, the kinds of mistakes to watch for, and the habits that catch them before they cost you.
 connectivity: offline
-prerequisites: [ai-as-a-tutor]
+prerequisites:
+  - id: ai-as-a-tutor
+    need: essential
+    why: Introduces AI assistants and prompts.
+revision: 2
+teaches: [ai-hallucination, official-docs, script, comment, read-before-run, package-intro]
+uses: [ai-assistant, prompt, code]
 predict:
   id: p1
   type: mcq
@@ -144,36 +150,95 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- Why AI can be completely wrong while sounding completely sure.
+- The five kinds of mistakes AI makes most often.
+- Habits that catch those mistakes before they cost you anything.
+- Your first look at a **script**, a short program, and how to read one even before you know the language.
+
 ## Confident isn't the same as correct
 
-AI models write by predicting what text is most likely to come next. That makes them fluent, fast and usually helpful. It also means they produce **plausible** text, and a wrong answer can be every bit as plausible as a right one.
+AI assistants write by predicting what text is most likely to come next, one word at a time, based on everything they've read. That makes them fluent, fast and usually helpful.
 
-So AI doesn't sound unsure when it's wrong. It sounds exactly the same. You can't judge an answer by its tone.
+It also means they produce **plausible** text: text that sounds right. A wrong answer can be every bit as plausible as a right one. When an AI states something false as if it were fact, people call it a **hallucination**. It isn't lying on purpose. It simply doesn't have a reliable sense of what it does and doesn't know.
+
+So AI doesn't sound unsure when it's wrong. It sounds exactly the same as when it's right. **You can't judge an answer by its tone.**
+
+<details>
+<summary>Quick check: if you ask an AI "are you sure?", is that a good test?</summary>
+
+No. It will often just say yes, just as confidently. The check has to come from outside the AI, such as the official documentation.
+</details>
 
 ## The usual kinds of wrong
 
 | What happens | Example |
 | --- | --- |
-| **Invented details** | A setting, command option or function that doesn't exist |
+| **Invented details** | A setting, command or option that doesn't exist |
 | **Out of date** | Instructions for an old version of a tool that has changed since |
-| **Almost right** | Code that works for the example but breaks for real data |
-| **Silencing the warning** | A "fix" that makes an error go away by turning off the safety check |
-| **One small slip** | A typo in one name, inside a script that otherwise makes perfect sense |
+| **Almost right** | Something that works for the example but breaks on real data |
+| **Silencing the warning** | A "fix" that makes an error message go away by switching off the safety check that caused it |
+| **One small slip** | A typo in one name, inside an answer that otherwise makes perfect sense |
 
 The last one is the sneakiest, and you'll find one in the task below.
 
-## Habits that catch it
+## Reading a script before you know the language
 
-- **Check the official documentation.** Each Groundwork lesson links to it. If a setting or option isn't there, be suspicious.
-- **Test somewhere safe.** Use a practice folder, a copy of the data, or a test account, never the real thing first.
-- **Read before you run.** Especially anything that deletes, moves, installs or changes settings.
+The task in this lesson shows you a **script**. A script is a short program saved as a text file: a list of instructions the computer carries out in order, from the top line to the bottom. Scripts are usually written to automate a job, like tidying up files.
+
+You haven't learned any programming language yet, and that's fine. Scripts usually include **comments**: notes written for humans, which the computer ignores. In the language used in the task, a comment is any line starting with `#`:
+
+```powershell
+# Free up space by clearing your temp folder
+```
+
+The computer skips that line completely. It's there to tell you what the script is for.
+
+The other lines are instructions. You can already get a long way by reading each instruction's name. In this language, instruction names are often plain English:
+
+| Instruction | What it sounds like it does | What it actually does |
+| --- | --- | --- |
+| `Write-Host "..."` | Writes something to the host (the screen) | Prints a message. Changes nothing. |
+| `Get-ChildItem` | Gets the items inside a folder | Lists files. Changes nothing. |
+| `Measure-Object` | Measures things | Adds up numbers, like file sizes. Changes nothing. |
+| `Remove-Item` | Removes items | **Deletes files.** |
+
+When you're checking a script, the lines that **change** things, especially ones that delete, deserve the most attention. Lines that only look or print are low risk.
+
+### Names that stand for something
+
+Scripts often use a short name that stands for a longer value, so the script works on any computer. In the task, `$env:TEMP` stands for the location of your computer's temporary-files folder, wherever that happens to be. You'll learn exactly how this works in the *Environment variables and PATH* lesson. For now, just know that **if a name is spelled wrong, it stands for nothing at all**, and a script that uses it will go wrong in surprising ways.
+
+<details>
+<summary>Quick check: in the script language above, which matters more to check, a `Write-Host` line or a `Remove-Item` line?</summary>
+
+`Remove-Item`. It deletes things. `Write-Host` only prints a message.
+</details>
+
+## Habits that catch mistakes
+
+- **Check the official documentation.** **Documentation**, or "docs", is the instruction manual written by the people who made a tool. It's the source of truth. Each Groundwork lesson links to the official docs under "Check the claims". If an AI mentions a setting or command and it isn't in the docs, be suspicious.
+- **Test somewhere safe.** Try things on a practice folder, a copy of the data, or a test account, never the real thing first. Groundwork gives you a practice folder for exactly this reason.
+- **Read before you run.** Especially anything that deletes, moves, installs or changes settings. Read every line.
 - **Ask for the why.** "What does each line do?" often makes the AI catch its own mistake, and it always helps you learn.
-- **Be wary of unknown packages.** AI sometimes invents package names, and attackers publish harmful packages under exactly those names.
+- **Be wary of unknown packages.** A **package** is a bundle of code that someone has published so other people can reuse it. AI sometimes recommends packages with names it invented, and attackers publish harmful packages under exactly those names. You'll learn properly how packages work in a later lesson. For now: never install something just because an AI named it.
 
 <Callout title="Don't overcorrect">
-Most of the time, AI is right, and it's an excellent tool. The point isn't to distrust everything. It's to check in proportion to the risk: a quick look for a harmless print statement, a careful one for anything that touches real files, money or customers.
+Most of the time, AI is right, and it's an excellent tool. The point isn't to distrust everything. It's to check **in proportion to the risk**: a quick look for something harmless, like a message printed on screen, and a careful one for anything that touches real files, money or customers.
 </Callout>
 
 <ConsultantNote>
 When you give a client advice, your name is on it, not the AI's. "The AI said so" is never an acceptable explanation for a mistake. The habit of checking is part of what makes you worth hiring.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Hallucination** | When an AI states something false as if it were fact |
+| **Official documentation (docs)** | The manual written by the people who made a tool. The source of truth. |
+| **Script** | A short program saved as a text file, carried out from top to bottom |
+| **Comment** | A note in code for humans. The computer ignores it. In the task's language, it starts with `#`. |
+| **Read before you run** | Read every line of anything that changes or deletes things before running it |
+| **Package** | Code someone published so others can reuse it. Covered properly later. |

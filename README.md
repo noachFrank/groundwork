@@ -1,6 +1,6 @@
 # Groundwork
 
-A free personal learning app, running on one computer, that takes a near-complete beginner toward working as a software consultant. It covers about 180 hours in four stages.
+A free personal learning app, running on one computer, that takes a near-complete beginner toward working as a software consultant. It's organized in four stages.
 
 **New here and just want to use it?** Read [GETTING-STARTED.md](GETTING-STARTED.md). It's a short, non-technical setup guide. Everything below is for anyone who wants to understand how the app works or change it.
 
@@ -16,10 +16,13 @@ All of **Stage 1** is written, plus the first module of Stage 2.
 | All 9 exercise types: terminal mission, live lab, Python, JavaScript, SQL, find the flaw, architecture builder, explain it back, consultant case | Done |
 | All 7 visualizations: web request trip, DNS lookup, HTTPS handshake, CORS decision, polling vs. WebSockets, Git branches, SQL join | Done |
 | Study plan generator and test-out quiz | Done |
+| Prerequisites at the top of every lesson (needed or helpful, done or not, with links), never locking anything | Done |
+| Weekly feedback: "How clear was this?" after each lesson, notes at any time, and a feedback file the learner sends you | Done |
+| The beginner rule: every idea a lesson uses is taught first, checked automatically (see [content/STYLE.md](content/STYLE.md)) | Done |
 | **Stage 1, Learning with AI** (3 lessons): AI as a tutor, when AI is confidently wrong, asking good questions | Done |
-| **Stage 1, How computers run software** (9 lessons): files and paths, the terminal, Bash, processes and ports, environment variables and PATH, kinds of programs, packages and lockfiles, npm run dev, installing Python | Done |
+| **Stage 1, How computers run software** (10 lessons): files and paths, the terminal, Bash, code and the programs that run it, processes and ports, environment variables and PATH, settings files (JSON, YAML, .env), packages and lockfiles, npm run dev, installing Python | Done |
 | **Stage 1, Git and GitHub** (7 lessons): first commits, .gitignore and history, branches, conflicts, push/pull/pull requests, undoing mistakes, and the milestone: publishing a page with GitHub Pages | Done |
-| **Stage 1, Reading code** (12 lessons): Python values, decisions, loops, functions, data, tracebacks, debugging and scripts, then JavaScript basics, array methods, Node and async, and reading unfamiliar code | Done |
+| **Stage 1, Reading code** (13 lessons): Python values, first functions, decisions, loops, functions in depth, data, tracebacks, debugging and scripts, then JavaScript basics, array methods, Node and async, and reading unfamiliar code | Done |
 | **Stage 2, How a web request really works** (8 lessons: the request trip, IPs and ports, DNS, HTTP, HTTPS, APIs and JSON, CORS, live updates) | Done |
 | Every other topic in Stages 2–4 | Shown in the plan as "not written yet", delivered later through `update.bat` |
 
@@ -121,7 +124,19 @@ npm run check-content  # validates every lesson and runs every exercise's soluti
 npm run check-content -- --links   # also confirms videos and doc links still exist (needs internet)
 npm run e2e            # drives a real browser through every lesson (start the app first)
 npm run typecheck
+npm run feedback-report  # summarizes the feedback files in feedback/ (see below)
 ```
+
+### Getting feedback from a learner
+
+Learners' notes and "How clear was this?" answers stay on their own computer. Once a week, they download a feedback file from **Settings → Send feedback** and send it to you. Each file covers only what's new since their last send, with the dates it covers, and every item it includes is marked "Sent". A learner can mark an item as not sent to change it and send it again.
+
+1. Save the files you receive into `feedback/`. It's ignored by Git, because it holds private messages.
+2. Run `npm run feedback-report`. It prints the least clear lessons, the ideas most often ticked as unclear, and everything written, grouped by lesson. An item sent twice appears once, in its newest version.
+3. Fix or add lessons, following [content/STYLE.md](content/STYLE.md). Raise a lesson's `revision:` when you change it, so learners who finished it see "rewritten: worth a re-read".
+4. Commit and push. The learner runs `update.bat`.
+
+The name in "Send feedback to …" comes from `developerName` in `groundwork.config.json`.
 
 For an offline browser run, start the app with `GROUNDWORK_FORCE_OFFLINE=1`, then run `npm run e2e -- --offline`. The script blocks and reports any request to an outside address.
 

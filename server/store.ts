@@ -5,12 +5,17 @@ import { buildPlanItems, generateSchedule } from '../shared/plan.ts';
 import { gradeQuestion } from '../shared/questions.ts';
 import { firstSchedule, nextSchedule, reviveCard } from '../shared/scheduler.ts';
 import type {
+  ClarityFeedback,
   Content,
+  FeedbackFile,
+  FeedbackItem,
+  FeedbackStatus,
   Lesson,
   LessonProgress,
   LessonStatus,
   LessonSummary,
   PlanSettings,
+  PrerequisiteInfo,
   ReviewCard,
   ReviewRating,
   Schedule,
@@ -79,9 +84,32 @@ export class Store {
       comeBackLater: !!r?.come_back_later,
       startedAt: r?.started_at ?? null,
       completedAt: r?.completed_at ?? null,
+      rewritten: this.isRewritten(r, this.lesson(id)),
       seconds: secs.s,
       tasks: tasks.map((t) => ({ taskId: t.task_id, passed: !!t.passed, bestScore: t.best_score, attempts: t.attempts })),
     };
+  }
+
+  /** Finished an older version of a lesson that has since been rewritten. Lessons from before revisions existed count as revision 1. */
+  private isRewritten(row: any, lesson: Lesson | undefined): boolean {
+    if (!row || !lesson || (row.status !== 'completed' && row.status !== 'tested_out')) return false;
+    return (row.completed_revision ?? 1) < lesson.revision;
+  }
+
+  /** The learner has re-read a rewritten lesson, so stop flagging it. */
+  markReread(id: string): LessonProgress {
+    const lesson = this.lesson(id)!;
+    this.db.prepare('UPDATE lesson_progress SET completed_revision = ? WHERE lesson_id = ?').run(lesson.revision, id);
+    return this.progress(id);
+  }
+
+  /** Prerequisites with titles and the learner's status, for the panel at the top of a lesson. */
+  prerequisiteInfo(id: string): PrerequisiteInfo[] {
+    const statuses = this.statuses();
+    return (this.lesson(id)?.prerequisites ?? []).map((p) => {
+      const l = this.lesson(p.id);
+      return { ...p, title: l?.title ?? p.id, module: l?.module ?? '', status: statuses[p.id] ?? 'not_started' };
+    });
   }
 
   private start(id: string) {
@@ -145,6 +173,8 @@ export class Store {
       .run(percent, passed ? 1 : 0, id);
     this.logAttempt(id, 'recall', null, passed, percent, results);
     this.maybeComplete(id);
+    // Passing Recall again on a rewritten lesson counts as having re-read it.
+    if (passed && this.isRewritten(this.row(id), lesson)) this.markReread(id);
     return { percent, passed, results, progress: this.progress(id) };
   }
 
@@ -157,8 +187,8 @@ export class Store {
     const passedTasks = new Set(p.tasks.filter((t) => t.passed).map((t) => t.taskId));
     if (!lesson.tasks.filter((t) => t.required).every((t) => passedTasks.has(t.id))) return;
     this.db
-      .prepare(`UPDATE lesson_progress SET status = 'completed', step = 'review', completed_at = ?, come_back_later = 0 WHERE lesson_id = ?`)
-      .run(iso(this.now()), id);
+      .prepare(`UPDATE lesson_progress SET status = 'completed', step = 'review', completed_at = ?, come_back_later = 0, completed_revision = ? WHERE lesson_id = ?`)
+      .run(iso(this.now()), lesson.revision, id);
     // Struggling is what brings a topic back sooner: a failed recall, or repeated failed tasks.
     const struggled = p.recallAttempts > 1 || p.tasks.some((t) => t.attempts >= 4);
     this.createCards(lesson, struggled ? 'struggled' : 'normal');
@@ -209,7 +239,8 @@ export class Store {
       .run(id, body, iso(this.now()));
   }
   addProblem(id: string, message: string) {
-    this.db.prepare('INSERT INTO problems (lesson_id, message, created_at) VALUES (?, ?, ?)').run(id, message, iso(this.now()));
+    const now = iso(this.now());
+    this.db.prepare('INSERT INTO problems (lesson_id, message, created_at, updated_at) VALUES (?, ?, ?, ?)').run(id, message, now, now);
   }
   listProblems() {
     const rows = this.db.prepare('SELECT * FROM problems ORDER BY id DESC').all() as any[];
@@ -220,10 +251,200 @@ export class Store {
       message: r.message,
       resolved: !!r.resolved,
       createdAt: r.created_at,
+      sentAt: r.sent_at ?? null,
     }));
   }
   resolveProblem(id: number, resolved: boolean) {
     this.db.prepare('UPDATE problems SET resolved = ? WHERE id = ?').run(resolved ? 1 : 0, id);
+  }
+
+  // ---- Feedback for the developer -----------------------------------------
+  // Problem reports and "How clear was this?" answers. Each item remembers when it was
+  // sent, so a feedback file only ever holds what's new. Sent items are read-only until
+  // the learner marks them as not sent.
+
+  private unsentClarityRow(lessonId: string): any {
+    return this.db.prepare('SELECT * FROM lesson_feedback WHERE lesson_id = ? AND sent_at IS NULL ORDER BY id DESC LIMIT 1').get(lessonId);
+  }
+
+  private clarityFrom(r: any): ClarityFeedback {
+    return {
+      id: r.id,
+      lessonId: r.lesson_id,
+      clarity: r.clarity ?? null,
+      unclearConcepts: JSON.parse(r.unclear_concepts || '[]'),
+      assumed: r.assumed,
+      other: r.other,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      sentAt: r.sent_at ?? null,
+    };
+  }
+
+  /** The lesson's clarity answer: the unsent one if there is one, otherwise the newest sent one. */
+  getClarity(lessonId: string): ClarityFeedback | null {
+    const r = this.unsentClarityRow(lessonId) ?? this.db.prepare('SELECT * FROM lesson_feedback WHERE lesson_id = ? ORDER BY id DESC LIMIT 1').get(lessonId);
+    return r ? this.clarityFrom(r) : null;
+  }
+
+  /** Saves into the lesson's unsent answer, or starts a new one if the last one was already sent. */
+  saveClarity(lessonId: string, input: { clarity?: unknown; unclearConcepts?: unknown; assumed?: unknown; other?: unknown }): ClarityFeedback {
+    const clarity = Number(input.clarity);
+    const values = [
+      clarity >= 1 && clarity <= 5 ? Math.round(clarity) : null,
+      JSON.stringify(Array.isArray(input.unclearConcepts) ? input.unclearConcepts.map(String).slice(0, 100) : []),
+      String(input.assumed ?? '').slice(0, 5000),
+      String(input.other ?? '').slice(0, 5000),
+    ];
+    const now = iso(this.now());
+    const existing = this.unsentClarityRow(lessonId);
+    if (existing) {
+      this.db.prepare('UPDATE lesson_feedback SET clarity = ?, unclear_concepts = ?, assumed = ?, other = ?, updated_at = ? WHERE id = ?').run(...values, now, existing.id);
+    } else {
+      this.db
+        .prepare('INSERT INTO lesson_feedback (lesson_id, clarity, unclear_concepts, assumed, other, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .run(lessonId, ...values, now, now);
+    }
+    return this.getClarity(lessonId)!;
+  }
+
+  /** Everything the learner has written for the developer, newest first. */
+  listFeedback(): FeedbackItem[] {
+    const conceptNames = new Map(this.content.concepts.map((k) => [k.id, k.name]));
+    const problems = (this.db.prepare('SELECT * FROM problems').all() as any[]).map(
+      (r): FeedbackItem => ({
+        kind: 'problem',
+        id: r.id,
+        lessonId: r.lesson_id,
+        lessonTitle: this.lesson(r.lesson_id)?.title ?? r.lesson_id,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at ?? r.created_at,
+        sentAt: r.sent_at ?? null,
+        message: r.message,
+      }),
+    );
+    const clarity = (this.db.prepare('SELECT * FROM lesson_feedback').all() as any[]).map((r): FeedbackItem => {
+      const c = this.clarityFrom(r);
+      return {
+        kind: 'clarity',
+        id: c.id,
+        lessonId: c.lessonId,
+        lessonTitle: this.lesson(c.lessonId)?.title ?? c.lessonId,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+        sentAt: c.sentAt,
+        clarity: c.clarity,
+        unclearConcepts: c.unclearConcepts.map((id) => conceptNames.get(id) ?? id),
+        assumed: c.assumed,
+        other: c.other,
+      };
+    });
+    return [...problems, ...clarity].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id - a.id);
+  }
+
+  private feedbackTable(kind: string): 'problems' | 'lesson_feedback' | null {
+    return kind === 'problem' ? 'problems' : kind === 'clarity' ? 'lesson_feedback' : null;
+  }
+
+  /** Changes an item that hasn't been sent. Returns false if it doesn't exist or was already sent. */
+  editFeedback(kind: string, id: number, input: { message?: unknown; clarity?: unknown; unclearConcepts?: unknown; assumed?: unknown; other?: unknown }): boolean {
+    const table = this.feedbackTable(kind);
+    const row = table ? (this.db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id) as any) : undefined;
+    if (!row || row.sent_at) return false;
+    if (kind === 'problem') {
+      const text = String(input.message ?? '').trim();
+      if (!text) return false;
+      this.db.prepare('UPDATE problems SET message = ?, updated_at = ? WHERE id = ?').run(text.slice(0, 5000), iso(this.now()), id);
+    } else {
+      this.saveClarity(row.lesson_id, input);
+    }
+    return true;
+  }
+
+  /** Only unsent items can be deleted: once something has gone to the developer it stays in the record. */
+  deleteFeedback(kind: string, id: number): boolean {
+    const table = this.feedbackTable(kind);
+    if (!table) return false;
+    return Number(this.db.prepare(`DELETE FROM ${table} WHERE id = ? AND sent_at IS NULL`).run(id).changes) > 0;
+  }
+
+  /**
+   * Puts a sent item back in the queue, so it can be changed and goes out in the next file.
+   * A lesson has at most one unsent clarity answer, so unmarking an older one is refused
+   * while a newer unsent one exists (it would otherwise be silently edited instead).
+   */
+  unsendFeedback(kind: string, id: number): { ok: boolean; reason?: string } {
+    const table = this.feedbackTable(kind);
+    if (!table) return { ok: false, reason: 'Unknown kind of feedback.' };
+    if (kind === 'clarity') {
+      const row = this.db.prepare('SELECT lesson_id, sent_at FROM lesson_feedback WHERE id = ?').get(id) as any;
+      if (row?.sent_at && this.unsentClarityRow(row.lesson_id)) {
+        return { ok: false, reason: 'You already have a newer, unsent answer for this lesson. Edit that one instead.' };
+      }
+    }
+    const changed = Number(this.db.prepare(`UPDATE ${table} SET sent_at = NULL WHERE id = ? AND sent_at IS NOT NULL`).run(id).changes) > 0;
+    return changed ? { ok: true } : { ok: false, reason: 'That item was not marked as sent.' };
+  }
+
+  lastFeedbackSent(): string | null {
+    const r = this.db
+      .prepare('SELECT MAX(sent_at) AS s FROM (SELECT sent_at FROM problems UNION ALL SELECT sent_at FROM lesson_feedback)')
+      .get() as { s: string | null };
+    return r.s ?? null;
+  }
+
+  /** For Today: how much is waiting, and whether it's been a week since the last send. */
+  feedbackStatus(): FeedbackStatus {
+    const unsent = this.listFeedback().filter((f) => !f.sentAt);
+    const lastSent = this.lastFeedbackSent();
+    const oldestUnsent = unsent.reduce<string | null>((min, f) => (!min || f.createdAt < min ? f.createdAt : min), null);
+    const since = lastSent ?? oldestUnsent;
+    const weekAgo = iso(new Date(this.now().getTime() - 7 * 86_400_000));
+    return { unsent: unsent.length, lastSent, due: unsent.length > 0 && !!since && since <= weekAgo };
+  }
+
+  /**
+   * Builds the file for the developer from every unsent item, then marks those items sent,
+   * in one transaction, so nothing is sent twice or lost. Returns null when there's nothing new.
+   */
+  exportFeedback(learner: string): FeedbackFile | null {
+    const items = this.listFeedback()
+      .filter((f) => !f.sentAt)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    if (items.length === 0) return null;
+    const now = iso(this.now());
+    const dates = items.flatMap((i) => [i.createdAt, i.updatedAt]).sort();
+    const statuses = this.statuses();
+    const failures = this.db
+      .prepare(`SELECT lesson_id, kind, COUNT(*) AS n FROM attempts WHERE passed = 0 GROUP BY lesson_id, kind`)
+      .all() as { lesson_id: string; kind: string; n: number }[];
+    const stepFailures: Record<string, Record<string, number>> = {};
+    for (const f of failures) (stepFailures[f.lesson_id] ??= {})[f.kind] = f.n;
+    const file: FeedbackFile = {
+      app: 'groundwork-feedback',
+      version: 1,
+      learner,
+      exportedAt: now,
+      period: { from: localDay(new Date(dates[0])), to: localDay(new Date(dates[dates.length - 1])) },
+      previousSend: this.lastFeedbackSent(),
+      items: items.map(({ sentAt: _sent, ...i }) => ({ ...i, key: `${i.kind}-${i.id}` })),
+      context: {
+        lessonsCompleted: this.content.lessons.filter((l) => statuses[l.id] === 'completed' || statuses[l.id] === 'tested_out').map((l) => l.id),
+        lessonsInProgress: this.content.lessons.filter((l) => statuses[l.id] === 'in_progress').map((l) => l.id),
+        stepFailures,
+      },
+    };
+    const ids = (kind: string) => items.filter((i) => i.kind === kind).map((i) => i.id);
+    this.db.exec('BEGIN');
+    try {
+      for (const id of ids('problem')) this.db.prepare('UPDATE problems SET sent_at = ? WHERE id = ?').run(now, id);
+      for (const id of ids('clarity')) this.db.prepare('UPDATE lesson_feedback SET sent_at = ? WHERE id = ?').run(now, id);
+      this.db.exec('COMMIT');
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
+    return file;
   }
 
   // ---- Reviews ------------------------------------------------------------
@@ -298,8 +519,8 @@ export class Store {
       if (passed) {
         this.ensureRow(id);
         this.db
-          .prepare(`UPDATE lesson_progress SET status = 'tested_out', step = 'review', completed_at = ?, started_at = COALESCE(started_at, ?), come_back_later = 0 WHERE lesson_id = ?`)
-          .run(iso(this.now()), iso(this.now()), id);
+          .prepare(`UPDATE lesson_progress SET status = 'tested_out', step = 'review', completed_at = ?, started_at = COALESCE(started_at, ?), come_back_later = 0, completed_revision = ? WHERE lesson_id = ?`)
+          .run(iso(this.now()), iso(this.now()), lesson.revision, id);
         this.createCards(lesson, 'tested_out');
       }
       return { lessonId: id, title: lesson.title, correct, total: lesson.testOut.length, passed };
@@ -357,7 +578,7 @@ export class Store {
   // ---- Summaries ----------------------------------------------------------
   summaries(): LessonSummary[] {
     const statuses = this.statuses();
-    const rows = this.db.prepare('SELECT lesson_id, need_review, come_back_later FROM lesson_progress').all() as any[];
+    const rows = this.db.prepare('SELECT lesson_id, status, need_review, come_back_later, completed_revision FROM lesson_progress').all() as any[];
     const flags = new Map(rows.map((r) => [r.lesson_id, r]));
     return this.content.lessons.map((l) => ({
       id: l.id,
@@ -370,6 +591,7 @@ export class Store {
       prerequisites: l.prerequisites,
       status: statuses[l.id] ?? 'not_started',
       locked: isLocked(l, statuses),
+      rewritten: this.isRewritten(flags.get(l.id), l),
       needReview: !!flags.get(l.id)?.need_review,
       comeBackLater: !!flags.get(l.id)?.come_back_later,
     }));
@@ -389,6 +611,8 @@ export class Store {
       nextIsFallback: fallback,
       comeBackLater: summaries.filter((s) => s.comeBackLater && s.status !== 'completed' && s.status !== 'tested_out'),
       needReview: summaries.filter((s) => s.needReview),
+      rewritten: summaries.filter((s) => s.rewritten),
+      feedback: this.feedbackStatus(),
       week: schedule?.thisWeek ?? null,
       behindHours: schedule?.behindHours ?? 0,
       finishDate: schedule?.finishDate ?? null,

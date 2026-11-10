@@ -1,12 +1,21 @@
 ---
 id: python-decisions
 title: "Python: making decisions with if"
-order: 2
+order: 3
 topic: reading-code
-minutes: 50
+minutes: 65
 summary: Comparisons, if, elif and else, and why indentation matters in Python. Plus the boundary bugs that catch everyone.
 connectivity: offline
-prerequisites: [python-first-steps]
+prerequisites:
+  - id: python-first-functions
+    need: essential
+    why: The exercise is a function with two parameters that returns an answer.
+  - id: python-first-steps
+    need: essential
+    why: Values, variables and the bool type (True and False).
+revision: 2
+teaches: [comparison-operators, equals-vs-assign, if-statement, elif-else, return-in-branch, and-or-not, boundary-bug, boundary-testing]
+uses: [function, def-keyword, parameter, argument, function-call, return-statement, indented-block, bool-type, variable, assignment, int-float, str-type, print-fn, f-string, run-and-check, pass-placeholder]
 predict:
   id: p1
   type: mcq
@@ -23,9 +32,11 @@ tasks:
     type: python
     title: Work out the shipping cost
     instructions: |
-      This code is wrapped in a **function**, so the checks can try it with lots of different orders. You'll learn functions properly in a later lesson. For now, write your code inside it, indented, and use `return` to give back the answer.
+      You'll use: `if`, `elif`, `else` and `>=` from this lesson, inside a function with two parameters, using `return` (from *Python: your first functions*). The checks will call your function with lots of different orders.
 
       The rules: international orders always cost **15**. Domestic orders of **50 or more** ship free (**0**). Other domestic orders cost **5**.
+
+      `is_international` will be `True` or `False`. Remember that `if is_international:` is enough to check it.
     starter: |
       def shipping_cost(order_total, is_international):
           # Your if / elif / else goes here.
@@ -157,9 +168,72 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- How to **compare** values, and get True or False back.
+- How to make a program **choose** what to do with `if`, `elif` and `else`.
+- How to combine conditions with `and`, `or` and `not`.
+- **Boundary bugs**: the `>` versus `>=` mistake that catches everyone, and how testers find them.
+
+You'll write the decisions inside functions, like the ones from the last lesson.
+
 ## Programs that choose
 
-Most useful programs make decisions: free shipping or not, logged in or not, in stock or not. In Python, that's `if`:
+So far, every line of your code has run, top to bottom, every time. Most useful programs need to **make decisions**: free shipping or not, logged in or not, in stock or not. Different situations need different lines of code to run.
+
+That's what `if` is for. But first, the program needs a way to ask yes-or-no questions.
+
+## Comparisons: asking yes-or-no questions
+
+A **comparison** checks two values against each other and gives back a bool: `True` or `False`.
+
+| Operator | Means | Example | Result |
+| --- | --- | --- | --- |
+| `==` | is equal to | `5 == 5` | `True` |
+| `!=` | is not equal to | `5 != 3` | `True` |
+| `<` | less than | `3 < 5` | `True` |
+| `>` | more than | `3 > 5` | `False` |
+| `<=` | less than or equal to | `5 <= 5` | `True` |
+| `>=` | more than or equal to | `4 >= 5` | `False` |
+
+Comparisons work on text too: `"Ada" == "Ada"` is `True`, and `"ada" == "Ada"` is `False`, because capitals count.
+
+<Callout kind="warn" title="= and ==">
+One `=` **stores** a value: `x = 5` puts 5 into x. Two `==` **ask** a question: `x == 5` checks whether x is 5, and gives True or False. Mixing them up is one of the classic mistakes. You'll see a nastier version of it in JavaScript later.
+</Callout>
+
+<details>
+<summary>Quick check: what does `10 >= 10` give?</summary>
+
+`True`. "More than **or equal to**", and 10 is equal to 10.
+</details>
+
+## if: run some lines only when something's true
+
+```python
+if order_total >= 50:
+    shipping = 0
+```
+
+Read it as: "**If** the order total is 50 or more, **then** set shipping to 0."
+
+- `if` is followed by a condition, something that's True or False, then a colon `:`.
+- The indented lines below it only run when the condition is `True`. When it's `False`, Python skips them.
+
+That's the same indentation rule you learned with functions: the indented lines **belong to** the line above. An `if` inside a function is indented once more:
+
+```python
+def shipping_cost(order_total):
+    if order_total >= 50:       # inside the function
+        return 0                # inside the if, inside the function
+    return 5                    # inside the function, after the if
+```
+
+Follow it through for an order of 80: the condition is True, so it returns 0, and the function ends right there. (Remember: `return` ends the function immediately.) For an order of 20: the condition is False, so Python skips the indented `return 0`, carries on, and reaches `return 5`.
+
+## elif and else: more than one path
+
+Often there are several possibilities:
 
 ```python
 if order_total >= 50:
@@ -170,46 +244,61 @@ else:
     shipping = 5
 ```
 
-Python checks each condition **from the top** and runs the block under the **first** one that's true. If none are, it runs `else`. Only one block ever runs.
+- `elif` means "else, if…": checked only if everything above it was False.
+- `else` catches everything that's left. It has no condition.
 
-## Indentation is part of the code
+Python checks the conditions **from the top** and runs the block under the **first one that's True**. Then it skips the rest. **Only one block ever runs.**
 
-The indented lines belong to the `if` above them. Python uses this indentation, usually 4 spaces, instead of brackets. Get it wrong and the program either crashes with an `IndentationError` or, worse, quietly runs lines at the wrong time.
+Follow it for 30: is 30 >= 50? No. Is 30 >= 20? Yes, so shipping = 2.5, and the `else` is skipped.
 
-## Comparisons
+Order matters. If the 20 check came first, an order of 80 would match it first and never reach the 50 check.
 
-| Operator | Means |
-| --- | --- |
-| `==` | is equal to |
-| `!=` | is not equal to |
-| `<`, `>` | less than, more than |
-| `<=`, `>=` | less than or equal to, more than or equal to |
+<details>
+<summary>Quick check: in the example above, what's shipping for an order of 10?</summary>
 
-<Callout kind="warn" title="= and ==">
-`=` **stores** a value. `==` **asks** whether two values are equal. Mixing them up is one of the classic mistakes, and you'll see a nasty version of it in JavaScript later.
-</Callout>
+`5`. Neither condition is True, so the `else` runs.
+</details>
 
 ## Combining conditions
 
-- `and`: **both** must be true.
-- `or`: **at least one** must be true.
-- `not`: flips it.
+- `and`: **both** must be True.
+- `or`: **at least one** must be True.
+- `not`: flips True to False, and False to True.
 
 ```python
 if password_ok and not account_locked:
-    allow_login()
+    print("Welcome")
 ```
+
+"If the password is right, and the account is **not** locked."
+
+A bool variable can be a condition all by itself: `if is_international:` means the same as `if is_international == True:`, and reads better.
+
+When you read a combined condition, try it with each combination of True and False. That's how the bug in this lesson's second task shows itself.
 
 ## Test the edges
 
-When you read or test a condition, try:
+When you read or test a condition, try three kinds of value:
 
-- A value clearly inside the range, like 20.
-- A value clearly outside it, like 100.
+- One clearly inside the range, like 80.
+- One clearly outside it, like 20.
 - **Exactly the boundary**, like 50, and just either side of it, like 49.99.
 
-The boundary is where `>` versus `>=` bugs hide. Testers call this **boundary testing**.
+The boundary is where `>` versus `>=` bugs hide. "Free shipping on orders of **50 or more**" needs `>=`. With `>`, an order of exactly 50 gets charged, and only a test at exactly 50 catches it. Testers call this **boundary testing**, and these mistakes **boundary bugs**.
 
 <ConsultantNote>
-Business rules, like "free shipping over 50", "discount for members", or "managers can approve refunds", end up as `if` statements. When a client says "the system is charging people wrongly", the bug is very often one condition with the wrong operator or a missing case.
+Business rules, like "free shipping over 50", "discount for members", or "managers can approve refunds", end up as `if` statements. When a client says "the system is charging people wrongly", the bug is very often one condition with the wrong operator, or a missing case.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Comparison** | Checking two values, giving True or False: `==`, `!=`, `<`, `>`, `<=`, `>=` |
+| **`==` vs `=`** | `==` asks "is it equal?". `=` stores a value. |
+| **Condition** | Anything that's True or False, used after `if` |
+| **`if`** | Runs its indented lines only when the condition is True |
+| **`elif` / `else`** | Further checks, and a catch-all, after an `if`. Only one block runs. |
+| **`and` / `or` / `not`** | Both / at least one / the opposite |
+| **Boundary bug** | A mistake at the exact edge of a range, like `>` instead of `>=` |
+| **Boundary testing** | Testing exactly at the edge, and just either side |

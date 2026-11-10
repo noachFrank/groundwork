@@ -1,0 +1,384 @@
+---
+id: config-files
+title: "Settings files: JSON, YAML and .env"
+order: 7
+topic: how-computers-run-software
+minutes: 60
+summary: Programs keep their settings in plain text files with strict rules. Learn to read and write JSON, the most common format of all, plus YAML and .env files, and how to spot the one-character mistakes that break them.
+connectivity: offline
+prerequisites:
+  - id: env-and-path
+    need: essential
+    why: Introduces .env files, which this lesson compares with JSON and YAML.
+  - id: bash-basics
+    need: helpful
+    why: First mentions config files and variables.
+revision: 1
+teaches: [text-format, json, json-object, json-array, json-values, json-rules, nesting, yaml, convertfrom-json, ps-variable, dot-access]
+uses: [config-file-intro, dotenv-file, environment-variable, file, file-extension, terminal, powershell, command, pipe, redirect, error-message, shell-variable, practice-folder, javascript-lang, python-lang]
+predict:
+  id: p1
+  type: mcq
+  prompt: 'A settings file has this line: `"port": 3000,`. What is it most likely saying?'
+  options:
+    - That the file is 3000 lines long
+    - That a setting called "port" has the value 3000
+    - That the program has crashed 3000 times
+    - Nothing. It's a comment
+  answer: 1
+  why: Most settings files are lists of names and values. Here the name is "port" and the value is 3000. That's JSON, the format you'll learn in this lesson.
+tasks:
+  - id: read-json
+    type: terminal
+    title: Write a settings file, read it, change it
+    instructions: |
+      You'll write a small JSON file describing a shop, have PowerShell read it into something it understands, pull out single values, change one, and save it again. Then you'll break a file on purpose and read the error.
+    steps:
+      - text: Open PowerShell, go to your practice folder, and make a folder for this lesson.
+        command: cd $HOME\Groundwork-Practice; mkdir json-lesson; cd json-lesson
+      - text: "Write a JSON file. It's all on one line here to make copying easy. JSON doesn't care about line breaks."
+        command: "Set-Content shop.json '{ \"name\": \"Corner Shop\", \"open\": true, \"port\": 3000, \"products\": [\"bread\", \"milk\", \"eggs\"], \"owner\": { \"name\": \"Dina\", \"email\": \"dina@example.com\" } }'"
+      - text: "Read it back. It's just text so far."
+        command: Get-Content shop.json
+      - text: "Now have PowerShell **understand** it. `ConvertFrom-Json` reads JSON text and turns it into something PowerShell can work with. `$shop = ...` stores the result in a variable called `$shop`. (`-Raw` reads the whole file as one piece of text.)"
+        command: $shop = Get-Content shop.json -Raw | ConvertFrom-Json
+      - text: "Show it. PowerShell lays it out as names and values."
+        command: $shop
+      - text: "Reach inside with dots. `$shop.owner` is the owner object, and `.email` is the email inside it. Save it to a file."
+        command: $shop.owner.email > owner-email.txt; Get-Content owner-email.txt
+      - text: "Lists are counted from 0, so `[0]` is the first product."
+        command: $shop.products[0]
+      - text: "Change the port, then turn it back into JSON text and save it as a new file. Open it to see PowerShell's neatly laid-out version."
+        command: $shop.port = 8080; $shop | ConvertTo-Json | Out-File shop-updated.json; Get-Content shop-updated.json
+      - text: "Now break one on purpose: there's a comma after the last value. Read the red error, and find the word that tells you it's the JSON that's wrong."
+        command: "Set-Content broken.json '{ \"name\": \"Corner Shop\", }'; Get-Content broken.json -Raw | ConvertFrom-Json"
+    checks:
+      - path: json-lesson/shop.json
+        contains: Corner Shop
+        hint: This is created by the `Set-Content shop.json ...` step. Use the Copy button so all the quotes come through.
+      - path: json-lesson/owner-email.txt
+        contains: dina@example.com
+        hint: Run the `$shop = Get-Content shop.json -Raw | ConvertFrom-Json` step first, then `$shop.owner.email > owner-email.txt`, in the same window.
+      - path: json-lesson/shop-updated.json
+        contains: "8080"
+        hint: Run the `$shop.port = 8080; ...` step in the same window where you made `$shop`.
+  - id: broken-config
+    type: flaw
+    title: The settings file that stopped the shop
+    language: json
+    instructions: |
+      A shop's website won't start. The error says: `Unexpected token ] in JSON at position 118`. Someone edited this settings file by hand this morning. Which line breaks the rules of JSON?
+    code: |
+      {
+        "name": "corner-shop",
+        "port": 3000,
+        "debug": false,
+        "owner": "Dina",
+        "products": ["bread", "milk", "eggs",],
+        "currency": "EUR"
+      }
+    flawLines: [6]
+    lineNotes:
+      "1": An opening curly brace starts a JSON object. That's correct.
+      "2": A name in double quotes, a colon, a text value in double quotes, and a comma because more follows. All correct.
+      "3": Numbers don't need quotes. Correct.
+      "4": true and false are written without quotes. Correct.
+      "5": Correct, and the comma is right because more follows.
+      "7": The last item in the object has no comma after it. That's correct.
+      "8": The closing brace ends the object. Correct.
+    explanation: |
+      Line 6 has a comma after `"eggs"`, the last item in the list, just before `]`. JSON doesn't allow a comma after the last item. That's called a **trailing comma**, and it's one of the most common ways hand-edited JSON breaks.
+
+      The error message helped: "Unexpected token ]" means the reader expected another value after that comma, but found `]` instead.
+
+      JavaScript code allows trailing commas, which is why people type them out of habit. JSON doesn't. When a settings file suddenly breaks after an edit, look for trailing commas, missing commas, and single quotes first.
+recall:
+  - id: r1
+    type: mcq
+    prompt: In JSON, what do curly braces `{ }` hold?
+    options:
+      - A list of values in order
+      - An object, a set of named values
+      - A comment
+      - A number
+    answer: 1
+    why: 'Curly braces hold an object: names and values, like `{"name": "Dina", "age": 34}`. Square brackets hold a list.'
+  - id: r2
+    type: mcq
+    prompt: Which of these is valid JSON?
+    options:
+      - "{'name': 'Dina'}"
+      - '{"name": "Dina"}'
+      - '{name: "Dina"}'
+      - '{"name": "Dina",}'
+    answer: 1
+    why: JSON needs double quotes around both names and text values, and no comma after the last item.
+  - id: r3
+    type: short
+    prompt: In a JSON list `["bread", "milk", "eggs"]`, what number is the position of "bread"?
+    accept: ['^\s*0\s*$', 'zero']
+    answerText: "0"
+  - id: r4
+    type: mcq
+    prompt: How does YAML show that one setting belongs inside another?
+    options:
+      - With curly braces
+      - With indentation, spaces at the start of the line
+      - With semicolons
+      - It can't
+    answer: 1
+    why: YAML uses indentation instead of braces, which makes it easy to read but means the number of spaces really matters.
+cards:
+  - id: json
+    front: What is JSON?
+    back: A plain-text format for data and settings, made of objects `{ }` with named values and lists `[ ]`. Used almost everywhere, including package.json.
+  - id: json-values
+    front: What kinds of values can JSON hold?
+    back: 'Text in double quotes ("Dina"), numbers (3000), true or false, null (nothing), lists [ ], and objects { }.'
+  - id: json-rules
+    front: What are the JSON rules that break most often?
+    back: Double quotes only, commas between items, and no comma after the last item (no trailing comma). No comments allowed.
+  - id: yaml
+    front: What is YAML?
+    back: 'A settings format that uses indentation instead of braces, and `name: value` lines. Files end in .yml or .yaml. Spaces matter.'
+  - id: three-formats
+    front: JSON, YAML or .env? How do you tell them apart?
+    back: 'JSON has braces and double quotes. YAML has `name: value` lines and indentation. .env has `NAME=value` lines.'
+testOut:
+  - id: t1
+    type: mcq
+    prompt: 'In `{"owner": {"name": "Dina"}}`, how would PowerShell reach "Dina" after ConvertFrom-Json, if the result is in $shop?'
+    options: ['$shop.name', '$shop.owner.name', '$shop[owner][name]', '$shop.Dina']
+    answer: 1
+    why: Dots step inside. `.owner` is the inner object, and `.name` is inside that.
+  - id: t2
+    type: mcq
+    prompt: A JSON file worked yesterday. Today, after someone edited it, the program says "Unexpected token". What's the first thing to check?
+    options:
+      - The internet connection
+      - Commas and quotes near what they changed, especially a comma after the last item
+      - The computer's memory
+      - Whether the file is too big
+    answer: 1
+    why: Small punctuation mistakes are by far the most common cause.
+docs:
+  - title: "JSON.org: Introducing JSON"
+    url: https://www.json.org/json-en.html
+  - title: "MDN: Working with JSON"
+    url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/JSON
+  - title: "Microsoft: ConvertFrom-Json"
+    url: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/convertfrom-json
+videos: []
+---
+
+## In this lesson
+
+- Why programs keep their settings in plain text files.
+- **JSON**: the most common format for settings and data on the planet. How to read it, write it, and spot what breaks it.
+- **YAML** and **.env**: two other formats you'll meet, and how to tell all three apart.
+- How to have PowerShell read a JSON file and pull out single values.
+
+This lesson matters for everything that follows. The next lesson is about `package.json`, a JSON file found in nearly every JavaScript project, and Stage 2 shows how websites send each other JSON constantly.
+
+## Settings live in text files
+
+In the Bash lesson you met **config files**: files that hold a program's settings, like which port to listen on or what the shop is called.
+
+Most config files are **plain text**. You can open them in Notepad and read them. But a program can't read loose sentences like "the port should be 3000, please". It needs the settings written in a **format**: a strict set of rules for how the text is laid out, so a program can read it reliably.
+
+There are several common formats. Each has its own rules, and the most common mistake is breaking a rule by one character.
+
+## JSON
+
+**JSON** (said "jay-son", short for JavaScript Object Notation) is the most widely used format of all. It started in JavaScript, but now almost every language reads and writes it.
+
+Here's a JSON file describing a shop:
+
+```json
+{
+  "name": "Corner Shop",
+  "open": true,
+  "port": 3000,
+  "products": ["bread", "milk", "eggs"],
+  "owner": {
+    "name": "Dina",
+    "email": "dina@example.com"
+  }
+}
+```
+
+Let's take it apart.
+
+### Objects: named values in curly braces
+
+The whole thing is wrapped in curly braces `{ }`. In JSON, curly braces hold an **object**: a collection of **named values**. Each one is written as:
+
+```text
+"name": value
+```
+
+- The **name** (also called a **key**) is always in double quotes.
+- Then a colon `:`.
+- Then the **value**.
+- Then a comma, if another named value follows.
+
+So `"port": 3000` means "the setting called port has the value 3000".
+
+### The kinds of values
+
+| Kind | Looks like | Notes |
+| --- | --- | --- |
+| Text (a **string**) | `"Corner Shop"` | Always in **double** quotes |
+| Number | `3000`, `4.99`, `-2` | No quotes |
+| True or false | `true`, `false` | No quotes, all lower case |
+| Nothing | `null` | Means "no value" |
+| List (an **array**) | `["bread", "milk"]` | Square brackets, items separated by commas |
+| Object | `{ "name": "Dina" }` | Curly braces, named values |
+
+### Lists: values in order, in square brackets
+
+`"products": ["bread", "milk", "eggs"]` is a **list**, called an **array** in JSON. Square brackets `[ ]` hold values in order, separated by commas.
+
+Items in a list are numbered **starting from 0**, not 1. So `"bread"` is item 0, `"milk"` is item 1, and `"eggs"` is item 2. Nearly every programming language counts this way. It feels odd for a week, then normal forever.
+
+### Nesting: things inside things
+
+The value of `"owner"` is itself an object, with its own names and values. That's called **nesting**. Objects can hold lists, lists can hold objects, and it can go as deep as needed. Real JSON files are often nested several levels deep.
+
+To describe where a value is, people often use dots: `owner.email` means "the email inside owner".
+
+<details>
+<summary>Quick check: in the shop JSON above, what's the value of `owner.name`? And what's item 2 of `products`?</summary>
+
+`owner.name` is `"Dina"`. Item 2 of products is `"eggs"` (counting bread as 0 and milk as 1).
+</details>
+
+### Spaces and line breaks don't matter
+
+These two mean exactly the same thing:
+
+```json
+{"name": "Corner Shop", "port": 3000}
+```
+
+```json
+{
+  "name": "Corner Shop",
+  "port": 3000
+}
+```
+
+Programs ignore the spacing. People spread JSON out over many lines, with indentation, purely so humans can read it. In the task you'll write it on one line, because that's easier to copy into a terminal.
+
+## The rules that break most often
+
+JSON is strict. One wrong character and a program refuses to read the whole file. These are the mistakes behind nearly every broken JSON file:
+
+| Mistake | Wrong | Right |
+| --- | --- | --- |
+| Single quotes | `{'name': 'Dina'}` | `{"name": "Dina"}` |
+| Name without quotes | `{name: "Dina"}` | `{"name": "Dina"}` |
+| **Trailing comma** after the last item | `["bread", "milk",]` | `["bread", "milk"]` |
+| Missing comma between items | `{"a": 1 "b": 2}` | `{"a": 1, "b": 2}` |
+| A comment | `"port": 3000 // main port` | JSON has no comments at all |
+| Capital True | `"open": True` | `"open": true` |
+
+When a program can't read a JSON file, the error usually says something like `Unexpected token` or `Invalid JSON`, and often gives a **position**: how many characters into the file it got before it gave up. The real mistake is usually just before that point.
+
+<details>
+<summary>Quick check: what's wrong with `{"port": 3000, "debug": false,}`?</summary>
+
+There's a comma after the last item, `false`, just before the closing brace. That's a trailing comma, and JSON doesn't allow it.
+</details>
+
+## YAML
+
+**YAML** is another settings format. Files end in `.yml` or `.yaml`. It's designed to be easy for people to read, so it drops most of the punctuation:
+
+```yaml
+name: Corner Shop
+open: true
+port: 3000
+products:
+  - bread
+  - milk
+  - eggs
+owner:
+  name: Dina
+  email: dina@example.com
+```
+
+That's exactly the same information as the JSON example.
+
+- Each setting is `name: value` on its own line.
+- **Indentation**, the spaces at the start of a line, shows what's inside what. `name: Dina` is indented under `owner:`, so it belongs to the owner.
+- A dash `-` starts a list item.
+- Comments are allowed, starting with `#`.
+
+The catch: because indentation carries meaning, the number of spaces matters. One extra space can move a setting into the wrong place. And YAML must use spaces, never the Tab key.
+
+YAML is popular for files that set up servers and automated jobs, including the one that publishes Groundwork's lessons. Groundwork's course outline, `curriculum.yaml`, is YAML too.
+
+## .env files, again
+
+You met `.env` files in the last lesson. They're the simplest of the three:
+
+```text
+PORT=3000
+SHOP_NAME=Corner Shop
+PAYMENT_API_KEY=sk_test_abc123
+```
+
+One `NAME=value` per line. No nesting, no lists. They're only used for environment variables, and they usually hold secrets, so they're never shared.
+
+## Telling them apart
+
+| You see | It's |
+| --- | --- |
+| Curly braces, double quotes everywhere, commas | JSON (`.json`) |
+| `name: value` lines, indentation, dashes for lists | YAML (`.yml`, `.yaml`) |
+| `NAME=value` lines, names in capitals | .env |
+
+## Reading JSON from PowerShell
+
+In the task, you'll have PowerShell read a JSON file. Three new pieces:
+
+**`ConvertFrom-Json`** takes JSON text and turns it into something PowerShell understands, so you can ask for single values instead of seeing a wall of text.
+
+**PowerShell variables.** In the Bash lesson you saw that a **variable** is a name that stores a value. PowerShell variables start with `$`, and you set one with `=`:
+
+```powershell
+$shop = Get-Content shop.json -Raw | ConvertFrom-Json
+```
+
+That reads the file, converts it from JSON, and stores the result under the name `$shop`. (`$env:PATH` from the last lesson is a special kind of variable. `$shop` is an ordinary one that you made.)
+
+**Dots and square brackets** reach inside, just like the dotted descriptions above:
+
+```powershell
+$shop.name            # Corner Shop
+$shop.owner.email     # dina@example.com
+$shop.products[0]     # bread
+```
+
+Python and JavaScript, which you'll learn later, read JSON in almost exactly the same way. Once you can find your way around a JSON file, you can find your way around most data.
+
+<ConsultantNote>
+A large share of "the app suddenly won't start" calls come down to a settings file someone edited by hand. Knowing the JSON and YAML rules lets you find a missing comma in seconds, instead of reinstalling things that were never broken.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Format** | Strict rules for how text is laid out, so programs can read it |
+| **JSON** | The most common format for settings and data: braces, double quotes, commas |
+| **Object** | Named values in curly braces `{ }` |
+| **Key** | The name in a name-and-value pair, like `"port"` |
+| **String** | A piece of text. In JSON, always in double quotes. |
+| **Array (list)** | Values in order, in square brackets `[ ]`, counted from 0 |
+| **Nesting** | Objects and lists inside other objects and lists |
+| **Trailing comma** | A comma after the last item. Not allowed in JSON. |
+| **YAML** | A settings format that uses `name: value` lines and indentation |
+| **`ConvertFrom-Json`** | Turns JSON text into something PowerShell can work with |
+| **`$name = ...`** | Creates a PowerShell variable |

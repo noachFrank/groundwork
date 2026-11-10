@@ -3,10 +3,22 @@ id: cors
 title: "CORS: the error everyone hits"
 order: 7
 topic: networks-and-the-web
-minutes: 45
+minutes: 55
 summary: Why browsers block some requests, why it works in Postman but not your site, and the right way to fix it.
 connectivity: offline
-prerequisites: [apis]
+prerequisites:
+  - id: apis
+    need: essential
+    why: CORS is about a web page calling an API.
+  - id: http
+    need: essential
+    why: CORS works through headers and the OPTIONS method.
+  - id: reading-unfamiliar-code
+    need: helpful
+    why: Introduces backend routes, which the flaw task's code uses.
+revision: 2
+teaches: [web-origin, same-origin-policy, cors, allow-origin-header, browser-enforces, postman, preflight, cors-credentials, wildcard-origin, cors-fix-options, express-intro, middleware]
+uses: [api, http-header, http-method, cookie, browser, browser-runs-js, frontend, backend, port, localhost, curl, devtools-console, node-require, server-route, req-res, fetch-fn, api-key, keys-in-browser, reviewing-ai-code, js-object]
 predict:
   id: p1
   type: mcq
@@ -165,27 +177,53 @@ videos:
     channel: Fireship
 ---
 
+## In this lesson
+
+- The browser safety rule that causes the most confusing error in web development.
+- What an **origin** is, and why `localhost:4311` and `localhost:4312` count as different.
+- What **CORS** is, and why "it works in Postman" proves nothing.
+- How to fix a CORS error properly, and the AI "fix" that opens a security hole.
+
 ## Why does this rule exist?
 
-Imagine you're logged in to your bank in one tab, and you open a shady site in another. Without any rule, that site's JavaScript could call your bank's API and read the answer, using your login, and you'd never know.
+Imagine you're logged in to your bank in one tab, and you open a shady site in another. The shady site's JavaScript runs in your browser. Without any rule, it could use `fetch` to call your bank's API, and your browser would helpfully attach your bank's login **cookie** (from the HTTP lesson). The shady site could read your balance and transactions, using your login, and you'd never know.
 
-Browsers stop this with the **same-origin policy**: by default, a page can only read responses from its own **origin**.
+Browsers stop this with the **same-origin policy**: by default, JavaScript on a page can only **read responses** from its own **origin**.
+
+## What's an origin?
 
 An origin is three things together:
 
-```
+```text
 https://shop.example:443
 scheme  host         port
 ```
 
-Change any one of them and it's a different origin. `http://localhost:4311` and `http://localhost:4312` are different origins, even on the same computer.
+- The **scheme**: `http` or `https`.
+- The **host**: the name or IP address.
+- The **port**.
+
+Change any one and it's a different origin. So `http://localhost:4311` and `http://localhost:4312` are **different origins**, even though they're on the same computer. So are `http://shop.example` and `https://shop.example`.
+
+<details>
+<summary>Quick check: are `https://shop.example` and `https://api.shop.example` the same origin?</summary>
+
+No. The host is different (`api.shop.example` versus `shop.example`), so they're different origins.
+</details>
 
 ## CORS is the permission slip
 
-Often, cross-origin calls are exactly what you want, like when your site's frontend calls your API. **CORS** (Cross-Origin Resource Sharing) lets a server say who's allowed, with a response header:
+Often, a cross-origin call is exactly what you want: your website's frontend on one origin calling your own API on another. **CORS** (Cross-Origin Resource Sharing) lets a server say who's allowed to read its responses, with a response header:
 
-```
+```text
 Access-Control-Allow-Origin: https://shop.example
+```
+
+That header means: "JavaScript on pages from `https://shop.example` may read this response." If the header is missing, or names a different origin, the browser blocks the page from reading it, and puts an error in the console:
+
+```text
+Access to fetch at 'https://api.vendor.example/products' from origin
+'https://shop.client.example' has been blocked by CORS policy
 ```
 
 Step through what the browser decides:
@@ -196,13 +234,35 @@ Step through what the browser decides:
 
 Three things trip up nearly everyone:
 
-1. **The browser enforces it, not the server.** The server answers normally, then the browser withholds the answer from the page.
-2. **Postman and curl don't care.** They aren't browsers, so "it works in Postman" tells you the API is fine, and nothing more.
-3. **The fix is on the server.** Nothing you put in the page can grant permission. If it could, the rule would be pointless.
+1. **The browser enforces it, not the server.** The server receives the request and answers normally. Then the **browser** withholds the answer from the page. So the server's logs look fine.
+2. **Postman and curl don't care.** **Postman** is a popular app for sending test requests to APIs, like a friendlier curl. Neither is a browser, and neither has a shady tab to protect you from, so neither applies the rule. "It works in Postman" tells you the API works, and nothing more.
+3. **The fix is on the server.** Nothing you put in the page can grant itself permission. If it could, the rule would be pointless.
 
 ## Preflights
 
-For anything beyond a simple request, like one that sends JSON, the browser first sends a small **preflight**: an `OPTIONS` request that asks "may I send this?" You can trigger one in the lab with the Send JSON button, then watch for it in the log.
+For anything beyond a simple request, like one that sends JSON or a custom header, the browser first sends a small **preflight**: an `OPTIONS` request asking "may I send this?" Only if the server's answer allows it does the real request follow. In the lab, the Send JSON button triggers one, and you can watch for it in the log.
+
+## Reading the code in the task
+
+The flaw task shows a Node backend built with **Express**, the most popular Node package for building servers. You've seen a route like this before:
+
+```javascript
+const express = require("express");
+const cors = require("cors");
+const app = express();
+
+app.use(cors({ origin: true, credentials: true }));
+
+app.get("/api/account", requireLogin, (req, res) => {
+  res.json(getAccount(req.user));
+});
+```
+
+- `app.use(...)` adds **middleware**: code that runs on **every** request before the route does. Here, the `cors` package's middleware adds the CORS headers to every response.
+- The object passed to `cors(...)` holds its settings. `origin` says which origins are allowed. `credentials: true` means "and let them send cookies (the user's login) along".
+- `app.get("/api/account", requireLogin, ...)` is a route that first runs `requireLogin` (more middleware, checking there's a logged-in user), then sends back that user's account.
+
+Think about what `origin: true` might mean, combined with `credentials: true`.
 
 ## Fixing it well
 
@@ -210,9 +270,24 @@ For anything beyond a simple request, like one that sends JSON, the browser firs
 | --- | --- |
 | Allow your specific origin | The usual right answer |
 | Keep a short list of allowed origins | When you have several sites |
-| Allow `*` (any origin) | Only for public data with no login, like an open dataset |
-| Call the API from your own server | When you don't control the API, or it needs a secret key |
+| Allow `*` (any origin) | Only for public data with no login, like an open dataset. Browsers refuse `*` together with cookies. |
+| Call the API from your own server instead | When you don't control the API, or it needs a secret key |
+
+The last one works because the rule only exists in browsers: your backend can call any API, then pass the answer to your frontend from your own origin.
 
 <ConsultantNote>
-CORS errors look alarming and get misdiagnosed as "the API is broken" all the time. A calm "let's try that with curl" can save a client from a needless project. And when you review AI-written code, treat wildcard origins as a thing to question.
+CORS errors look alarming and get misdiagnosed as "the API is broken" all the time. A calm "let's try that with curl" can save a client from a needless project. And when you review AI-written code, treat "allow every origin" settings as something to question.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Origin** | Scheme + host + port, like `https://shop.example:443` |
+| **Same-origin policy** | The browser rule that pages can only read responses from their own origin |
+| **CORS** | How a server gives other origins permission to read its responses |
+| **`Access-Control-Allow-Origin`** | The header naming which origin may read a response |
+| **Postman** | A popular app for sending test requests to APIs |
+| **Preflight** | An `OPTIONS` request the browser sends first, asking permission |
+| **Express** | The most popular Node package for building servers |
+| **Middleware** | Code that runs on every request before the route |

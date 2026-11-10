@@ -4,6 +4,7 @@ import { api } from '../api.ts';
 import { useApi } from '../hooks.ts';
 import { useOnline } from '../online.tsx';
 import type { Today } from '../../shared/types.ts';
+import { useDeveloperName } from '../lesson/LessonExtras.tsx';
 
 const fmtDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
 
@@ -12,7 +13,7 @@ function Welcome({ onDone }: { onDone: () => void }) {
   return (
     <section className="card welcome">
       <h1>Welcome to Groundwork</h1>
-      <p className="lede">A course that takes you from near-beginner toward working as a software consultant, about 180 hours in four stages.</p>
+      <p className="lede">A course that takes you from near-beginner toward working as a software consultant, in four stages.</p>
       <p>You won't just watch. Every lesson makes you guess, read, do something real, and answer from memory. Ideas then come back on a schedule until they stick.</p>
       <label htmlFor="hours"><strong>How many hours a week can you study?</strong></label>
       <div className="row">
@@ -36,6 +37,7 @@ function Welcome({ onDone }: { onDone: () => void }) {
 export function TodayPage() {
   const { data, error, reload } = useApi<Today>('/today');
   const { online } = useOnline();
+  const developer = useDeveloperName();
   if (error) return <div className="card error-box">{error}</div>;
   if (!data) return <p className="muted">Loading…</p>;
   if (!data.planSet) return <Welcome onDone={reload} />;
@@ -46,6 +48,17 @@ export function TodayPage() {
   return (
     <div className="today">
       <h1>Today</h1>
+
+      {data.feedback.due && (
+        <section className="card today-card feedback-nudge">
+          <span className="eyebrow">Weekly feedback</span>
+          <p>
+            You have <strong>{data.feedback.unsent}</strong> note{data.feedback.unsent === 1 ? '' : 's'} about lessons that {developer ?? 'the person who gave you Groundwork'} hasn't seen yet.
+            Download them as a file and send it on WhatsApp. It takes a minute and it's how lessons get fixed.
+          </p>
+          <Link className="btn" to="/settings#feedback">Send my feedback</Link>
+        </section>
+      )}
 
       <section className="card today-card">
         <span className="eyebrow">First: reviews</span>
@@ -105,6 +118,14 @@ export function TodayPage() {
         )}
         <Link to="/plan" className="small">See the full plan</Link>
       </section>
+
+      {data.rewritten.length > 0 && (
+        <section className="card today-card">
+          <span className="eyebrow">Rewritten since you finished them</span>
+          <p className="muted small">These lessons now explain more, including things the old versions skipped. A re-read is worth it.</p>
+          <ul>{data.rewritten.map((l) => <li key={l.id}><Link to={`/lessons/${l.id}`}>{l.title}</Link></li>)}</ul>
+        </section>
+      )}
 
       {(data.needReview.length > 0 || data.comeBackLater.length > 0) && (
         <section className="card today-card">

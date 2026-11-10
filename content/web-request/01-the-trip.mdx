@@ -3,10 +3,22 @@ id: the-trip
 title: The trip a web request takes
 order: 1
 topic: networks-and-the-web
-minutes: 40
+minutes: 45
 summary: What happens between pressing Enter and seeing a page, and your first real request from a real terminal.
 connectivity: offline
-prerequisites: []
+prerequisites:
+  - id: npm-run-dev
+    need: essential
+    why: Introduces curl, servers on localhost, and requests and responses.
+  - id: processes-and-ports
+    need: essential
+    why: Explains ports and localhost, which every request in this module uses.
+  - id: kinds-of-programs
+    need: helpful
+    why: Introduces .bat files, which the task makes one of.
+revision: 2
+teaches: [request-trip, ip-address-intro, dns-intro, http-intro, https-intro, five-stages, curl-output-file, network-tab]
+uses: [request-response, browser, server-program, server-computer, localhost, port, curl, terminal, powershell, command, practice-folder, batch-file, redirect, frontend, backend]
 predict:
   id: p1
   type: mcq
@@ -23,7 +35,7 @@ tasks:
     type: terminal
     title: Send a request from a real terminal
     instructions: |
-      A **terminal** is a window where you type commands instead of clicking. People who build software use one every day, and it's far less scary than it looks. You can't break anything by following these steps.
+      You'll use: curl (from *What "npm run dev" actually does*) and a batch file (from *Code, languages*). Groundwork's practice API is listening on port 4314 on your computer.
 
       Do these in order. Use the Copy button, then right-click inside the PowerShell window to paste, and press Enter.
     steps:
@@ -104,11 +116,18 @@ videos:
     note: A friendly five-minute overview of what's underneath all this.
 ---
 
+## In this lesson
+
+- What happens between pressing Enter in a browser and seeing a page.
+- The five stages of that trip, and the name of the technology at each one.
+- Why picturing the trip is the key to diagnosing almost any "the site doesn't work" problem.
+- Your first requests in Stage 2, sent with curl to a practice server.
+
 ## You already use this hundreds of times a day
 
-Every time you open a web page, your computer has a short, fast conversation with computers around the world. Almost every technical problem a client will ever bring you lives somewhere in that conversation: "the site is down", "it's slow", "it works for me but not for them".
+In *Programs, processes and ports* you learned the basic picture: a **browser** sends a **request**, and a **server program** sends back a **response**. That's true, but it skips a lot. Between you and a website on the other side of the world, your request passes through several stages, and each stage can go wrong in its own way.
 
-If you can picture the trip, you can work out **where** a problem is. That's most of the job.
+Almost every technical problem a client will ever bring you lives somewhere in that trip: "the site is down", "it's slow", "it works for me but not for them". If you can picture the trip, you can work out **where** a problem is. That's most of the job.
 
 Step through it. Don't rush, and read each step:
 
@@ -116,18 +135,42 @@ Step through it. Don't rush, and read each step:
 
 ## The five stages
 
-1. **Find the address.** Names are for people. Computers connect using numbers called **IP addresses**. **DNS** turns one into the other.
-2. **Connect.** Your computer opens a connection to that address. For HTTPS, the two sides also set up encryption.
-3. **Ask.** Your browser sends an **HTTP request**, a short text message saying what it wants.
-4. **Work.** The server figures out the answer, often by asking a database.
-5. **Answer.** The server sends an **HTTP response**: a status code like `200 OK`, plus the content. Your browser then displays it, and usually repeats the trip for each image, style and script.
+1. **Find the address.** Names like `shop.example` are for people. Computers connect using numbers called **IP addresses**. A worldwide system called **DNS** turns one into the other. (Lessons 2 and 3.)
+2. **Connect.** Your computer opens a connection to that address, on the right port. For secure sites, the two sides also set up encryption: that's **HTTPS**. (Lesson 5.)
+3. **Ask.** Your browser sends an **HTTP request**: a short text message saying what it wants. **HTTP** is the language browsers and servers speak. (Lesson 4.)
+4. **Work.** The server program figures out the answer, often by asking a database.
+5. **Answer.** The server sends an **HTTP response**: a status like `200 OK` (meaning "it worked"), plus the content. Your browser then displays it.
 
-The rest of this module takes those apart one at a time.
+One page usually needs many trips. The first response is the HTML, which mentions images, stylesheets and scripts, and the browser makes another request for each of them. A typical news site makes over a hundred.
 
-## What "localhost" means
+<details>
+<summary>Quick check: a site's name doesn't work, but typing its IP address does. Which stage is the problem in?</summary>
 
-In the task below you'll send requests to an address called `localhost`. That's a special name meaning **"this computer"**. Groundwork runs small practice servers on your own machine, so these are real requests using the real rules, and they need no internet.
+Stage 1, finding the address: DNS. The server itself is fine, since it answers when you use its number.
+</details>
+
+## Seeing the trips yourself
+
+Every browser can show you its requests. Press **F12** to open the developer tools, click the **Network** tab, then reload the page. Each line is one request, with its address, its status and how long it took. Developers use this constantly to see what a page is really doing.
+
+## The practice servers
+
+Groundwork runs several small practice servers on your computer, on ports 4311 to 4315, so this module's tasks work with no internet. They're real servers following the real rules: what you learn here works the same on the actual internet. Because they listen on `localhost`, only your own computer can reach them.
+
+In the task, you'll send requests to the practice API on port 4314 with curl. `-o hello.txt` saves the response to a file instead of printing it, and `-s` (silent) hides curl's progress messages.
 
 <ConsultantNote>
 "The website is down" can mean many different things. Is the name not resolving? Is the server refusing connections? Is it answering with an error? Knowing the stages turns a vague complaint into one precise question, and that's what clients pay for.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **IP address** | The number a computer is reached at. Lesson 2. |
+| **DNS** | The system that turns names into IP addresses. Lesson 3. |
+| **HTTP** | The language browsers and servers speak. Lesson 4. |
+| **HTTPS** | HTTP with encryption. Lesson 5. |
+| **Status** | Part of a response saying how it went, like `200 OK` |
+| **Network tab** | Part of the browser's developer tools (F12) that lists every request |
+| **`curl -o`** | Saves a response to a file |

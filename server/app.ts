@@ -19,9 +19,11 @@ export interface AppDeps {
   practicePath: string;
   dataPath: string;
   version: string;
+  /** Who the learner sends feedback to. Falls back to a neutral phrase. */
+  developerName?: string;
 }
 
-export function createApi({ store, content, connectivity, labs, practicePath, dataPath, version }: AppDeps): Hono {
+export function createApi({ store, content, connectivity, labs, practicePath, dataPath, version, developerName }: AppDeps): Hono {
   const api = new Hono();
   api.use(hostGuard);
   api.use(sameAppOnly(labs.appOrigins));
@@ -34,7 +36,7 @@ export function createApi({ store, content, connectivity, labs, practicePath, da
   api.get('/connectivity', async (c) => c.json({ online: await connectivity.check(c.req.query('force') === '1') }));
 
   // nodeDir is the folder of the Node that runs Groundwork, so lessons can use it with no install.
-  api.get('/about', (c) => c.json({ version, practicePath, dataPath, nodeDir: dirname(process.execPath), labsUnavailable: labs.unavailable }));
+  api.get('/about', (c) => c.json({ version, practicePath, dataPath, nodeDir: dirname(process.execPath), labsUnavailable: labs.unavailable, developerName: developerName ?? null }));
   api.get('/curriculum', (c) =>
     c.json({ curriculum: content.curriculum, modules: content.modules, lessons: store.summaries() }),
   );
@@ -43,6 +45,21 @@ export function createApi({ store, content, connectivity, labs, practicePath, da
   api.get('/stats', (c) => c.json(store.stats()));
 
   // Lessons
+  const conceptById = new Map(content.concepts.map((k) => [k.id, k]));
+  /** The ideas a lesson teaches and uses, with which earlier lesson teaches each one. */
+  const conceptsFor = (id: string) => {
+    const lesson = store.lesson(id)!;
+    const teacher = new Map<string, { id: string; title: string }>();
+    for (const l of content.lessons) for (const k of l.teaches) if (!teacher.has(k)) teacher.set(k, { id: l.id, title: l.title });
+    const describe = (k: string) => ({ ...(conceptById.get(k) ?? { id: k, name: k, definition: '' }), taughtIn: teacher.get(k) ?? null });
+    return { teaches: lesson.teaches.map(describe), uses: lesson.uses.filter((k) => !lesson.teaches.includes(k)).map(describe) };
+  };
+  api.get('/concepts', (c) => {
+    const teacher = new Map<string, { id: string; title: string }>();
+    for (const l of content.lessons) for (const k of l.teaches) if (!teacher.has(k)) teacher.set(k, { id: l.id, title: l.title });
+    return c.json(content.concepts.map((k) => ({ ...k, taughtIn: teacher.get(k.id) ?? null })));
+  });
+
   const withLesson = (handler: (c: any, id: string) => any) => (c: any) => {
     const id = c.req.param('id');
     if (!store.lesson(id)) return c.json({ error: 'No such lesson' }, 404);
@@ -56,8 +73,13 @@ export function createApi({ store, content, connectivity, labs, practicePath, da
       progress: store.progress(id),
       note: store.getNote(id),
       cards: store.cardsForLesson(id),
+      prerequisites: store.prerequisiteInfo(id),
+      concepts: conceptsFor(id),
+      clarity: store.getClarity(id),
     }),
   ));
+  api.post('/lessons/:id/reread', withLesson((c, id) => c.json(store.markReread(id))));
+  api.put('/lessons/:id/clarity', withLesson(async (c, id) => c.json(store.saveClarity(id, await c.req.json()))));
   api.post('/lessons/:id/step', withLesson(async (c, id) => {
     const { step } = (await c.req.json()) as { step: StepName };
     if (!STEPS.includes(step)) return c.json({ error: 'Unknown step' }, 400);
@@ -145,7 +167,35 @@ export function createApi({ store, content, connectivity, labs, practicePath, da
     return c.json({ settings: store.planSettings(), schedule });
   });
 
-  // Problem reports
+  // Feedback for the developer: problem reports and "How clear was this?" answers.
+  api.get('/feedback', (c) =>
+    c.json({ items: store.listFeedback(), status: store.feedbackStatus(), learner: store.getSetting<string>('learnerName') ?? '' }),
+  );
+  api.put('/feedback/learner', async (c) => {
+    const { name } = await c.req.json();
+    store.setSetting('learnerName', String(name ?? '').trim().slice(0, 100));
+    return c.json({ ok: true });
+  });
+  // POST, not GET: this marks everything in the file as sent.
+  api.post('/feedback/export', (c) => {
+    const file = store.exportFeedback(store.getSetting<string>('learnerName') ?? '');
+    if (!file) return c.json({ error: 'Nothing new to send.' }, 409);
+    return c.json(file);
+  });
+  api.put('/feedback/:kind/:id', async (c) => {
+    const ok = store.editFeedback(c.req.param('kind'), Number(c.req.param('id')), await c.req.json());
+    return ok ? c.json({ ok }) : c.json({ error: 'That item was already sent. Mark it as not sent first to change it.' }, 409);
+  });
+  api.delete('/feedback/:kind/:id', (c) => {
+    const ok = store.deleteFeedback(c.req.param('kind'), Number(c.req.param('id')));
+    return ok ? c.json({ ok }) : c.json({ error: 'Only items that have not been sent can be deleted.' }, 409);
+  });
+  api.post('/feedback/:kind/:id/unsend', (c) => {
+    const r = store.unsendFeedback(c.req.param('kind'), Number(c.req.param('id')));
+    return r.ok ? c.json(r) : c.json({ error: r.reason }, 409);
+  });
+
+  // Problem reports (older screens)
   api.get('/problems', (c) => c.json(store.listProblems()));
   api.post('/problems/:id/resolve', async (c) => {
     const { resolved } = await c.req.json();

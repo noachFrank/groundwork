@@ -1,0 +1,1395 @@
+# Every idea the course teaches, in plain words. Lessons list which ones they
+# `teaches` and which they `uses`; `npm run check-content` makes sure nothing is
+# used before an earlier lesson teaches it. See STYLE.md.
+#
+# id:
+#   name: shown to learners (in "How clear was this?" and on <Term> popups)
+#   definition: one plain sentence
+
+# ---- Learning with AI --------------------------------------------------------
+ai-assistant:
+  name: "AI assistants"
+  definition: "A program you chat with by typing, such as ChatGPT, Claude or Gemini."
+prompt:
+  name: "Prompts"
+  definition: "The message you type to an AI assistant."
+code:
+  name: "Code"
+  definition: "Instructions for a computer, written as text in a programming language."
+tutor-not-ghostwriter:
+  name: "Using AI as a tutor, not a ghostwriter"
+  definition: "Ask AI for hints and quizzes on what you're learning, and let it do only the parts you aren't trying to learn."
+learning-loop:
+  name: "Predict, learn, do, recall, review"
+  definition: "Groundwork's five steps for every lesson, each one a proven way to make learning stick."
+ai-hallucination:
+  name: "AI being confidently wrong"
+  definition: "AI can state false things in exactly the same confident tone as true ones."
+official-docs:
+  name: "Official documentation"
+  definition: "The manual written by the people who made a tool. The source of truth."
+script:
+  name: "Scripts"
+  definition: "A short program saved as a text file, carried out from the top line to the bottom."
+comment:
+  name: "Comments in code"
+  definition: "Notes in code for humans to read. The computer ignores them."
+read-before-run:
+  name: "Reading before you run"
+  definition: "Read every line of anything that deletes, moves or changes things before you run it."
+package-intro:
+  name: "Packages (first look)"
+  definition: "Code that someone published so other people can reuse it."
+error-message:
+  name: "Error messages"
+  definition: "Text a program shows when it can't do what you asked, saying what went wrong and often where."
+good-question:
+  name: "Asking a good question"
+  definition: "Say what you're trying to do, exactly what happens, what you've tried, and your setup."
+minimal-example:
+  name: "Minimal examples"
+  definition: "The smallest code or data that still shows a problem."
+secret:
+  name: "Secrets"
+  definition: "Anything that gives access to something, like a password or an API key. Never share or paste them."
+api-key:
+  name: "API keys"
+  definition: "A password that one program uses to prove who it is when it talks to another service."
+placeholder:
+  name: "Placeholders"
+  definition: "An obviously fake stand-in, like YOUR_API_KEY_HERE, used instead of a real secret."
+private-data:
+  name: "Private data"
+  definition: "Real people's personal details. Use made-up data in the same format instead."
+rubber-duck:
+  name: "Rubber duck debugging"
+  definition: "Explaining a problem out loud, step by step, until you spot the answer yourself."
+
+# ---- How computers run software ----------------------------------------------
+file:
+  name: "Files"
+  definition: "A named chunk of information stored on a disk, like a document, photo or program."
+folder:
+  name: "Folders (directories)"
+  definition: "A named container for files and other folders."
+drive:
+  name: "Drives"
+  definition: "A whole storage device, named on Windows with a letter like C."
+home-folder:
+  name: "Your home folder"
+  definition: "Your own folder on the computer, C:\\Users\\your-name on Windows."
+path:
+  name: "Paths"
+  definition: "The address of a file or folder, written folder by folder."
+absolute-path:
+  name: "Absolute paths"
+  definition: "A path that starts from the drive or root, so it works from anywhere."
+relative-path:
+  name: "Relative paths"
+  definition: "A path that starts from the folder you're currently in."
+dot-paths:
+  name: ". and .. in paths"
+  definition: "A single dot means the current folder. Two dots mean the folder one level up."
+file-extension:
+  name: "File extensions"
+  definition: "The letters after the last dot in a file name, saying what kind of file it is."
+terminal:
+  name: "The terminal"
+  definition: "A window where you type commands and see their results as text."
+powershell:
+  name: "PowerShell"
+  definition: "The terminal program and shell used on Windows in this course."
+command:
+  name: "Commands"
+  definition: "One instruction typed into a terminal."
+current-directory:
+  name: "The current directory"
+  definition: "The folder the terminal is in right now. Relative paths start from it."
+practice-folder:
+  name: "Your practice folder"
+  definition: "Groundwork-Practice in your home folder, where every terminal task happens and gets checked."
+command-parts:
+  name: "Arguments and options"
+  definition: "A command is a verb, the arguments it works on, and dash-options that change how it works."
+verb-noun:
+  name: "PowerShell's verb-noun names"
+  definition: "PowerShell names commands like Get-ChildItem or Copy-Item. Get commands only look."
+tab-completion:
+  name: "Tab completion"
+  definition: "Pressing Tab finishes a command or file name you've started typing."
+command-history:
+  name: "Command history"
+  definition: "The Up arrow brings back earlier commands."
+ctrl-c:
+  name: "Ctrl+C in a terminal"
+  definition: "Stops the command or program running in that terminal."
+pipe:
+  name: "Pipes (|)"
+  definition: "Sends one command's output into the next command."
+redirect:
+  name: "Redirect (>)"
+  definition: "Sends a command's output into a file instead of the screen."
+reading-errors:
+  name: "Reading error messages"
+  definition: "An error usually says which command failed, what went wrong, and where."
+shell:
+  name: "Shells"
+  definition: "The program that reads and runs your commands, such as PowerShell, cmd or Bash."
+process-list-intro:
+  name: "Listing running programs"
+  definition: "Get-Process lists the programs running on the computer right now."
+server-computer:
+  name: "Servers (computers)"
+  definition: "A computer that provides something, like a website, to other computers, usually around the clock."
+operating-system:
+  name: "Operating systems"
+  definition: "The main program that runs a computer, such as Windows, macOS or Linux."
+linux:
+  name: "Linux"
+  definition: "A free operating system that runs most of the world's servers."
+bash:
+  name: "Bash"
+  definition: "The shell used on Linux. Mac's zsh is very similar."
+bash-commands:
+  name: "Common Bash commands"
+  definition: "ls, cd, pwd, cat, cp, mv, rm and echo, Bash's versions of the everyday PowerShell commands."
+linux-paths:
+  name: "Linux paths"
+  definition: "Forward slashes, no drive letters, and everything starts from / (the root)."
+case-sensitive:
+  name: "Case-sensitive file names"
+  definition: "On Linux, Logo.png and logo.png are different files."
+hidden-files:
+  name: "Hidden files"
+  definition: "On Linux, files whose names start with a dot are hidden from a plain ls."
+sudo:
+  name: "sudo"
+  definition: "Runs a command as the all-powerful administrator. Needed sometimes, risky always."
+rm-no-undo:
+  name: "Deleting with no undo"
+  definition: "Terminal deletes like rm happen immediately, with no Recycle Bin."
+wildcard:
+  name: "The * wildcard"
+  definition: "Means \"everything here\" in a command, like rm *."
+shell-variable:
+  name: "Variables in the shell"
+  definition: "A name that stores a value. In Bash, NAME=value, used as $NAME."
+log-file:
+  name: "Log files"
+  definition: "A file where a program writes down what it's doing, including errors."
+config-file-intro:
+  name: "Config files"
+  definition: "A file holding a program's settings."
+fail-stop:
+  name: "Stopping a script when a step fails"
+  definition: "Bash carries on after a failed command unless told to stop, with set -e or || exit 1."
+ssh:
+  name: "ssh"
+  definition: "Connects your terminal to another computer, such as a server, over the network."
+programming-language:
+  name: "Programming languages"
+  definition: "Words and rules for writing instructions that people can read and computers can follow."
+source-code:
+  name: "Source code"
+  definition: "The code people write, as text, before it's run or compiled."
+machine-code:
+  name: "Machine code"
+  definition: "The numbers a computer's processor actually runs."
+compiler:
+  name: "Compilers"
+  definition: "A tool that translates source code into machine code ahead of time, making a program like a .exe."
+interpreter:
+  name: "Interpreters"
+  definition: "A program that reads a script and runs it, each time."
+python-lang:
+  name: "Python"
+  definition: "A readable programming language for scripts, data and automation. Files end in .py."
+javascript-lang:
+  name: "JavaScript"
+  definition: "The language of the web, run by every browser. Files end in .js."
+browser:
+  name: "Web browsers"
+  definition: "The program you view websites with, such as Chrome, Edge or Firefox."
+browser-runs-js:
+  name: "JavaScript in the browser"
+  definition: "Every browser has a JavaScript interpreter built in, which makes web pages interactive."
+nodejs:
+  name: "Node.js"
+  definition: "A program that runs JavaScript outside a browser. Groundwork runs on it."
+console-log:
+  name: "console.log"
+  definition: "JavaScript's way of printing something."
+file-types:
+  name: ".exe, .bat, .ps1, .sh, .py and .js"
+  definition: "Compiled programs, batch files, PowerShell, Bash, Python and JavaScript scripts, and what runs each one."
+call-operator:
+  name: "The & call operator"
+  definition: "PowerShell's way to run the program at a given path."
+batch-file:
+  name: "Batch files"
+  definition: "A .bat or .cmd file listing commands for cmd, the older Windows shell."
+execution-policy:
+  name: "The execution policy"
+  definition: "The Windows setting that blocks PowerShell .ps1 scripts by default."
+npm-cmd-workaround:
+  name: "Typing npm.cmd"
+  definition: "In PowerShell, npm.cmd avoids npm's .ps1 version, which the execution policy can block."
+smartscreen:
+  name: "SmartScreen"
+  definition: "The \"Windows protected your PC\" warning for unrecognized downloaded programs."
+program-vs-process:
+  name: "Programs and processes"
+  definition: "A program is a file on disk. A process is a running copy of it."
+pid:
+  name: "PIDs (process IDs)"
+  definition: "The ID number each running process gets."
+task-manager:
+  name: "Task Manager"
+  definition: "Windows' list of running processes, opened with Ctrl+Shift+Esc."
+request-response:
+  name: "Requests and responses"
+  definition: "A browser sends a request asking for something, and a server sends back a response."
+server-program:
+  name: "Server programs"
+  definition: "A process that keeps running and listens for requests to answer."
+port:
+  name: "Ports"
+  definition: "A number that picks out which program on a computer should receive a request."
+localhost:
+  name: "localhost"
+  definition: "A name that always means \"this computer\"."
+ip-127:
+  name: "127.0.0.1"
+  definition: "The numeric address that means \"this computer\", the same as localhost."
+port-in-use:
+  name: "\"Port already in use\""
+  definition: "Only one process can listen on a port, so a second one fails with EADDRINUSE."
+stop-process:
+  name: "Stopping a process"
+  definition: "Ctrl+C in its terminal, Stop-Process, or End task in Task Manager."
+listen-address:
+  name: "Who can connect to a server"
+  definition: "Listening on 127.0.0.1 allows only this computer. 0.0.0.0 allows other computers too."
+environment-variable:
+  name: "Environment variables"
+  definition: "Named settings, like USERNAME or PATH, that every program can read."
+path-variable:
+  name: "PATH"
+  definition: "The list of folders Windows searches, in order, when you type a command name."
+not-recognized:
+  name: "\"Is not recognized as a command\""
+  definition: "Windows couldn't find a program with that name in any PATH folder."
+new-terminal-fix:
+  name: "Opening a new terminal after installing"
+  definition: "A terminal reads PATH only when it opens, so open a new one to see newly installed programs."
+env-inheritance:
+  name: "Processes inherit environment variables"
+  definition: "A new process gets a copy of the environment variables of whatever started it."
+env-for-secrets:
+  name: "Keeping secrets in environment variables"
+  definition: "Apps read passwords and keys from environment variables, so the code itself holds no secrets."
+dotenv-file:
+  name: ".env files"
+  definition: "A file of NAME=value lines holding secret settings for development. Never share it."
+text-format:
+  name: "Text formats"
+  definition: "Strict rules for laying out text so a program can read it reliably."
+json:
+  name: "JSON"
+  definition: "The most common format for settings and data, made of objects in { } and lists in [ ]."
+json-object:
+  name: "JSON objects"
+  definition: "Named values in curly braces, like {\"port\": 3000}."
+json-array:
+  name: "JSON lists (arrays)"
+  definition: "Values in order in square brackets, counted from 0."
+json-values:
+  name: "Kinds of JSON values"
+  definition: "Text in double quotes, numbers, true or false, null, lists and objects."
+json-rules:
+  name: "JSON's strict rules"
+  definition: "Double quotes only, commas between items, no comma after the last one, and no comments."
+nesting:
+  name: "Nesting"
+  definition: "Objects and lists inside other objects and lists."
+yaml:
+  name: "YAML"
+  definition: "A settings format that uses name-colon-value lines and indentation instead of braces."
+convertfrom-json:
+  name: "ConvertFrom-Json"
+  definition: "PowerShell's command that turns JSON text into something it can work with."
+ps-variable:
+  name: "PowerShell variables"
+  definition: "A name starting with $ that stores a value, like $shop = ..."
+dot-access:
+  name: "Reaching inside with dots"
+  definition: "Writing $shop.owner.email to get a value nested inside another."
+package:
+  name: "Packages"
+  definition: "A bundle of code someone published so other projects can reuse it."
+dependency:
+  name: "Dependencies"
+  definition: "A package your project needs in order to work."
+transitive-dependency:
+  name: "Transitive dependencies"
+  definition: "A dependency of a dependency, installed automatically."
+package-manager:
+  name: "Package managers"
+  definition: "A program that downloads and updates packages, like npm or pip."
+npm:
+  name: "npm"
+  definition: "Node's package manager, which comes with Node."
+registry:
+  name: "Package registries"
+  definition: "The online library that packages are downloaded from, like npmjs.com or PyPI."
+package-json:
+  name: "package.json"
+  definition: "A JavaScript project's settings file, listing its name, scripts and dependencies."
+dependencies-vs-dev:
+  name: "dependencies and devDependencies"
+  definition: "Packages needed to run the project, and packages needed only while working on it."
+npm-install:
+  name: "npm install"
+  definition: "Reads package.json and downloads the project's packages into node_modules."
+node-modules:
+  name: "node_modules"
+  definition: "The folder npm installs a project's packages into. Never shared, because it can be rebuilt."
+semver:
+  name: "Version numbers (major.minor.patch)"
+  definition: "Patch fixes bugs, minor adds features, and major may change how things work."
+caret-range:
+  name: "Version ranges like ^19.0.0"
+  definition: "^19.0.0 means 19.0.0 or any newer 19.x version."
+lockfile:
+  name: "Lockfiles"
+  definition: "package-lock.json, recording the exact version of every installed package."
+npm-ci:
+  name: "npm ci"
+  definition: "Installs exactly the versions in the lockfile."
+pip:
+  name: "pip"
+  definition: "Python's package manager."
+requirements-txt:
+  name: "requirements.txt"
+  definition: "The traditional list of a Python project's packages and versions."
+typosquatting:
+  name: "Typosquatting"
+  definition: "Publishing a harmful package under a name one typo away from a popular one."
+npm-audit:
+  name: "npm audit"
+  definition: "Checks installed packages against a list of known security problems."
+npm-scripts:
+  name: "npm scripts"
+  definition: "Named commands in package.json's \"scripts\" section, like dev and build."
+npm-run:
+  name: "npm run"
+  definition: "Runs the package.json script with the given name, like npm run dev."
+npm-init:
+  name: "npm init"
+  definition: "Creates a new package.json for a new project."
+dev-server:
+  name: "Dev servers"
+  definition: "A server on your own computer for working on a website, usually on localhost."
+hot-reload:
+  name: "Hot reload"
+  definition: "The browser updating by itself when you save a change."
+build-step:
+  name: "Builds"
+  definition: "Turning source code into finished, optimized files ready to publish."
+dist-folder:
+  name: "The dist folder"
+  definition: "Where a build usually puts its finished files."
+frontend:
+  name: "Frontend"
+  definition: "The part of an app that runs in the browser, which people see and click."
+backend:
+  name: "Backend"
+  definition: "The part of an app that runs on a server, storing data and answering the frontend."
+curl:
+  name: "curl"
+  definition: "A program that sends a request to a web address from the terminal. Type curl.exe in PowerShell."
+vite:
+  name: "Vite"
+  definition: "A popular dev server and build tool for websites."
+project-setup-checklist:
+  name: "Getting a project running"
+  definition: "Right Node version, install packages, check the scripts, set environment variables, then run dev."
+python-installer:
+  name: "Installing Python"
+  definition: "Python's installer from python.org."
+add-to-path-box:
+  name: "The \"Add python.exe to PATH\" box"
+  definition: "The installer checkbox that lets you type python in a terminal. Tick it."
+store-alias:
+  name: "The Microsoft Store python alias"
+  definition: "A fake python command on Windows that opens the Microsoft Store."
+py-launcher:
+  name: "The py launcher"
+  definition: "A Windows command that finds whichever Python versions are installed."
+virtual-env:
+  name: "Virtual environments"
+  definition: "A project's private folder of Python packages, usually .venv."
+python-m:
+  name: "python -m"
+  definition: "Runs one of Python's built-in modules, like venv or pip."
+pip-freeze:
+  name: "pip freeze"
+  definition: "Lists installed Python packages with their exact versions."
+
+# ---- Git and GitHub ----------------------------------------------------------
+version-control:
+  name: "Version control"
+  definition: "Keeping every version of a project's files, with who changed what and why."
+git:
+  name: "Git"
+  definition: "The version control program almost every software team uses."
+repository:
+  name: "Repositories"
+  definition: "A project folder that Git tracks. Its history lives in a hidden .git folder."
+commit:
+  name: "Commits"
+  definition: "A saved snapshot of the whole project, with a message saying what changed."
+staging:
+  name: "Staging"
+  definition: "Choosing which changes go into the next commit."
+git-status:
+  name: "git status"
+  definition: "Shows what has changed since the last commit, and what's staged."
+git-add:
+  name: "git add"
+  definition: "Stages changes for the next commit. git add . stages everything in the folder."
+git-commit:
+  name: "git commit"
+  definition: "Takes the snapshot. -m gives it a message."
+git-diff:
+  name: "git diff"
+  definition: "Shows exactly what changed in files you haven't staged yet."
+git-log:
+  name: "git log"
+  definition: "Lists commits, newest first. --oneline shows one per line."
+commit-message:
+  name: "Good commit messages"
+  definition: "A few words saying what the commit does, like \"Add a contact form\"."
+git-vs-github:
+  name: "Git and GitHub"
+  definition: "Git is the program on your computer. GitHub is a website that stores repositories online."
+html-intro:
+  name: "HTML"
+  definition: "The language web pages are written in, in files ending in .html."
+html-tags:
+  name: "HTML tags"
+  definition: "Markers like <h1> and <p> that say what each piece of text on a page is."
+add-content:
+  name: "Add-Content"
+  definition: "Adds a line to the end of a file, without replacing what's there."
+git-config:
+  name: "git config"
+  definition: "Changes Git's settings, such as your name and email. --global means for every repository."
+text-editor:
+  name: "Text editors"
+  definition: "A program for editing plain text files, like Notepad."
+branch-intro:
+  name: "The main branch (first look)"
+  definition: "Every repository starts with a line of commits called main."
+gitignore:
+  name: ".gitignore"
+  definition: "A file listing what Git should never track, like .env and node_modules."
+secrets-in-history:
+  name: "Secrets stay in Git history"
+  definition: "A secret committed once stays in the history even after the file is deleted."
+git-ls-files:
+  name: "git ls-files"
+  definition: "Lists every file Git is tracking."
+head-ref:
+  name: "HEAD"
+  definition: "The latest commit, where you are now. HEAD~1 is the one before it."
+commit-id:
+  name: "Commit IDs"
+  definition: "A commit's unique code, usually shown shortened, like ca05569."
+git-show:
+  name: "git show"
+  definition: "Shows what one commit changed."
+git-blame:
+  name: "git blame"
+  definition: "Shows who last changed each line of a file, and in which commit."
+css-intro:
+  name: "CSS"
+  definition: "The language that controls how web pages look, written as rules like h1 { color: teal; }."
+branch:
+  name: "Branches"
+  definition: "A separate line of commits, so work can happen without disturbing main."
+main-branch:
+  name: "The main branch"
+  definition: "The branch that should always work, which finished work is merged into."
+git-switch:
+  name: "git switch"
+  definition: "Moves you to another branch, changing the files to match. -c creates a new one."
+git-merge:
+  name: "Merging"
+  definition: "Bringing one branch's commits into another."
+fast-forward:
+  name: "Fast-forward merges"
+  definition: "A merge where main simply moves forward to include the branch, with no extra commit."
+merge-commit:
+  name: "Merge commits"
+  definition: "A commit with two parents that joins two lines of work."
+git-branch-delete:
+  name: "Deleting a branch"
+  definition: "git branch -d removes a branch label once its work is merged."
+html-link:
+  name: "HTML links"
+  definition: "<a href=\"page.html\">text</a> makes a link to another page."
+commit-am:
+  name: "git commit -am"
+  definition: "Stages every change to already-tracked files and commits, in one step."
+git-log-graph:
+  name: "Drawing history as a graph"
+  definition: "git log --oneline --graph --all draws branches splitting and joining."
+merge-conflict:
+  name: "Merge conflicts"
+  definition: "Two branches changed the same lines differently, so Git needs a person to choose."
+conflict-markers:
+  name: "Conflict markers"
+  definition: "The <<<<<<<, ======= and >>>>>>> lines Git writes around the two versions."
+resolve-conflict:
+  name: "Resolving a conflict"
+  definition: "Edit the file to the right version, delete the markers, then stage and commit it."
+merge-abort:
+  name: "git merge --abort"
+  definition: "Cancels a merge and puts everything back as it was."
+ps-replace:
+  name: "-replace in PowerShell"
+  definition: "Swaps one piece of text for another, often used to edit a file in one line."
+notepad-from-terminal:
+  name: "Opening Notepad from the terminal"
+  definition: "notepad file.txt opens a file for editing. Save and close it before carrying on."
+distributed:
+  name: "Distributed version control"
+  definition: "Everyone has the full project and its whole history on their own computer."
+remote:
+  name: "Remotes"
+  definition: "A shared copy of a repository that everyone pushes to and pulls from, often on GitHub."
+origin:
+  name: "origin"
+  definition: "The usual name for a repository's main remote."
+git-remote-add:
+  name: "git remote add"
+  definition: "Tells a repository about a remote and gives it a name."
+git-clone:
+  name: "git clone"
+  definition: "Makes your own full copy of a remote repository, with all its history."
+git-push:
+  name: "git push"
+  definition: "Sends your new commits up to the remote."
+git-pull:
+  name: "git pull"
+  definition: "Gets others' new commits from the remote and merges them into your copy."
+bare-repo:
+  name: "Bare repositories"
+  definition: "A repository with history only and no editable files, like the copy on GitHub."
+push-rejected:
+  name: "Rejected pushes"
+  definition: "Git refuses a push when the remote has commits you don't have. Pull first."
+force-push:
+  name: "Force pushing"
+  definition: "Overwriting the remote with your copy, which throws away others' work."
+pull-request:
+  name: "Pull requests"
+  definition: "A request to merge a branch into main, reviewed by teammates first."
+code-review:
+  name: "Code review"
+  definition: "Teammates reading and commenting on changes before they're merged."
+fork:
+  name: "Forks"
+  definition: "Your own copy of someone else's repository on GitHub."
+git-hosts:
+  name: "Git hosting services"
+  definition: "GitHub, GitLab, Bitbucket and Azure DevOps all host shared repositories."
+git-restore:
+  name: "git restore"
+  definition: "Throws away uncommitted changes to a file, bringing back the last committed version."
+restore-staged:
+  name: "git restore --staged"
+  definition: "Un-stages a file while keeping your changes."
+commit-amend:
+  name: "git commit --amend"
+  definition: "Replaces the last commit. Only safe before pushing."
+git-reset:
+  name: "git reset"
+  definition: "Removes commits. --soft keeps their changes. Only safe before pushing."
+rewrite-history:
+  name: "Rewriting history"
+  definition: "Replacing or removing commits, which causes trouble once others have them."
+git-revert:
+  name: "git revert"
+  definition: "Adds a new commit that does the opposite of an old one. Safe after pushing."
+git-reflog:
+  name: "git reflog"
+  definition: "Git's diary of everywhere HEAD has been, used to rescue lost commits."
+revoke-key:
+  name: "Revoking a leaked key"
+  definition: "The only real fix for a pushed secret is to cancel it and make a new one."
+undo-choice:
+  name: "Choosing the right undo"
+  definition: "The key question is whether anyone else already has the commit."
+github-account:
+  name: "GitHub accounts"
+  definition: "A free account on github.com, for storing and sharing repositories."
+github-pages:
+  name: "GitHub Pages"
+  definition: "A free GitHub feature that publishes a repository's files as a website."
+deployment:
+  name: "Deployments"
+  definition: "Putting a new version of software where people use it."
+static-site:
+  name: "Static sites"
+  definition: "A website made only of files sent as they are, with no server code or database."
+credential-manager:
+  name: "Git Credential Manager"
+  definition: "Signs you in to GitHub from Git, through your browser."
+start-command:
+  name: "start"
+  definition: "Opens a file with its usual program, as if you'd double-clicked it."
+public-site-privacy:
+  name: "Keeping a public site private-data-free"
+  definition: "Anything on a public page can be seen by anyone, so leave personal details off."
+
+readme:
+  name: "README files"
+  definition: "A project's instructions file, usually README.md, saying what it is and how to run it."
+
+# ---- Reading code: Python, then JavaScript ----------------------------------
+program-flow:
+  name: "Programs run top to bottom"
+  definition: "A program is instructions the computer follows one line at a time, from the top."
+python-in-app:
+  name: "Python inside Groundwork"
+  definition: "Groundwork runs Python in your browser, so the exercises need no install."
+run-and-check:
+  name: "Run and check"
+  definition: "Runs your code, shows what it printed, then hidden checks test it and say what's wrong."
+value-types:
+  name: "Values and types"
+  definition: "Every value has a type, such as text or a number, which decides what you can do with it."
+str-type:
+  name: "Strings (text)"
+  definition: "Text, always written in quotes, like \"hello\"."
+int-float:
+  name: "int and float"
+  definition: "Whole numbers like 42, and numbers with a decimal point like 3.5."
+bool-type:
+  name: "True and False (bool)"
+  definition: "The two yes-or-no values, written True and False in Python."
+arithmetic:
+  name: "Arithmetic in code"
+  definition: "+ - * and / work like a calculator. + joins text instead of adding."
+variable:
+  name: "Variables"
+  definition: "A name that stores a value, like price = 3.5."
+assignment:
+  name: "Assignment (=)"
+  definition: "Work out the right side, then store it under the name on the left."
+reassignment:
+  name: "Changing a variable"
+  definition: "count = count + 1 takes the old value, adds one, and stores it back."
+print-fn:
+  name: "print()"
+  definition: "Shows a value on the screen."
+f-string:
+  name: "f-strings"
+  definition: "Text with values inside curly brackets, like f\"Total: {total}\"."
+type-conversion:
+  name: "Converting types"
+  definition: "int(), float() and str() turn values into another type, like int(\"30\") into 30."
+typeerror-str-int:
+  name: "Mixing text and numbers"
+  definition: "Python refuses to add a number to text, with a TypeError. Convert first."
+function:
+  name: "Functions"
+  definition: "A named piece of code that takes values in and gives an answer back."
+def-keyword:
+  name: "def"
+  definition: "Defines a function. It runs nothing until the function is called."
+parameter:
+  name: "Parameters"
+  definition: "A placeholder name in a function's def line, for a value it will be given."
+argument:
+  name: "Arguments"
+  definition: "The actual value passed to a function when calling it."
+function-call:
+  name: "Calling a function"
+  definition: "Using a function by writing its name and brackets, like price_with_tax(10)."
+return-statement:
+  name: "return"
+  definition: "Hands a value back to the code that called the function, and ends the function."
+indented-block:
+  name: "Indentation in Python"
+  definition: "Spaces at the start of a line decide which lines belong inside a function, if or loop."
+indentation-error:
+  name: "IndentationError and SyntaxError"
+  definition: "Python's errors when it can't make sense of the code's layout, so nothing runs."
+pass-placeholder:
+  name: "pass"
+  definition: "Means \"do nothing\". Used as a placeholder in an empty function."
+none-value:
+  name: "None"
+  definition: "Python's value for \"nothing\". What a function without return gives back."
+function-checks:
+  name: "Why exercises use functions"
+  definition: "Checks can call a function many times with different values and compare what it returns."
+comparison-operators:
+  name: "Comparisons"
+  definition: "==, !=, <, >, <= and >= compare two values and give True or False."
+equals-vs-assign:
+  name: "= versus =="
+  definition: "One = stores a value. Two == ask whether two values are equal."
+if-statement:
+  name: "if"
+  definition: "Runs its indented lines only when its condition is True."
+elif-else:
+  name: "elif and else"
+  definition: "Further checks and a catch-all after an if. Only the first True block runs."
+return-in-branch:
+  name: "Returning from inside an if"
+  definition: "A return inside an if ends the function there, so later lines are skipped."
+and-or-not:
+  name: "and, or, not"
+  definition: "and needs both true, or needs at least one, and not flips True and False."
+boundary-bug:
+  name: "Boundary bugs"
+  definition: "A mistake at the exact edge of a range, like > instead of >=."
+boundary-testing:
+  name: "Boundary testing"
+  definition: "Testing exactly at a limit, and just either side of it."
+list:
+  name: "Lists"
+  definition: "Many values in order, in square brackets, like [72, 45, 90]."
+list-index:
+  name: "List positions (indexes)"
+  definition: "Items are numbered from 0, so items[0] is the first."
+negative-index:
+  name: "Negative indexes"
+  definition: "Count from the end, so items[-1] is the last item."
+len-fn:
+  name: "len()"
+  definition: "Gives how many items are in a list, or characters in text."
+append:
+  name: "append"
+  definition: "Adds an item to the end of a list."
+for-loop:
+  name: "for loops"
+  definition: "Runs the indented lines once for each item in a list."
+loop-variable:
+  name: "The loop variable"
+  definition: "The name that holds the current item on each pass, like name in for name in names."
+range-fn:
+  name: "range()"
+  definition: "Counts from 0 up to, but not including, a number. range(3) is 0, 1, 2."
+running-total:
+  name: "The running-total pattern"
+  definition: "Start at 0 before a loop, add each item inside it, use the total after it."
+counting-pattern:
+  name: "The counting pattern"
+  definition: "Start a count at 0 and add 1 inside a loop whenever an item matches."
+build-list-pattern:
+  name: "Building a new list"
+  definition: "Start with an empty list and append the items you want inside a loop."
+loop-indentation:
+  name: "What repeats in a loop"
+  definition: "Indented lines run once per item. Lines outside the loop run once."
+builtin-shortcuts:
+  name: "sum, max, min and sorted"
+  definition: "Python's built-in shortcuts for common loops."
+off-by-one:
+  name: "Off-by-one bugs"
+  definition: "Being out by one, often from counting from 0 or from < versus <=."
+empty-list-guard:
+  name: "Handling empty lists"
+  definition: "Check for an empty list before dividing by its length, to avoid dividing by zero."
+return-vs-print:
+  name: "return versus print"
+  definition: "return gives a value back to code. print only shows it to a person."
+none-trap:
+  name: "How None sneaks in"
+  definition: "A function that misses a return on some path gives None, which crashes later."
+crash-vs-cause:
+  name: "Where it crashed vs where it went wrong"
+  definition: "An error shows where a problem was noticed. Work backwards to where it started."
+string-index:
+  name: "Letters by position"
+  definition: "text[0] is the first character of a string, text[-1] the last."
+upper-lower:
+  name: ".upper() and .lower()"
+  definition: "Give a copy of text in capitals or small letters."
+format-decimals:
+  name: "Two decimal places"
+  definition: "Inside an f-string, :.2f shows a number with exactly two decimal places."
+nested-calls:
+  name: "Calls inside calls"
+  definition: "double(double(3)) runs the inside call first, then passes its answer out."
+local-variable:
+  name: "Local variables"
+  definition: "A variable made inside a function only exists inside that function."
+function-reuse:
+  name: "Why code is split into functions"
+  definition: "Reuse, clear names, testing pieces separately, and smaller parts to understand."
+honest-function-names:
+  name: "Functions that do what they say"
+  definition: "A function should do what its name says, and nothing surprising."
+dictionary:
+  name: "Dictionaries"
+  definition: "Values stored by key (a label), like {\"customer\": \"Ada\"}."
+dict-key-access:
+  name: "Looking up a key"
+  definition: "order[\"customer\"] gives the value stored under that key."
+dict-change:
+  name: "Changing a dictionary"
+  definition: "order[\"total\"] = 55 changes a value, or adds the key if it's new."
+keyerror:
+  name: "KeyError"
+  definition: "The error when a dictionary doesn't have the key you asked for."
+dict-get:
+  name: ".get()"
+  definition: "Looks up a key safely, giving None or a fallback instead of crashing."
+nested-data:
+  name: "Nested data"
+  definition: "Lists and dictionaries inside each other, read one step at a time."
+nested-loop:
+  name: "Loops inside loops"
+  definition: "An inner loop runs fully for each pass of the outer loop."
+best-so-far:
+  name: "The best-so-far pattern"
+  definition: "Remember the best item seen, and replace it whenever a better one comes along."
+import-module:
+  name: "Modules and import"
+  definition: "import makes a bundle of extra functions, like json, available."
+triple-quoted-string:
+  name: "Triple-quoted strings"
+  definition: "Text in three quote marks, which can run over several lines."
+json-loads:
+  name: "json.loads()"
+  definition: "Turns JSON text into Python lists and dictionaries."
+api-intro:
+  name: "APIs (first look)"
+  definition: "How one program offers data to other programs, usually as JSON."
+traceback:
+  name: "Tracebacks"
+  definition: "Python's error report, with the trail of function calls that led to the error."
+read-bottom-up:
+  name: "Reading a traceback bottom-up"
+  definition: "The last line names the error. Above it is where, then how the program got there."
+common-python-errors:
+  name: "Python's common errors"
+  definition: "NameError, TypeError, KeyError, IndexError, ValueError, AttributeError and SyntaxError."
+nameerror:
+  name: "NameError"
+  definition: "Python doesn't know that name. Often a typo."
+indexerror:
+  name: "IndexError"
+  definition: "A list doesn't have that position."
+attributeerror:
+  name: "AttributeError"
+  definition: "That value doesn't have that method, often because it's None."
+syntaxerror:
+  name: "SyntaxError"
+  definition: "Python couldn't read the code's layout, so none of it ran."
+valueerror:
+  name: "ValueError"
+  definition: "The right type, but a value that makes no sense, like int(\"hello\")."
+try-except:
+  name: "try and except"
+  definition: "Runs code, and handles a specific expected error instead of crashing."
+specific-except:
+  name: "Catching specific errors"
+  definition: "Only catch errors you expect and can handle. A bare except hides bugs."
+fix-one-at-a-time:
+  name: "Fixing one error at a time"
+  definition: "Run, read the error, fix that one thing, and run again."
+error-exposure:
+  name: "Errors that reveal too much"
+  definition: "Real apps show visitors a friendly message and log the details for developers."
+silent-bug:
+  name: "Bugs that don't crash"
+  definition: "Wrong results with no error message, the most costly kind."
+debug-method:
+  name: "The debugging method"
+  definition: "Reproduce, narrow down, look at real values, fix the cause, and check it's fixed."
+reproduce-bug:
+  name: "Reproducing a bug"
+  definition: "Making the bug happen on purpose, reliably, so you can confirm a fix."
+narrow-down:
+  name: "Narrowing a bug down"
+  definition: "Check data going in and out of each part, halving the search each time."
+print-debugging:
+  name: "Print debugging"
+  definition: "Adding temporary prints to see what variables really hold."
+debugger:
+  name: "Debuggers"
+  definition: "A tool that pauses a program on a line so you can inspect every variable."
+list-slicing:
+  name: "Slicing"
+  definition: "items[a:b] gives the items from position a up to, but not including, b."
+one-change-at-a-time:
+  name: "One change at a time"
+  definition: "Change one thing, then test, so you know what fixed or broke it."
+what-changed:
+  name: "Asking what changed"
+  definition: "A bug that started on a date usually comes from a change on that date."
+injection-intro:
+  name: "Injection (first look)"
+  definition: "A security hole where text people type is treated as commands."
+automation-candidates:
+  name: "What's worth automating"
+  definition: "Jobs that are repetitive, rule-based and done on a computer."
+read-work-write:
+  name: "Read, work it out, write"
+  definition: "The three steps almost every script follows."
+csv-format:
+  name: "CSV files"
+  definition: "Comma-separated values, how spreadsheets export data as text. Values arrive as text."
+csv-dictreader:
+  name: "csv.DictReader"
+  definition: "Reads CSV rows as dictionaries, keyed by column name."
+group-by-dict:
+  name: "Grouping with a dictionary"
+  definition: "One running total per category, kept in a dictionary."
+in-operator:
+  name: "in and not in"
+  definition: "Checks whether a key is in a dictionary, or an item is in a list."
+sorted-fn:
+  name: "sorted()"
+  definition: "Gives back a sorted copy. Given a dictionary, it gives its keys in order."
+file-write:
+  name: "Writing files"
+  definition: "open(name, \"w\") and f.write(...) save text into a file."
+with-open:
+  name: "with open(...) as f"
+  definition: "Opens a file and closes it properly when the block ends."
+newline-char:
+  name: "\\n"
+  definition: "Means \"new line\" inside a string."
+write-vs-append:
+  name: "w\" versus \"a"
+  definition: "\"w\" replaces a file's contents. \"a\" adds to the end."
+run-on-a-copy:
+  name: "Run new scripts on a copy"
+  definition: "Scripts repeat mistakes on every row, so test on a copy of the data first."
+js-syntax:
+  name: "JavaScript next to Python"
+  definition: "The same ideas as Python, with different punctuation."
+js-braces:
+  name: "Braces in JavaScript"
+  definition: "Curly braces group lines in JavaScript, instead of indentation."
+js-semicolons:
+  name: "Semicolons in JavaScript"
+  definition: "Most JavaScript lines end with a semicolon."
+js-function:
+  name: "function in JavaScript"
+  definition: "JavaScript's word for def. The body goes inside braces."
+const-let:
+  name: "const and let"
+  definition: "Announce a new variable that won't (const) or will (let) be replaced."
+camel-case:
+  name: "camelCase"
+  definition: "JavaScript naming like shippingCost, with capitals instead of underscores."
+js-object:
+  name: "JavaScript objects"
+  definition: "JavaScript's dictionary, like { customer: \"Ada\" }."
+js-dot-access:
+  name: "Reading objects with a dot"
+  definition: "order.customer reads the customer from an object."
+js-array:
+  name: "JavaScript arrays"
+  definition: "JavaScript's list. .length gives how many items."
+for-of:
+  name: "for...of"
+  definition: "JavaScript's loop over each item in an array."
+template-literal:
+  name: "Template literals"
+  definition: "Backticks with ${...} inside, JavaScript's f-strings."
+js-null-undefined:
+  name: "null and undefined"
+  definition: "null means deliberately empty. undefined means never set."
+type-coercion:
+  name: "JavaScript's silent type conversion"
+  definition: "JavaScript converts types silently, so \"5\" + 1 is \"51\"."
+triple-equals:
+  name: "=== versus =="
+  definition: "=== compares exactly. == converts first. Always use ===."
+number-fn:
+  name: "Number()"
+  definition: "Converts text to a number in JavaScript."
+typescript-intro:
+  name: "TypeScript"
+  definition: "JavaScript with type labels, checked before the code runs."
+array-methods:
+  name: "Array methods"
+  definition: "Functions built into arrays, like filter and map, called with a dot."
+method-chaining:
+  name: "Chaining methods"
+  definition: "Calling methods one after another, like .filter(...).map(...)."
+functions-as-values:
+  name: "Functions as values"
+  definition: "In JavaScript, a function can be stored or passed to another function."
+arrow-function:
+  name: "Arrow functions"
+  definition: "A short function, like (o) => o.total > 100."
+filter-method:
+  name: "filter"
+  definition: "Keeps the array items that pass a test."
+map-method:
+  name: "map"
+  definition: "Turns each array item into something else."
+find-method:
+  name: "find"
+  definition: "Gives the first array item that passes a test, or undefined."
+reduce-method:
+  name: "reduce"
+  definition: "Combines all array items into one value, from a starting value."
+cannot-read-undefined:
+  name: "\"Cannot read properties of undefined\""
+  definition: "Something you thought was an object turned out to be undefined."
+optional-chaining:
+  name: "?. (optional chaining)"
+  definition: "Reads a property only if the thing before it exists."
+nullish-coalescing:
+  name: "?? (nullish coalescing)"
+  definition: "Uses a default when a value is null or undefined."
+browser-vs-node:
+  name: "Browser JavaScript versus Node"
+  definition: "Browser JavaScript runs in a page. Node runs in a terminal or server and can use files."
+devtools-console:
+  name: "The browser console"
+  definition: "Part of the browser's developer tools, opened with F12, where you can run JavaScript and see errors."
+node-require:
+  name: "require"
+  definition: "Loads a module in Node, like Python's import."
+fs-module:
+  name: "Node's fs module"
+  definition: "Node's built-in module for reading and writing files."
+fetch-fn:
+  name: "fetch"
+  definition: "Sends a request to a web address from JavaScript."
+async-code:
+  name: "Waiting without freezing"
+  definition: "Slow operations run in the background so a page or server never freezes while waiting."
+promise:
+  name: "Promises"
+  definition: "What a slow operation gives back immediately, meaning \"I'll have the answer later\"."
+await-keyword:
+  name: "await"
+  definition: "Waits for a promise's answer before carrying on."
+async-function:
+  name: "async functions"
+  definition: "A function marked async, which is allowed to use await."
+response-json:
+  name: "response.json()"
+  definition: "Reads a response's JSON body as JavaScript data."
+stack-trace:
+  name: "Stack traces"
+  definition: "Node's version of a traceback."
+econnrefused:
+  name: "ECONNREFUSED"
+  definition: "Connection refused, because nothing is listening on that port."
+set-content-lines:
+  name: "Writing several lines with Set-Content"
+  definition: "Pieces in quotes, separated by commas, become separate lines."
+codebase-map:
+  name: "Mapping a codebase"
+  definition: "README, package list, get it running, then the folder structure."
+entry-point:
+  name: "Entry points"
+  definition: "The file where a program starts."
+trace-a-feature:
+  name: "Tracing a feature"
+  definition: "Following one action from the page all the way to where data is saved."
+search-project:
+  name: "Searching a project"
+  definition: "Search every file for text you can see on screen to find where things happen."
+server-route:
+  name: "Routes"
+  definition: "Backend code that answers requests for one address, like /api/checkout."
+req-res:
+  name: "req and res"
+  definition: "The request that arrived, and the response being sent back."
+request-body:
+  name: "req.body"
+  definition: "The data the browser sent with a request."
+destructuring:
+  name: "Destructuring"
+  definition: "const { a, b } = obj pulls values out of an object into variables."
+linter:
+  name: "Linters"
+  definition: "A tool that automatically flags common mistakes in code."
+review-checklist:
+  name: "Reviewing code"
+  definition: "Does it do what was asked, handle the edges and failures, stay safe, and read clearly?"
+trust-the-server:
+  name: "Never trust the browser"
+  definition: "Anything from the browser can be changed, so servers work out prices themselves."
+reviewing-ai-code:
+  name: "Reviewing AI-written code"
+  definition: "Review it like a stranger's code, and be wary of fixes that turn checks off."
+
+# ---- How a web request really works ------------------------------------------
+request-trip:
+  name: "The trip a web request takes"
+  definition: "Find the address, connect, ask, the server works, then it answers."
+ip-address-intro:
+  name: "IP addresses (first look)"
+  definition: "The numbers computers use to reach each other."
+dns-intro:
+  name: "DNS (first look)"
+  definition: "The system that turns names into IP addresses."
+http-intro:
+  name: "HTTP (first look)"
+  definition: "The language browsers and servers speak."
+https-intro:
+  name: "HTTPS (first look)"
+  definition: "HTTP with encryption."
+five-stages:
+  name: "Diagnosing by stage"
+  definition: "Working out which stage of the trip a problem is in."
+curl-output-file:
+  name: "curl -o and -s"
+  definition: "-o saves the response to a file. -s hides curl's progress messages."
+network-tab:
+  name: "The Network tab"
+  definition: "Part of the browser's developer tools that lists every request a page makes."
+ip-address:
+  name: "IP addresses"
+  definition: "The number a device on a network is reached at."
+ipv4-ipv6:
+  name: "IPv4 and IPv6"
+  definition: "The older four-number format, and the newer, longer one."
+private-public-ip:
+  name: "Private and public addresses"
+  definition: "192.168.x.x and 10.x.x.x only mean something inside one network. Others are public."
+router-nat:
+  name: "Routers"
+  definition: "The box that connects a home or office network to the internet, sharing one public address."
+well-known-ports:
+  name: "Common port numbers"
+  definition: "80 for HTTP, 443 for HTTPS, 22 for SSH."
+connection-refused:
+  name: "Connection refused"
+  definition: "The computer answered, but nothing is listening on that port."
+connection-timeout:
+  name: "Connection timed out"
+  definition: "Nothing answered at all. Suspect a firewall or the wrong address."
+firewall:
+  name: "Firewalls"
+  definition: "Something that blocks some network connections on purpose."
+packet:
+  name: "Packets"
+  definition: "Small chunks that data is split into to travel over a network."
+tcp:
+  name: "TCP"
+  definition: "Reliable, ordered delivery, like a phone call. The web uses it."
+udp:
+  name: "UDP"
+  definition: "Fast delivery with no guarantees, like postcards. DNS uses it."
+dns:
+  name: "DNS"
+  definition: "The worldwide directory that turns domain names into IP addresses."
+domain-name:
+  name: "Domain names"
+  definition: "A rented name like example.com."
+resolver:
+  name: "DNS resolvers"
+  definition: "The server that does a DNS lookup on your behalf."
+dns-hierarchy:
+  name: "Root and TLD servers"
+  definition: "Root servers know who handles each ending like .com, and TLD servers know who handles each domain."
+authoritative-server:
+  name: "Authoritative DNS servers"
+  definition: "The source of truth for one domain, changed when you edit its DNS."
+dns-records:
+  name: "DNS records"
+  definition: "A, AAAA, CNAME, MX and TXT entries, each doing a different job."
+ttl-caching:
+  name: "TTL and caching"
+  definition: "Each DNS answer may be saved for its TTL, in seconds."
+dns-propagation:
+  name: "Why DNS changes take time"
+  definition: "Old saved answers keep being used until they expire."
+nslookup:
+  name: "nslookup"
+  definition: "Windows' command for looking up a name in DNS."
+http:
+  name: "HTTP requests and responses"
+  definition: "Text messages in a fixed layout, with a method, path, headers, status and body."
+http-method:
+  name: "HTTP methods"
+  definition: "GET reads, POST creates, PUT updates, DELETE removes."
+url-path:
+  name: "Paths in web addresses"
+  definition: "The part of an address after the name and port, like /orders/102."
+http-header:
+  name: "Headers"
+  definition: "Extra information on a request or response, written as Name, colon, value."
+status-code:
+  name: "Status codes"
+  definition: "How a request went, like 200 OK or 404 Not Found."
+response-body:
+  name: "Response bodies"
+  definition: "The content of a response, such as HTML or JSON."
+status-families:
+  name: "Status code families"
+  definition: "2xx worked, 3xx go elsewhere, 4xx your request's problem, 5xx the server's problem."
+content-type:
+  name: "Content-Type"
+  definition: "The header saying what kind of content the body is."
+stateless:
+  name: "Stateless HTTP"
+  definition: "Each request stands alone, and the server doesn't remember the last one."
+cookie:
+  name: "Cookies"
+  definition: "Text a browser stores and sends back with each request, often to keep you logged in."
+str-split:
+  name: ".split()"
+  definition: "Breaks text into a list of words."
+https:
+  name: "HTTPS"
+  definition: "HTTP inside an encrypted connection."
+encryption:
+  name: "Encryption"
+  definition: "Scrambling data so only the intended receiver can read it."
+tls:
+  name: "TLS (SSL)"
+  definition: "The encryption HTTPS uses. SSL is its old name."
+https-two-jobs:
+  name: "Privacy and identity"
+  definition: "HTTPS keeps the conversation private, and proves you're talking to the real site."
+certificate:
+  name: "Certificates"
+  definition: "A server's signed ID card, saying which domain it is."
+certificate-authority:
+  name: "Certificate Authorities"
+  definition: "Organizations browsers trust to sign certificates."
+cert-expiry:
+  name: "Expired certificates"
+  definition: "Certificates expire, and failed automatic renewal is a common cause of outages."
+padlock-meaning:
+  name: "What the padlock means"
+  definition: "The connection is private and the name matches. Not that the business is honest."
+requests-intro:
+  name: "The requests package"
+  definition: "The popular Python package for sending web requests."
+keyword-arguments:
+  name: "Named arguments"
+  definition: "Arguments written as name=value, saying exactly which setting each value is for."
+verify-false:
+  name: "verify=False"
+  definition: "Turns off certificate checking, silencing a real warning. Almost never right."
+api:
+  name: "APIs"
+  definition: "A documented way for programs to request things from another program."
+rest:
+  name: "REST"
+  definition: "The common API style where paths name things and HTTP methods say what to do."
+api-promise:
+  name: "An API as a promise"
+  definition: "Send a request shaped like this, and get an answer shaped like that."
+requests-get:
+  name: "requests.get()"
+  definition: "Sends a GET request from Python."
+status-code-attr:
+  name: ".status_code"
+  definition: "A Python response's status, as a number."
+response-json-py:
+  name: ".json() in Python"
+  definition: "Reads a response's JSON body as Python data."
+api-key-header:
+  name: "Sending an API key"
+  definition: "API keys usually travel in a header, like X-API-Key."
+keys-in-browser:
+  name: "Keys don't belong in the browser"
+  definition: "Anyone can read a web page's code, so real keys stay on a server."
+database:
+  name: "Databases"
+  definition: "A program for storing lots of data safely and finding things quickly."
+table:
+  name: "Tables"
+  definition: "Rows and columns of data in a database, like a spreadsheet."
+sql:
+  name: "SQL"
+  definition: "The language for asking table databases questions."
+sql-select:
+  name: "SELECT and FROM"
+  definition: "Which columns to show, and which table to start from."
+sql-where:
+  name: "WHERE"
+  definition: "Keeps only the rows where a condition is true."
+sql-join:
+  name: "JOIN"
+  definition: "Brings in a related table, matching rows by a column."
+foreign-key:
+  name: "Foreign keys"
+  definition: "A column pointing at a row in another table, like customer_id."
+left-join:
+  name: "LEFT JOIN"
+  definition: "A join that keeps every row from the first table, even with no match."
+api-docs:
+  name: "API documentation"
+  definition: "The written description of every request an API accepts and what comes back."
+web-origin:
+  name: "Origins"
+  definition: "Scheme, host and port together, like https://shop.example:443."
+same-origin-policy:
+  name: "The same-origin policy"
+  definition: "Browsers only let a page read responses from its own origin, unless allowed."
+cors:
+  name: "CORS"
+  definition: "How a server gives other origins permission to read its responses."
+allow-origin-header:
+  name: "Access-Control-Allow-Origin"
+  definition: "The response header naming which origin may read the response."
+browser-enforces:
+  name: "The browser enforces CORS"
+  definition: "The server answers normally, and the browser withholds the answer from the page."
+postman:
+  name: "Postman"
+  definition: "A popular app for sending test requests to APIs. It ignores CORS, like curl."
+preflight:
+  name: "Preflight requests"
+  definition: "An OPTIONS request the browser sends first, asking permission."
+cors-credentials:
+  name: "CORS with cookies"
+  definition: "Allowing credentials lets other origins send the user's login cookies."
+wildcard-origin:
+  name: "Allowing every origin"
+  definition: "Only safe for public data with no login."
+cors-fix-options:
+  name: "Fixing CORS well"
+  definition: "Allow your specific origins, or call the API from your own server."
+express-intro:
+  name: "Express"
+  definition: "The most popular Node package for building servers."
+middleware:
+  name: "Middleware"
+  definition: "Code that runs on every request before the route."
+client-asks-first:
+  name: "The client asks first"
+  definition: "In HTTP, a server can only reply. It can't start talking."
+polling:
+  name: "Polling"
+  definition: "Asking \"anything new?\" on a timer."
+server-sent-events:
+  name: "Server-Sent Events"
+  definition: "One long request that the server keeps sending updates along."
+websocket:
+  name: "WebSockets"
+  definition: "A permanent two-way connection between browser and server."
+signalr:
+  name: "SignalR"
+  definition: "A Microsoft .NET library for live updates, built on WebSockets."
+realtime-requirement:
+  name: "Turning \"real-time\" into a number"
+  definition: "Ask how many seconds old is too old, then pick the simplest thing that meets it."
+open-connections-cost:
+  name: "The cost of open connections"
+  definition: "Holding a connection open for every user complicates scaling and deploying."
+architecture-diagram:
+  name: "Architecture diagrams"
+  definition: "A drawing of how a system's parts connect."

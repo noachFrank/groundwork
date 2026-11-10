@@ -3,10 +3,19 @@ id: addresses-and-ports
 title: "Addresses and ports: where things live"
 order: 2
 topic: networks-and-the-web
-minutes: 30
+minutes: 40
 summary: How an IP address finds a computer and a port finds the right program on it, plus TCP and UDP.
 connectivity: offline
-prerequisites: [the-trip]
+prerequisites:
+  - id: the-trip
+    need: essential
+    why: Gives the overall picture this lesson zooms into.
+  - id: processes-and-ports
+    need: essential
+    why: First introduces ports, listening and 127.0.0.1.
+revision: 2
+teaches: [ip-address, ipv4-ipv6, private-public-ip, router-nat, well-known-ports, connection-refused, connection-timeout, firewall, packet, tcp, udp]
+uses: [ip-address-intro, ip-127, localhost, port, server-program, listen-address, port-in-use, request-trip, browser]
 predict:
   id: p1
   type: mcq
@@ -88,44 +97,84 @@ videos:
     note: The first five minutes cover what you need.
 ---
 
+## In this lesson
+
+- What an **IP address** is, and how to tell private ones from public ones.
+- Ports again, with the numbers you'll see most often.
+- The difference between "connection refused" and "connection timed out", and what each one tells you.
+- **TCP** and **UDP**: two ways data travels.
+
+You met ports and `127.0.0.1` in *Programs, processes and ports*. This lesson fills in the rest of the picture.
+
 ## IP addresses find computers
 
-An **IP address** identifies a computer on a network. Most look like four numbers with dots: `142.250.190.78`. That format is **IPv4**. There's a newer, longer format called **IPv6**, like `2607:f8b0:4009::200e`. They do the same job.
+Every device on a network, whether it's a laptop, a phone, a server or a smart TV, has an **IP address**: a number other devices use to reach it, like a street address for a house. (IP stands for Internet Protocol.)
 
-A few are worth recognizing:
+Most look like four numbers from 0 to 255, separated by dots: `142.250.190.78`. That format is **IPv4**. There are only about 4 billion of them, which isn't enough for every device on Earth, so there's a newer, much longer format called **IPv6**, like `2607:f8b0:4009::200e`. They do the same job, and you'll see both.
+
+A few are worth recognizing at a glance:
 
 | Address | What it means |
 | --- | --- |
-| `127.0.0.1` | This computer. Also known as `localhost`. |
-| `192.168.x.x` or `10.x.x.x` | Private. Only meaningful inside a home or office network. |
-| Anything else, generally | Public: reachable from across the internet. |
+| `127.0.0.1` | This computer, also known as `localhost`. Never leaves the machine. |
+| `192.168.x.x` or `10.x.x.x` | **Private.** Only meaningful inside one home or office network. |
+| Almost anything else | **Public**: reachable from across the internet. |
 
-Your laptop probably has a private address like `192.168.1.23`. Your router shares one public address for everyone at home. That's why a server on your laptop can't normally be reached from outside.
+### Why your laptop can't be reached from outside
+
+Your laptop probably has a private address like `192.168.1.23`, given to it by your home's **router** (the box your internet comes through). The router has one **public** address, and shares it for every device in the house. Requests from your devices go out through it, and replies come back through it.
+
+But a request arriving **from** the internet only reaches the router. The router doesn't know which device inside it's for, so it doesn't pass it on. That's why a server on your laptop can't normally be reached from outside, even if it listens on `0.0.0.0`. It's also part of what keeps home devices safe.
+
+<details>
+<summary>Quick check: is `192.168.0.15` public or private?</summary>
+
+Private. Addresses starting 192.168 only mean something inside one local network.
+</details>
 
 ## Ports find programs
 
-A computer runs many programs that use the network at once. Each server program **listens** on a numbered **port**, from 1 to 65535.
-
-Think of an apartment building: the IP address gets a letter to the building, and the port is the apartment number.
+You know this part: each server program **listens** on a numbered **port**, and the IP address gets a request to the building while the port is the apartment number. Some ports are traditionally used for particular jobs:
 
 | Port | Usually |
 | --- | --- |
 | 80 | HTTP (unencrypted web) |
 | 443 | HTTPS (encrypted web) |
-| 22 | SSH (logging in to a server remotely) |
-| 5432 | PostgreSQL, a database |
+| 22 | SSH (logging in to a server's terminal) |
+| 5432 | PostgreSQL, a popular database |
 
-So `https://example.com` really means `https://example.com:443`. The browser fills in the port when it's the standard one. Developers constantly run things on other ports, like `http://localhost:3000`.
+So `https://example.com` really means `https://example.com:443`. The browser fills in the port when it's the standard one. Developers constantly run things on other ports, like `http://localhost:3000` or Vite's `5173`.
 
-If nothing is listening on a port, the connection is **refused**. You'll see that for yourself in the task.
+## Refused or timed out?
+
+When a connection fails, the exact words are a clue:
+
+- **Connection refused**: the computer at that address answered, saying "nothing is listening on that port". The machine is reachable, but the service is down or on a different port. You saw this as ECONNREFUSED in the Node lesson.
+- **Connection timed out**: nothing answered at all, and eventually the request gave up. Suspect the wrong address, a computer that's off, or a **firewall**: a program or device that blocks some connections on purpose.
+
+You'll see a refused connection for yourself in the task.
 
 ## TCP and UDP: two ways to send
 
-Messages travel in small chunks called **packets**. Two protocols handle most of them:
+Data doesn't travel as one big lump. It's split into small chunks called **packets**, each sent separately and put back together at the other end. Two sets of rules handle most of them:
 
-- **TCP** is like a phone call. It sets up a connection, confirms everything arrives, re-sends what's lost, and keeps it all in order. The web, email and file transfers use it.
-- **UDP** is like posting postcards. It just sends. It's faster, with no guarantee. Video calls and DNS lookups use it.
+- **TCP** is like a phone call. It sets up a connection first, confirms that everything arrives, re-sends whatever gets lost, and keeps it all in the right order. The web, email and file transfers use it.
+- **UDP** is like posting postcards. It just sends, with no connection and no guarantee. It's faster, and fine when a lost packet doesn't matter much. Video calls and DNS lookups use it.
 
 <ConsultantNote>
-"Connection refused" and "connection timed out" are clues. **Refused** means the computer answered but nothing is listening on that port, so the service is probably down. **Timed out** means nothing answered at all, so suspect a firewall or the wrong address.
+"Connection refused" and "connection timed out" are clues worth asking for by name. **Refused** means the computer answered but nothing is listening on that port, so the service is probably down. **Timed out** means nothing answered at all, so suspect a firewall or the wrong address.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **IP address** | The number a device on a network is reached at |
+| **IPv4 / IPv6** | The older dotted format, and the newer, longer one |
+| **Private / public address** | Only meaningful inside one network / reachable from the internet |
+| **Router** | The box that connects a home or office network to the internet |
+| **Connection refused** | The computer answered, but nothing listens on that port |
+| **Timed out** | Nothing answered at all |
+| **Firewall** | Something that blocks some connections on purpose |
+| **Packet** | A small chunk of data sent over a network |
+| **TCP / UDP** | Reliable, ordered delivery / fast, no guarantees |

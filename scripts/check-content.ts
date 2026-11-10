@@ -1,6 +1,7 @@
 // `npm run check-content`. Proves the course itself works: every lesson is valid, no
 // prerequisites go in circles, and every exercise's reference solution passes while its
-// deliberately wrong answer fails. Add --links to also confirm videos and docs still exist.
+// deliberately wrong answer fails. It also compiles every lesson's text, so a stray { in
+// prose fails here rather than at build time. Add --links to also confirm videos and docs still exist.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
@@ -15,6 +16,9 @@ import { createContext, runInContext } from 'node:vm';
 import { JS_HARNESS, type JsRunResult } from '../shared/js-harness.ts';
 import type { JavascriptTask, PythonTask, SqlTask } from '../shared/types.ts';
 import { validateContent } from '../shared/validate.ts';
+import { compile as compileMdx } from '@mdx-js/mdx';
+import remarkFrontmatter from 'remark-frontmatter';
+import remarkGfm from 'remark-gfm';
 
 const checkLinks = process.argv.includes('--links');
 const content = loadContent(CONTENT_DIR);
@@ -160,6 +164,16 @@ checkJavascript(js);
 await checkSql(sql);
 if (checkLinks) await checkAllLinks();
 labProcess.kill();
+
+// The same MDX settings as vite.config.ts.
+for (const lesson of content.lessons) {
+  try {
+    await compileMdx(readFileSync(join(CONTENT_DIR, lesson.file), 'utf8'), { remarkPlugins: [remarkFrontmatter, remarkGfm] });
+    pass(`${lesson.id}: the lesson text compiles`);
+  } catch (e: any) {
+    problems.push(`${lesson.file}:${e.line ?? '?'}:${e.column ?? '?'} ${e.reason ?? e.message} (a { or < in plain text? Put it in backticks)`);
+  }
+}
 
 console.log(`\n${content.lessons.length} lessons, ${content.lessons.reduce((s, l) => s + l.tasks.length, 0)} tasks. ${passes} checks passed.`);
 if (problems.length > 0) {

@@ -70,7 +70,8 @@ export function LessonRow({ lesson, number }: { lesson: LessonSummary; number?: 
         </Link>
         <div className="muted small">
           {lesson.minutes} min · <span className={`status-text status-${lesson.status}`}>{STATUS_LABEL[lesson.status]}</span>
-          {lesson.locked && !done && <span className="tag">do earlier lessons first</span>}
+          {lesson.locked && !done && <span className="tag">needed lessons not done yet</span>}
+          {lesson.rewritten && <span className="tag tag-rewritten">rewritten: worth a re-read</span>}
           {lesson.connectivity === 'needs-internet' && <span className="tag tag-net">needs internet</span>}
           {lesson.needReview && <span className="tag">flagged to review</span>}
         </div>

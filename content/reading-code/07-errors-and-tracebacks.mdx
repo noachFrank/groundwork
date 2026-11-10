@@ -1,12 +1,21 @@
 ---
 id: errors-and-tracebacks
 title: Reading errors and tracebacks
-order: 6
+order: 7
 topic: reading-code
-minutes: 50
+minutes: 60
 summary: How to read a Python traceback from the bottom up, what the common errors mean, and how to handle errors you expect.
 connectivity: offline
-prerequisites: [python-dicts-data]
+prerequisites:
+  - id: python-dicts-data
+    need: essential
+    why: The broken script uses a dictionary, and KeyError is one of the errors here.
+  - id: python-functions
+    need: essential
+    why: Tracebacks follow functions calling functions, and None from a missing return.
+revision: 2
+teaches: [traceback, read-bottom-up, common-python-errors, nameerror, indexerror, attributeerror, syntaxerror, valueerror, try-except, specific-except, fix-one-at-a-time, error-exposure]
+uses: [error-message, reading-errors, typeerror-str-int, keyerror, dictionary, dict-key-access, function, function-call, return-statement, none-value, none-trap, crash-vs-cause, list, list-index, for-loop, build-list-pattern, empty-list-guard, type-conversion, indentation-error, log-file, run-and-check, case-sensitive]
 predict:
   id: p1
   type: mcq
@@ -23,6 +32,8 @@ tasks:
     type: python
     title: Fix a broken script, one error at a time
     instructions: |
+      You'll use: reading a traceback from the bottom up, and the common errors table, from this lesson.
+
       This script has **three** bugs. Each one stops it with a different error. Run it, read the last line of the error and the line number, fix that one thing, and run it again. Repeat until the checks pass.
 
       Don't rewrite the whole thing. Fixing one error at a time, guided by the message, is the skill.
@@ -111,7 +122,7 @@ tasks:
 
       ```text
       Traceback (most recent call last):
-        File "report.py", line 9, in <module>
+        File "report.py", line 13, in <module>
           print(average_price(products))
         File "report.py", line 5, in average_price
           return total / len(items)
@@ -127,20 +138,28 @@ tasks:
           return total / len(items)
 
       all_products = [{"name": "Lamp", "price": 22}, {"name": "Desk", "price": 140}]
-      products = [p for p in all_products if p["price"] > 1000]
+      products = []
+      for p in all_products:
+          if p["price"] > 1000:
+              products.append(p)
+
       print(average_price(products))
-    flawLines: [8]
+    flawLines: [10]
     lineNotes:
       "1": The function definition is fine.
       "2": Starting a running total at 0 is right.
+      "3": Looping over the items is right.
       "4": Adding up prices is fine.
       "5": This is where Python noticed the problem, dividing by len(items), which is 0. But why was the list empty?
       "7": The product list has two items, so it's fine.
-      "9": This calls the function with whatever products holds.
+      "8": Starting an empty list to build up is the usual pattern.
+      "9": Looping over every product is right.
+      "11": Adding a product that passed the check is right, if the check is right.
+      "13": This calls the function with whatever products holds.
     explanation: |
-      Line 8 keeps only products priced over 1000, and none are, so `products` is an empty list. Line 5 then divides by `len(items)`, which is 0.
+      Line 10 keeps only products priced over 1000, and none are, so `products` stays an empty list. Line 5 then divides by `len(items)`, which is 0.
 
-      Two things are worth fixing. The filter on line 8 is probably a mistake: perhaps they meant 100. And `average_price` should cope with an empty list, for example `if not items: return 0`, because empty lists happen in real data.
+      Two things are worth fixing. The check on line 10 is probably a mistake: perhaps they meant 100. And `average_price` should cope with an empty list, for example with `if len(items) == 0: return 0` at the start, because empty lists happen in real data.
 
       Tracebacks tell you **where the program noticed** the problem. The cause is often a few steps earlier, in where the data came from.
 recall:
@@ -212,11 +231,22 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- How to read a Python **traceback**: the full error report Python prints when something goes wrong.
+- What the most common errors mean, so you can recognize them at a glance.
+- How to fix a broken program one error at a time.
+- How to handle errors you **expect**, with `try` and `except`, and why you shouldn't use that to hide bugs.
+
 ## Errors are messages, not failures
 
-Every programmer sees errors constantly, including experienced ones. The difference is that experienced programmers **read** them. Python's errors are unusually helpful once you know where to look.
+Every programmer sees errors constantly, including very experienced ones. The difference is that experienced programmers **read** them, calmly, all the way through. Python's errors are unusually helpful once you know where to look.
+
+You've already met a few: TypeError when mixing text and numbers, KeyError for a missing dictionary key, ZeroDivisionError, and IndentationError. This lesson puts them all together.
 
 ## Reading a traceback
+
+When a program crashes inside a function, Python prints a **traceback**: a report of the error, plus the trail of function calls that led to it.
 
 ```text
 Traceback (most recent call last):
@@ -229,28 +259,50 @@ KeyError: 'Plums'
 
 **Read it from the bottom up:**
 
-1. **The last line** is the error type and message: `KeyError: 'Plums'`. There's no key "Plums" in the dictionary.
-2. **Just above** is where it happened: line 5, in the function `describe`, and the actual code.
-3. **Further up** is how the program got there: line 12 called `describe("Plums")`.
+1. **The last line** is the error type and message: `KeyError: 'Plums'`. There's no key "Plums" in the dictionary. Start here, always.
+2. **Just above it** is where it happened: line 5 of shop.py, inside the function `describe`, and a copy of that line of code: `count = stock[fruit]`.
+3. **Further up** is how the program got there: line 12, in `<module>`, called `describe("Plums")`. (`<module>` just means "the main part of the file, not inside any function".)
 
-"Most recent call last" means the crash is at the bottom.
+"Most recent call last" is Python reminding you that the crash is at the bottom, and the oldest step at the top.
+
+So this traceback tells a little story: line 12 called describe with "Plums", describe looked up "Plums" in stock on line 5, and there was no such key.
+
+<details>
+<summary>Quick check: in a traceback, which line do you read first?</summary>
+
+The last one. It names the error and says what went wrong. Then work upwards to see where, and how the program got there.
+</details>
 
 ## The errors you'll see most
 
 | Error | Usually means | Example |
 | --- | --- | --- |
-| `NameError` | Python doesn't know that name. Often a typo. | `totl` instead of `total` |
-| `TypeError` | The wrong kind of value for the operation | `"Total: " + 5` |
+| `NameError` | Python doesn't know that name. Often a typo, or a variable used outside the function it was made in. | `totl` instead of `total` |
+| `TypeError` | The wrong type of value for what you asked | `"Total: " + 5` |
 | `KeyError` | A dictionary doesn't have that key | `order["phone"]` |
 | `IndexError` | A list doesn't have that position | `items[10]` in a 3-item list |
-| `AttributeError` | The value doesn't have that method | `None.upper()`, often from a missing return |
-| `IndentationError`, `SyntaxError` | Python can't even read the code | A missing colon or bracket |
+| `ValueError` | The right type, but a value that makes no sense | `int("hello")` |
+| `AttributeError` | That value doesn't have that method | `None.upper()`, often from a missing return |
+| `ZeroDivisionError` | Dividing by zero | `total / len(items)` with an empty list |
+| `IndentationError`, `SyntaxError` | Python can't even read the code's layout, so nothing runs | A missing colon, bracket or quote |
 
-Notice that `KeyError: 'Plums'` above is a capital-letter problem. The key is "plums". Error messages often show the exact value, which is the clue.
+Error messages often include the **exact value** that caused the trouble. `KeyError: 'Plums'` shows a capital P, but the key in the dictionary is "plums". Keys are case-sensitive, just like Linux file names, so that's the bug.
+
+## Fixing one error at a time
+
+When a program has several bugs, Python stops at the **first** one it hits. So the method is:
+
+1. Run it.
+2. Read the last line of the error, and the line number.
+3. Fix **that one thing**.
+4. Run it again. Python will now get further, and maybe stop at the next bug.
+5. Repeat until it runs and the checks pass.
+
+Resist rewriting everything. Small, targeted fixes guided by the message are faster, and you learn exactly what each error meant. The first exercise is built for this.
 
 ## Handling errors you expect
 
-Some errors aren't bugs. A file might be missing, or a network might be down. For those, `try` and `except` let you handle the problem instead of crashing:
+Some errors aren't bugs. A user might type "four" where a number should be, or a file might be missing. Crashing isn't the right answer there. `try` and `except` let you **handle** the problem instead:
 
 ```python
 try:
@@ -259,12 +311,31 @@ except ValueError:
     print("Please type a number, like 4.99")
 ```
 
-Catch **specific** errors you can do something sensible about. Never wrap everything in a bare `except:` to make errors go away, because that hides real bugs.
+Read it as: "**Try** to run the indented lines. **If** a ValueError happens, don't crash: run the `except` block instead."
+
+- `try:` and `except ...:` both end with colons, and their blocks are indented, just like `if`.
+- After `except` you name the **specific** error you expect.
+- If no error happens, the `except` block is skipped.
+
+<Callout kind="warn" title="Don't hide bugs">
+Catch **specific** errors you can do something sensible about. Never wrap a whole program in a bare `except:`, with no error type, to make errors go away. That hides real bugs: the program carries on with wrong data, and the problem shows up later, somewhere much harder to trace.
+</Callout>
 
 <Callout kind="warn" title="'It just says error'">
 When someone tells you "it gave an error", always ask for the **exact** text, ideally the whole traceback. "An error" could be any of a thousand problems. The full message usually narrows it to one.
 </Callout>
 
 <ConsultantNote>
-Error messages often reach clients' customers, and sometimes they reveal too much: file paths, database names, even passwords. Real apps show visitors a friendly message and write the full details to a log that only developers see. Checking what errors expose is part of a security review.
+Error messages often reach clients' customers, and sometimes they reveal too much: file paths, database names, even passwords. Real apps show visitors a friendly message, and write the full details to a log file that only developers see. Checking what errors expose is part of a security review.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Traceback** | Python's error report, with the trail of calls that led to the error |
+| **Read bottom-up** | Error type first (last line), then where, then how it got there |
+| **`<module>`** | The main part of the file, outside any function |
+| **NameError / IndexError / ValueError / AttributeError** | Unknown name / no such position / nonsense value / no such method |
+| **SyntaxError** | Python couldn't read the code's layout, so nothing ran |
+| **`try` / `except`** | Run some code, and handle a specific expected error instead of crashing |

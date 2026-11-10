@@ -3,10 +3,19 @@ id: https
 title: "HTTPS: keeping it private"
 order: 5
 topic: networks-and-the-web
-minutes: 35
+minutes: 45
 summary: What HTTPS protects and doesn't, how certificates work, and a dangerous "fix" AI tools often suggest.
 connectivity: offline
-prerequisites: [http]
+prerequisites:
+  - id: http
+    need: essential
+    why: HTTPS is the same HTTP conversation, encrypted.
+  - id: python-dicts-data
+    need: helpful
+    why: The flaw task's code sends a dictionary as JSON.
+revision: 2
+teaches: [https, encryption, tls, https-two-jobs, certificate, certificate-authority, cert-expiry, padlock-meaning, requests-intro, keyword-arguments, verify-false]
+uses: [https-intro, http, request-response, browser, import-module, function, def-keyword, return-statement, dictionary, api-key, ai-hallucination, reviewing-ai-code, json]
 predict:
   id: p1
   type: mcq
@@ -117,11 +126,18 @@ videos:
     note: A little more technical than this lesson, and worth it if you're curious.
 ---
 
+## In this lesson
+
+- Why plain HTTP isn't safe for anything private.
+- The two jobs HTTPS does, and why both matter.
+- What a **certificate** is, and what your browser checks before showing a padlock.
+- A dangerous "fix" that AI tools often suggest for certificate errors.
+
 ## Plain HTTP is a postcard
 
-With plain HTTP, every computer between you and the server can read and change your messages: the café's Wi-Fi, your internet provider, anyone along the path. Passwords and all.
+With plain HTTP, the request and response travel as readable text. Every computer between you and the server can read them, and even change them: the café's Wi-Fi, your internet provider, anyone along the path. Passwords and card numbers included.
 
-**HTTPS** is HTTP inside an encrypted tunnel. The encryption itself is called **TLS** (you may also hear the older name, SSL). The requests and responses you learned last lesson are unchanged. They're just unreadable to anyone in between.
+**HTTPS** is HTTP inside an encrypted tunnel. **Encryption** scrambles data so only the intended receiver can unscramble it. The encryption used for HTTPS is called **TLS** (you'll also hear its older name, SSL). The requests and responses you learned about last lesson are completely unchanged inside. They're just unreadable to anyone in between.
 
 ## The two jobs of HTTPS
 
@@ -132,22 +148,61 @@ Both matter. Privacy alone isn't enough: an encrypted chat with an attacker is s
 
 <Viz name="https-handshake" />
 
-## Certificates: the ID card
+## Certificates: the server's ID card
 
-A **certificate** is a small file saying "this server is `bank.example`", signed by a **Certificate Authority (CA)**, an organization that browsers are built to trust. Your browser checks three things:
+A **certificate** is a small file a server presents, saying "this server really is `bank.example`". It's signed by a **Certificate Authority (CA)**: an organization that browsers and operating systems are built to trust, which checks that whoever asks for a certificate really controls the domain.
 
-- Is it for the exact name in the address bar?
-- Has it expired?
-- Is it signed by an authority I trust?
+Before showing a padlock, your browser checks three things:
 
-If any answer is no, you get a full-page warning.
+- Is the certificate for the **exact name** in the address bar?
+- Has it **expired**?
+- Is it signed by an authority the browser **trusts**?
 
-Most certificates last 90 days or less, because they're renewed automatically. When that automation quietly breaks, a site suddenly shows scary warnings to every visitor. Forgetting to renew is one of the most common causes of outages.
+If any answer is no, you get a full-page warning instead of the site.
+
+Most certificates last 90 days or less, because they're renewed automatically by the hosting setup. When that automation quietly breaks, a site suddenly shows scary warnings to every visitor. Forgetting to renew is one of the most common causes of outages.
 
 <Callout kind="warn" title="What a padlock doesn't mean">
 A padlock means the connection is private and the name matches. It doesn't mean the business is honest. Anyone can get a certificate for `totally-real-bank.example`.
 </Callout>
 
+<details>
+<summary>Quick check: a site's certificate is for `shop.example`, but you visited `www.shop.example`. What happens?</summary>
+
+The browser shows a warning, because the certificate isn't for the exact name in the address bar.
+</details>
+
+## Reading the code in the task
+
+The task shows Python code that sends a payment to an API. It uses **`requests`**, the most popular Python package for sending web requests. You'll use it properly next lesson. Two things to know now:
+
+```python
+response = requests.post(
+    API_URL,
+    json={"card": card_number, "amount": amount},
+    verify=False,
+)
+```
+
+- `requests.post(...)` sends a POST request to an address, here `API_URL`.
+- The arguments written as `name=value` are **named arguments** (also called keyword arguments). Instead of relying on position, they say exactly which setting each value is for. `json=...` means "send this dictionary as the JSON body". `verify=...` controls whether to check the server's certificate.
+- The call is spread over several lines, inside the brackets, just to make it easier to read.
+
+`verify` is `True` unless you say otherwise. Think about what `verify=False` means, given what you've just learned about the identity job.
+
 <ConsultantNote>
-A quick audit question for any client: "Who gets the alert if a certificate fails to renew?" If nobody knows, you've found a real risk in thirty seconds. Also, check that their site redirects plain `http://` to `https://`.
+A quick audit question for any client: "Who gets the alert if a certificate fails to renew?" If nobody knows, you've found a real risk in thirty seconds. Also check that their site redirects plain `http://` to `https://`.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **HTTPS** | HTTP inside an encrypted connection |
+| **Encryption** | Scrambling data so only the intended receiver can read it |
+| **TLS / SSL** | The encryption HTTPS uses (SSL is the old name) |
+| **Certificate** | A server's signed ID card, saying which domain it is |
+| **Certificate Authority (CA)** | An organization browsers trust to sign certificates |
+| **`requests`** | The popular Python package for sending web requests |
+| **Named (keyword) argument** | An argument written as `name=value` |
+| **`verify=False`** | Turns off certificate checking. Almost never right. |

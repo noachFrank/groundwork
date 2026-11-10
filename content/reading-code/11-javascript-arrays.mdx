@@ -1,12 +1,21 @@
 ---
 id: javascript-arrays
 title: "JavaScript: arrays, objects and arrow functions"
-order: 10
+order: 11
 topic: reading-code
-minutes: 50
+minutes: 65
 summary: The style you'll see in almost all modern JavaScript, from filter and map to find, reduce and arrow functions, plus undefined and how to read chains of them.
 connectivity: offline
-prerequisites: [javascript-basics]
+prerequisites:
+  - id: javascript-basics
+    need: essential
+    why: Objects, arrays, const and ===, which every example here uses.
+  - id: python-lists-loops
+    need: helpful
+    why: The loop patterns that filter, map and reduce replace.
+revision: 2
+teaches: [array-methods, method-chaining, functions-as-values, arrow-function, filter-method, map-method, find-method, reduce-method, cannot-read-undefined, optional-chaining, nullish-coalescing]
+uses: [js-function, js-object, js-dot-access, js-array, const-let, triple-equals, js-null-undefined, for-of, running-total, counting-pattern, build-list-pattern, best-so-far, function, parameter, return-statement, run-and-check, console-log, typeerror-str-int]
 predict:
   id: p1
   type: mcq
@@ -19,9 +28,9 @@ tasks:
     type: javascript
     title: Answer questions about orders
     instructions: |
-      Use the array methods from the lesson: `filter` keeps some items, `map` turns each item into something else, `find` gets the first match, and `reduce` combines everything into one value.
+      You'll use: `filter`, `map`, `find` and `reduce` with arrow functions, plus `??`, all from this lesson.
 
-      You can use loops instead if you prefer. The checks only test the results. But try at least one of these methods, since you'll be reading them everywhere.
+      You can use `for...of` loops instead if you prefer: the checks only test the results. But try at least one of the array methods, since you'll be reading them everywhere.
     starter: |
       const orders = [
         { id: 101, customer: "Ada", city: "London", total: 49, status: "shipped" },
@@ -158,9 +167,16 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- How modern JavaScript replaces most loops with **array methods** chained together.
+- **Arrow functions**: the small, nameless functions you'll see everywhere.
+- The four methods you'll meet most: `filter`, `map`, `find` and `reduce`.
+- `undefined`: the source of the most common JavaScript error in the world, and two helpers that tame it.
+
 ## Modern JavaScript reads like a pipeline
 
-You could write every JavaScript loop the Python way, with `for`. But real-world JavaScript, including most AI-written code, uses **array methods** chained together:
+You could write every JavaScript loop the Python way, with `for...of`. But real-world JavaScript, including most AI-written code, usually uses **array methods** chained together:
 
 ```javascript
 const londonNames = orders
@@ -168,48 +184,115 @@ const londonNames = orders
   .map((o) => o.customer);
 ```
 
-Read it top to bottom, like a recipe: **take the orders → keep the London ones → turn each into a name.**
+Read it top to bottom, like a recipe: **take the orders → keep the London ones → turn each into a name.** The result, `londonNames`, is a new array of customer names.
+
+Here's the same thing as a loop, using the building-a-list pattern from Python:
+
+```javascript
+const londonNames = [];
+for (const o of orders) {
+  if (o.city === "London") {
+    londonNames.push(o.customer);     // push is JavaScript's append
+  }
+}
+```
+
+Both work. The first style is what you'll see in most codebases, so you need to be able to read it.
+
+## Functions are values
+
+Before the methods make sense, one new idea: in JavaScript, **a function is a value**, like a number or a string. You can store one in a variable, or **pass one to another function** as an argument.
+
+That's what `filter` does. You hand it a function that answers a yes-or-no question about one item, and `filter` calls your function for every item in the array, keeping the ones where it answered `true`.
 
 ## Arrow functions
 
-`(o) => o.city === "London"` is an **arrow function**: a small function with no name, written inline. These all mean the same thing:
+`(o) => o.city === "London"` is an **arrow function**: a short way to write a small function, often without a name. These three all do the same job:
 
 ```javascript
 function isBig(o) { return o.total > 100; }
 const isBig = (o) => { return o.total > 100; };
-const isBig = (o) => o.total > 100;      // one expression is returned automatically
+const isBig = (o) => o.total > 100;
 ```
+
+Read `=>` as "goes to" or "gives". `(o) => o.total > 100` means "given an order, called `o`, give back whether its total is over 100".
+
+In the shortest form, with no braces, the single expression after the arrow is **returned automatically**, no `return` needed. With braces, you need `return`, as normal.
+
+The parameter name is up to the writer. `o` for order, `n` for number, `item`, `x`… all are common.
+
+<details>
+<summary>Quick check: what does `(n) => n * 2` give back for 5?</summary>
+
+`10`. It's a function that takes a number and returns double it.
+</details>
 
 ## The four methods you'll see most
 
 | Method | Does | Example | Gives |
 | --- | --- | --- | --- |
-| `filter` | Keeps items where the function is true | `[1, 2, 3, 4].filter(n => n > 2)` | `[3, 4]` |
-| `map` | Turns each item into something else | `[1, 2, 3].map(n => n * 10)` | `[10, 20, 30]` |
-| `find` | Gets the first match | `[1, 2, 3].find(n => n > 1)` | `2`, or `undefined` if none |
-| `reduce` | Combines everything into one value | `[1, 2, 3].reduce((sum, n) => sum + n, 0)` | `6` |
+| `filter` | Keeps the items where your function returns true | `[1, 2, 3, 4].filter((n) => n > 2)` | `[3, 4]` |
+| `map` | Turns each item into something else | `[1, 2, 3].map((n) => n * 10)` | `[10, 20, 30]` |
+| `find` | Gives the **first** item where your function returns true | `[1, 2, 3].find((n) => n > 1)` | `2`, or `undefined` if none match |
+| `reduce` | Combines all the items into one value | `[1, 2, 3].reduce((sum, n) => sum + n, 0)` | `6` |
 
-## Objects
+They're the loop patterns you already know, with names:
 
-JavaScript **objects** are like Python dictionaries, but you usually read them with a dot:
+- `filter` is "build a list of the ones that pass a test".
+- `map` is "build a list of something worked out from each".
+- `find` is "go through until you find a match, then stop".
+- `reduce` is the running total.
+
+### reduce, slowly
+
+`reduce` is the one people find hardest, so walk through it:
 
 ```javascript
-const order = { id: 101, customer: "Ada", total: 49 };
-order.customer          // "Ada"
-order["customer"]       // also "Ada"
-order.phone             // undefined, with no error yet
-order.phone.length      // TypeError: Cannot read properties of undefined
+[10, 20, 30].reduce((sum, n) => sum + n, 0)
 ```
+
+- The `0` at the end is the **starting value**, like `let total = 0`.
+- The arrow function takes the total so far (`sum`) and the next item (`n`), and returns the new total.
+- First call: sum is 0, n is 10, gives 10. Second: sum is 10, n is 20, gives 30. Third: sum is 30, n is 30, gives 60.
+- The final answer is **60**.
+
+Always give `reduce` a starting value. Without one, an empty array crashes.
+
+## Chains
+
+Because `filter` and `map` both give back a new array, you can call another method straight on the result. That's a **chain**, and it's why the first example could go `.filter(...)` then `.map(...)`. Read chains one step at a time, saying what each step does.
 
 ## undefined, and how to cope with it
 
-JavaScript gives `undefined` for things that don't exist: a missing property, a `find` with no match. It doesn't complain, until you try to use it. "**Cannot read properties of undefined**" is probably the most common JavaScript error in the world.
+JavaScript gives `undefined` for things that don't exist: a missing property, a `find` with no match. It doesn't complain, until you try to **use** it:
+
+```javascript
+const order = { id: 101, customer: "Ada", total: 49 };
+order.phone             // undefined, no error yet
+order.phone.length      // TypeError: Cannot read properties of undefined (reading 'length')
+```
+
+"**Cannot read properties of undefined**" is probably the most common JavaScript error in the world. It means: something you thought was an object turned out to be undefined. Like Python's None crashes, the real mistake is usually earlier: where did the undefined come from?
 
 Two modern helpers:
 
-- `order.customer?.name` reads `name` only if `customer` exists. Otherwise it gives undefined, with no crash.
-- `value ?? "default"` uses the default when the value is null or undefined.
+- **`?.`** (optional chaining): `order.customer?.name` reads `name` only if `customer` exists. If it doesn't, you get `undefined` instead of a crash.
+- **`??`** (nullish coalescing): `value ?? "default"` gives the value, unless it's null or undefined, in which case it gives the default. So `orders.find(...) ?? null` turns "no match" into `null`, which the exercise asks for.
 
 <ConsultantNote>
-When you read a client's frontend code, these chains are everywhere, often several lines long. Reading them step by step, saying "keep the ones that…, turn each into…", is the skill. When they're too long to follow, that's worth mentioning in a review, too.
+When you read a client's frontend code, these chains are everywhere, often several lines long. Reading them step by step, saying "keep the ones that…, turn each into…", is the skill. When they're too long to follow, that's worth mentioning in a review too.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Array method** | A function built into arrays, like filter or map, called with a dot |
+| **Arrow function** | A short function: `(o) => o.total > 100` |
+| **`filter`** | Keeps the items that pass a test |
+| **`map`** | Turns each item into something else |
+| **`find`** | The first item that passes a test, or undefined |
+| **`reduce`** | Combines all items into one value, from a starting value |
+| **Chain** | Calling methods one after another: `.filter(...).map(...)` |
+| **`?.`** | Reads a property only if the thing before it exists |
+| **`??`** | Uses a default when a value is null or undefined |

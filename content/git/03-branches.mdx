@@ -3,10 +3,16 @@ id: branches
 title: Branches and merging
 order: 3
 topic: git-and-github
-minutes: 50
+minutes: 55
 summary: Working on something new without disturbing the version that works, then bringing it back in. This is how every team works.
 connectivity: offline
-prerequisites: [ignore-and-history]
+prerequisites:
+  - id: ignore-and-history
+    need: essential
+    why: Continues with your repository, and uses HEAD and git log.
+revision: 2
+teaches: [branch, main-branch, git-switch, git-merge, fast-forward, merge-commit, git-branch-delete, html-link, commit-am, git-log-graph]
+uses: [branch-intro, repository, commit, git-add, git-commit, git-status, git-log, head-ref, commit-id, html-tags, add-content, redirect, terminal]
 predict:
   id: p1
   type: mcq
@@ -119,9 +125,19 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- What a **branch** is, and why every team uses them.
+- How to make a branch, switch between branches, and **merge** one into another.
+- The two kinds of merge Git does, and what you'll see in the history.
+
 ## Parallel lines of work
 
-A **branch** is a separate line of commits. While you work on a branch, `main` stays exactly as it was. When the work is ready, you **merge** it back.
+So far, every commit you've made has gone in a single line, one after another, on the branch called `main`.
+
+A **branch** is a separate line of commits that splits off from another. While you work on a branch, `main` stays exactly as it was. When the work on the branch is ready, you **merge** it back: Git brings the branch's commits into main.
+
+Think of it like writing a new chapter of a document in a copy, then pasting it in once it's finished, except Git does the copying and pasting for you, and keeps the full history of both.
 
 Step through what you're about to do in the task:
 
@@ -129,30 +145,69 @@ Step through what you're about to do in the task:
 
 ## Why teams work this way
 
-- **main always works.** Half-finished features never break the version people use.
+- **main always works.** Half-finished features live on branches, so they never break the version people actually use.
 - **Everyone works separately.** One person fixes a bug on one branch while another builds a feature on another.
 - **Work can be checked before it joins.** That's what pull requests are for, coming up in a later lesson.
-- **Experiments are cheap.** Try an idea on a branch. If it doesn't work out, delete the branch.
+- **Experiments are cheap.** Try an idea on a branch. If it doesn't work out, delete the branch, and main never knew.
 
 ## The commands
 
 | Command | What it does |
 | --- | --- |
-| `git switch -c name` | Make a new branch and switch to it |
-| `git switch name` | Switch to an existing branch |
-| `git branch` | List branches. The one marked `*` is where you are |
-| `git merge name` | Bring `name`'s commits into the branch you're on |
-| `git branch -d name` | Delete a branch that's been merged |
+| `git switch -c add-about` | Make a new branch called add-about, starting from where you are, and switch to it. `-c` means create. |
+| `git switch main` | Switch to an existing branch |
+| `git branch` | List branches. The one marked `*` is where you are. |
+| `git merge add-about` | Bring add-about's commits into the branch you're on now |
+| `git branch -d add-about` | Delete the add-about branch label, once it's merged |
 
-Older tutorials and AI answers often use `git checkout` for switching branches. It still works. `git switch` is newer and harder to misuse.
+Older tutorials and AI answers often use `git checkout` to switch branches. It still works, but it does several unrelated jobs, which makes it easy to misuse. `git switch` is newer and only switches.
+
+### What switching does to your files
+
+When you switch branches, Git changes the files in your folder to match that branch. A file that only exists on another branch **disappears** from the folder, and comes back when you switch back. Nothing is lost: it's safe in that branch's commits.
+
+This surprises everyone the first time, so the task makes it happen on purpose. Watch the folder.
+
+<details>
+<summary>Quick check: you're on main, and about.html only exists on the add-about branch. Is about.html in your folder?</summary>
+
+No. It appears when you switch to add-about, or after you merge add-about into main.
+</details>
+
+## Two new shortcuts
+
+**A link in HTML.** In the task you'll add a link from the home page to an About page:
+
+```html
+<a href="about.html">About</a>
+```
+
+`<a>` makes a link. `href` says where it goes (here, the file about.html in the same folder), and the text between the tags, "About", is what you click.
+
+**Committing everything at once.** `git commit -am "message"` stages every file Git is already tracking that has changed, and commits, in one step. `-a` means "all tracked changes", `-m` the message. It doesn't include brand-new files: those still need `git add`.
 
 ## Two kinds of merge
 
-- **Fast-forward.** If main hasn't changed since the branch started, Git just moves main forward to include the branch's commits. No extra commit.
-- **Merge commit.** If both have new commits, as in the task, Git combines them and records a special commit with two parents. That's the `Merge branch 'add-about'` line in your graph.
+- **Fast-forward.** If main hasn't changed since the branch split off, Git just moves main forward to include the branch's commits, as if they'd been made on main all along. No extra commit.
+- **Merge commit.** If both main and the branch have new commits, as in the task, Git combines them and records a special commit with **two parents**, one from each line. That's the `Merge branch 'add-about'` line you'll see.
 
-Either way, you usually don't have to think about it. Git sorts it out, unless the same lines were changed on both sides. That's a **conflict**, and it's the next lesson.
+`git log --oneline --graph --all` draws the history as a little picture made of characters, so you can see the lines split and join.
+
+Either way, you usually don't have to think about it. Git sorts it out by itself, unless the same lines were changed on both sides. That's a **conflict**, and it's the next lesson.
 
 <ConsultantNote>
-How a team uses branches says a lot about how it works. Does main always work? Is work reviewed before merging? Can anyone push straight to main? Simple rules here prevent a lot of "who broke the site?" moments, and setting them up is a quick win for a client.
+How a team uses branches says a lot about how it works. Does main always work? Is work reviewed before merging? Can anyone change main directly? Simple rules here prevent a lot of "who broke the site?" moments, and setting them up is a quick win for a client.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Branch** | A separate line of commits |
+| **main** | The main branch, which should always work |
+| **Merge** | Bringing one branch's commits into another |
+| **`git switch`** | Moves you to another branch, changing the files to match |
+| **Fast-forward** | A merge where main simply moves forward, with no extra commit |
+| **Merge commit** | A commit with two parents, joining two lines of work |
+| **`<a href="...">`** | An HTML link |
+| **`git commit -am`** | Stage all changes to tracked files and commit, in one step |

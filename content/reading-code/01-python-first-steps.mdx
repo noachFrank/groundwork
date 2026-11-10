@@ -3,10 +3,19 @@ id: python-first-steps
 title: "Python: values, variables and printing"
 order: 1
 topic: reading-code
-minutes: 50
+minutes: 65
 summary: What a program is, how Python stores values in variables, the difference between text and numbers, and how to print results.
 connectivity: offline
-prerequisites: [asking-good-questions]
+prerequisites:
+  - id: kinds-of-programs
+    need: essential
+    why: Explains what Python is, and that code is run by an interpreter.
+  - id: asking-good-questions
+    need: helpful
+    why: How to read an error message, and how to ask for help with one.
+revision: 2
+teaches: [program-flow, python-in-app, run-and-check, value-types, str-type, int-float, bool-type, arithmetic, variable, assignment, reassignment, print-fn, f-string, type-conversion, typeerror-str-int]
+uses: [python-lang, code, comment, interpreter, error-message, reading-errors, shell-variable]
 predict:
   id: p1
   type: mcq
@@ -19,9 +28,9 @@ tasks:
     type: python
     title: Work out a café bill
     instructions: |
-      Python runs right here in the app, with no install. Press **Run and check** to run your code. Hidden checks then test it. If something's wrong, they tell you what.
+      Python runs right here in the app, with no install. Type your code under the comments, then press **Run and check**. Your code runs, then hidden checks test it. If something's wrong, they tell you what.
 
-      A **variable** is a name for a value: `price = 3.5` stores 3.5 under the name `price`. `*` multiplies and `+` adds. An **f-string** puts values inside text: `f"Hello {name}"`.
+      You'll use: variables, `*` and `+`, f-strings and `print`, all from this lesson's Learn step.
     starter: |
       # A café sells coffee for 3.5 and cake for 4.25.
       coffee_price = 3.5
@@ -139,44 +148,119 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- What a program actually is, and the order Python runs it in.
+- How the Python exercises in Groundwork work.
+- **Values** and their **types**: text, whole numbers, decimals, and True/False.
+- **Variables**: giving a value a name.
+- Doing arithmetic, and showing results with `print` and **f-strings**.
+- The text-versus-number mix-up behind a huge share of real bugs.
+
+This module's goal is **reading** code: understanding what it does, spotting what's wrong, and judging code that someone else, or an AI, wrote. You'll write plenty too, because writing is the best way to learn reading.
+
+We start with **Python**, which you met in *Code, languages, and the programs that run them*, because it reads almost like English. Then JavaScript, the language of the web.
+
 ## What a program is
 
-A program is a list of instructions that the computer follows **in order, from the top**. That's all. Everything else, from loops to functions to whole apps, is a way of organizing those instructions.
+A program is a list of instructions that the computer follows **one line at a time, in order, from the top**. That's all. Everything else you'll learn, from decisions to loops to whole apps, is a way of organizing those instructions.
 
-This module's goal is **reading** code: understanding what it does, spotting what's wrong, and judging code that someone else, or an AI, wrote. You'll write some too, because writing is the best way to learn reading.
+```python
+print("First")
+print("Second")
+print("Third")
+```
 
-We start with Python because it reads almost like English. Then JavaScript, the language of the web.
+That prints three lines, in that order, every time. When you read code, read it the way the computer does: top to bottom, one line at a time.
+
+## How the Python exercises work
+
+Groundwork runs Python **inside the app**, in your browser, so there's nothing to install. Each Python exercise has:
+
+- **An editor**: a box where you type code. It starts with some **starter code**, usually with comments (lines starting with `#`) telling you what to do.
+- **A Run and check button.** It runs your code from top to bottom. Anything your code prints appears underneath. Then **hidden checks** test your code and tell you which parts are right, and what's wrong with the rest.
+- **Error messages**, if your code can't run. Python's errors appear underneath, like the ones in the terminal. Read the last line first: it says what went wrong.
+
+You can run as many times as you like. Getting checks wrong is part of the process, not a failure.
 
 ## Values and their types
 
-Every value has a **type**, and the type decides what you can do with it:
+Every piece of data in a program is a **value**: a number, some text, and so on. Every value has a **type**, and the type decides what you can do with it.
 
 | Type | Example | What it is |
 | --- | --- | --- |
-| `str` | `"hello"`, `"30"` | Text. Always in quotes. |
-| `int` | `42`, `-7` | A whole number |
-| `float` | `3.5`, `0.1` | A number with a decimal point |
-| `bool` | `True`, `False` | Yes or no |
+| `str` (string) | `"hello"`, `"30"` | Text. Always in quotes, either `"double"` or `'single'`. |
+| `int` (integer) | `42`, `-7`, `0` | A whole number |
+| `float` | `3.5`, `0.1`, `-2.25` | A number with a decimal point |
+| `bool` (Boolean) | `True`, `False` | Yes or no. Capital T and F. |
 
-`"30"` and `30` look alike but behave differently. `"30" + "1"` is `"301"`, and `30 + 1` is `31`. Mixing them, `"30" + 1`, is an error. This one detail causes a surprising share of real bugs.
+**Text is always in quotes.** That's how Python tells text apart from everything else. `"30"` and `30` look alike, but one is text and the other is a number, and they behave completely differently.
+
+## Arithmetic
+
+Numbers work like a calculator:
+
+| Symbol | Means | Example | Result |
+| --- | --- | --- | --- |
+| `+` | add | `7 + 2` | `9` |
+| `-` | subtract | `7 - 2` | `5` |
+| `*` | multiply | `7 * 2` | `14` |
+| `/` | divide | `7 / 2` | `3.5` |
+
+Multiplying and dividing happen before adding and subtracting, as in school maths: `2 + 3 * 4` is `14`, not `20`. Use brackets to change the order: `(2 + 3) * 4` is `20`.
+
+`+` also works on text, but it **joins** instead of adding: `"Hello, " + "Ada"` is `"Hello, Ada"`. So `"30" + "1"` is `"301"`, while `30 + 1` is `31`.
+
+<details>
+<summary>Quick check: what's `"2" + "2"`? And `2 + 2`?</summary>
+
+`"2" + "2"` is `"22"`: two pieces of text joined. `2 + 2` is `4`.
+</details>
 
 ## Variables
 
-A **variable** gives a value a name:
+A **variable** gives a value a name, so you can use it later. You met the idea in the shell. Python's version:
 
 ```python
 price = 3.5
 quantity = 2
-total = price * quantity     # 7.0
+total = price * quantity
 ```
 
-Read `=` as "store". The right side is worked out first, then stored under the name on the left. That's why `count = count + 1` makes sense: take the old count, add one, store it back.
+Read `=` as **"store"**, not "equals". The line `total = price * quantity` means: work out `price * quantity` (that's 7.0), then store the answer under the name `total`.
 
-Lines starting with `#` are **comments**: notes for people, ignored by Python.
+Python always works out the **right side first**, then stores it under the name on the left. That's why this line makes sense, even though it looks like bad maths:
+
+```python
+count = 5
+count = count + 1     # take the old count (5), add 1, store 6 back in count
+```
+
+A variable can hold a new value at any time. The old one is simply replaced.
+
+Variable names can use letters, numbers and underscores, but no spaces, and can't start with a number. Python programmers write multi-word names with underscores, like `coffee_price`. Names are case-sensitive: `Price` and `price` are different variables.
+
+<details>
+<summary>Quick check: after `a = 10`, then `a = a - 3`, what's in `a`?</summary>
+
+`7`. The right side, 10 minus 3, is worked out first, then stored back in `a`.
+</details>
 
 ## Showing results
 
-`print()` shows a value. **f-strings** are the neat way to mix values into text:
+`print()` shows a value on the screen, below your code:
+
+```python
+print("Hello")        # Hello
+print(2 + 2)          # 4
+print(total)          # 7.0
+```
+
+The value goes between the round brackets. You can print text, numbers, variables, or a calculation.
+
+### f-strings: values inside text
+
+Very often you want to mix values into a sentence. An **f-string** does that. Put an `f` right before the opening quote, then put any variable or calculation inside curly brackets `{ }`:
 
 ```python
 name = "Ada"
@@ -184,10 +268,57 @@ total = 7.0
 print(f"{name}, your total is {total}")   # Ada, your total is 7.0
 ```
 
+Python replaces each `{...}` with its value. Without the `f`, you'd literally get the text `{name}` on screen. That's the most common f-string mistake.
+
+## Text and numbers don't mix
+
+What happens here?
+
+```python
+age = "30"
+next_year = age + 1
+```
+
+Python stops with an error:
+
+```text
+TypeError: can only concatenate str (not "int") to str
+```
+
+Read it in pieces: `TypeError` means a value was the wrong type for what you asked. "Concatenate" is a programmer's word for joining text. So: "I can only join text to text, and you gave me a number." Because of the quotes, `age` holds the **text** "30", and Python won't guess whether you meant 31 or "301".
+
+Converting between types fixes it:
+
+| Function | Turns | Into | Example |
+| --- | --- | --- | --- |
+| `int(...)` | text | a whole number | `int("30")` is `30` |
+| `float(...)` | text | a decimal | `float("3.5")` is `3.5` |
+| `str(...)` | a number | text | `str(30)` is `"30"` |
+
+So `next_year = int(age) + 1` works, and gives 31.
+
+This matters far beyond this example. **Anything typed by a user, or read from a file or a web page, arrives as text**, even if it looks like a number. Converting it is something real code does constantly.
+
 <Callout title="Reading tip">
-When you read code, say each line out loud in plain English: "store 3.5 as price", "store price times quantity as total". If you can't say what a line does, that's the line to look up.
+When you read code, say each line out loud in plain English: "store 3.5 as price", "store price times quantity as total". If you can't say what a line does, that's the line to look up, or ask about.
 </Callout>
 
 <ConsultantNote>
 You don't have to become a full-time programmer to be a good consultant, but you do need to read code well enough to judge it. "Is this well written? Is it safe? Does it do what the client thinks it does?" all start with reading it line by line.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Value** | A piece of data, like `42` or `"hello"` |
+| **Type** | What kind of value it is: str, int, float or bool |
+| **String (str)** | Text, in quotes |
+| **int / float** | A whole number / a number with a decimal point |
+| **bool** | `True` or `False` |
+| **Variable** | A name that stores a value |
+| **`=`** | Store the value on the right under the name on the left |
+| **`print()`** | Shows a value on the screen |
+| **f-string** | Text with values inside curly brackets: `f"Total: {total}"` |
+| **TypeError** | An error when a value is the wrong type for what you asked |
+| **`int()`, `float()`, `str()`** | Convert a value to another type |

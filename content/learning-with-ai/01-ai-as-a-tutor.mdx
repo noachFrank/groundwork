@@ -3,10 +3,13 @@ id: ai-as-a-tutor
 title: "AI as a tutor, not a ghostwriter"
 order: 1
 topic: learning-with-ai
-minutes: 40
+minutes: 45
 summary: Why getting answers from AI can feel like learning when it isn't, and a simple routine that makes AI genuinely teach you.
 connectivity: offline
 prerequisites: []
+revision: 2
+teaches: [ai-assistant, prompt, code, tutor-not-ghostwriter, learning-loop]
+uses: []
 predict:
   id: p1
   type: mcq
@@ -143,44 +146,108 @@ docs:
 videos: []
 ---
 
+## Before you start
+
+This is the very first lesson, so it assumes nothing. You don't need to know anything about computers or programming yet. If a word is new, it gets explained the first time it appears, and there's a list of every new word at the bottom.
+
+In this lesson you'll learn:
+
+- What an AI assistant is, and what it's good and bad at.
+- Why getting answers from AI can **feel** like learning when it isn't.
+- A simple routine that makes AI teach you instead of doing the work for you.
+
+## What an AI assistant is
+
+An **AI assistant** is a program you chat with by typing, like ChatGPT, Claude or Gemini. You type a message, and it types back an answer. It has read a huge amount of text, including a lot of programming help, so it can explain ideas, answer questions and write things for you.
+
+The message you type to it is called a **prompt**. "Explain what a folder is" is a prompt. So is a long message with your own work pasted in. The better your prompt, the better the answer. There's a whole lesson on that later in this module.
+
+Throughout this course you'll also see the word **code**. Code is instructions for a computer, written as text in a special language that a computer can follow. A tiny example:
+
+```python
+print("Hello")
+```
+
+That's one line of code in a language called Python. It tells the computer to show the word Hello on the screen. You'll learn to read and write code like this later. For now, all you need to know is that code is just text: precise instructions, written for a computer.
+
+<details>
+<summary>Quick check: what's a prompt?</summary>
+
+The message you type to an AI assistant.
+</details>
+
 ## AI is the best tutor you've ever had, if you use it right
 
-You have something learners ten years ago didn't: a patient expert you can ask anything, at any hour. Used well, that's an enormous advantage. Used badly, it quietly stops you from learning at all.
+You have something learners ten years ago didn't: a patient expert you can ask anything, at any hour, who never gets tired of the same question. Used well, that's an enormous advantage. Used badly, it quietly stops you from learning at all.
 
 The difference comes down to one question: **who is doing the thinking?**
 
+- A **tutor** helps you think. They ask what you tried, point you in the right direction, and let you get there yourself.
+- A **ghostwriter** does the work for you and lets you put your name on it.
+
+An AI will happily be either. It's up to you which one you ask for.
+
 ## The trap
 
-When an AI hands you a finished answer, you read it, it makes sense, and you feel like you understand. That feeling is misleading. Following someone else's reasoning is far easier than producing it yourself, so your brain mistakes "I recognize this" for "I can do this".
+When an AI hands you a finished answer, you read it, it makes sense, and you feel like you understand. That feeling is misleading.
 
-The test is simple. Close the answer and try again tomorrow. If you can't, you didn't learn it. You watched it.
+Here's why. **Following** someone else's reasoning is far easier than **producing** it yourself. It's like watching someone solve a puzzle: every step looks obvious as you watch, but that doesn't mean you could solve the next puzzle alone. Your brain mistakes "I recognize this" for "I can do this".
+
+The test is simple. Close the answer and try the problem again tomorrow, with nothing to look at. If you can't, you didn't learn it. You watched it.
 
 <Callout kind="warn" title="The sign you've fallen into the trap">
-You're finishing exercises quickly but couldn't explain your own code to a friend.
+You're finishing exercises quickly, but you couldn't explain your own work to a friend.
 </Callout>
+
+<details>
+<summary>Quick check: why does reading an AI's answer feel like learning, even when it isn't?</summary>
+
+Because following someone else's reasoning is much easier than producing it yourself, so recognizing the answer feels like knowing it.
+</details>
 
 ## The routine
 
-Use this every time you're stuck:
+Use these four steps every time you're stuck, whether it's on a Groundwork exercise or anything else:
 
-1. **Try it yourself first.** Even a wrong attempt helps, because it shows you exactly where your understanding runs out.
-2. **Ask for a hint, not the answer.** Show the AI what you tried and the exact error, then ask what to look at.
-3. **Finish it yourself.** Take the hint and keep going.
+1. **Try it yourself first.** Even a wrong attempt helps, because it shows you exactly where your understanding runs out. Five honest minutes of trying is enough.
+2. **Ask for a hint, not the answer.** Show the AI what you tried and what went wrong, then ask what to look at. For example: *"Here's what I tried and here's what happened. Don't give me the answer. What should I look at?"*
+3. **Finish it yourself.** Take the hint and keep going. If you're still stuck, ask for a slightly bigger hint.
 4. **Explain it back.** Ask the AI to quiz you, or explain the solution in your own words. If you can't, you're not done.
 
-Groundwork is built the same way. Every lesson asks you to **predict** before you learn, **do** something real, and **recall** it from memory afterwards. That's on purpose.
+### Why Groundwork works the same way
+
+Every Groundwork lesson has the same five steps, shown at the top of the page. This is the **learning loop**:
+
+| Step | What you do | Why |
+| --- | --- | --- |
+| **Predict** | Guess the answer before you're taught | A guess, even a wrong one, makes your brain pay attention to the real answer |
+| **Learn** | Read the lesson | This is the explanation |
+| **Do** | Complete real tasks that get checked | Doing is how skills form |
+| **Recall** | Answer from memory, with no notes | Pulling something out of memory is what makes it stick |
+| **Review later** | Key ideas come back days and weeks later | Spacing practice out stops you forgetting |
+
+That's on purpose. Each step is something research on learning shows works better than just reading.
 
 ## When to let AI just do it
 
-This isn't about refusing help. Working consultants use AI constantly. The rule is:
+This isn't about refusing help. Working professionals use AI constantly. The rule is:
 
 > **AI does the parts you're not trying to learn. You do the parts you are.**
 
-Typing out 50 rows of test data? Let AI do it. Writing your first loop? Do it yourself.
+Some examples:
+
+| Task | Let AI do it? |
+| --- | --- |
+| Typing out 50 rows of made-up names for practice | Yes, you're not learning to type names |
+| Writing your first piece of code that repeats something | No, that's exactly what you're learning |
+| Explaining a word you don't understand | Yes, then check you can explain it back |
+| Fixing an error in an exercise | Hints only, then fix it yourself |
 
 ## Setting up your tutor
 
-Most AI tools let you give standing instructions, or you can paste some at the start of a chat. Something like this works well:
+Most AI tools let you give **standing instructions**: a message it reads before every conversation. In ChatGPT these are called "custom instructions", and in Claude you can put them in a "project". If your tool doesn't have that, paste them at the start of each chat.
+
+Something like this works well:
 
 ```text
 I'm a beginner learning to code. Act as my tutor, not my ghostwriter.
@@ -190,8 +257,26 @@ or two questions. If you're unsure about something, say so and point me
 to the official documentation.
 ```
 
-You'll write your own version in the task below.
+Each line has a job:
+
+- "Act as my tutor, not my ghostwriter" sets the role.
+- "Ask what I've tried" makes you do step 1 of the routine.
+- "The smallest useful hint" stops it handing you everything.
+- "Quiz me" covers step 4, explaining it back.
+- "If you're unsure, say so" matters because AI can be wrong without sounding unsure. That's the next lesson.
+
+You'll write your own version in the task below. Use your own words, because instructions you understand are instructions you'll actually use.
 
 <ConsultantNote>
-Clients pay consultants for judgment: knowing what to build, what to avoid, and whether something is right. AI can produce code, but someone has to know if that code is any good. That someone is you, and this course is how you get there.
+This course is training you toward working as a software consultant: someone businesses pay for advice and help with their technology. Clients pay consultants for judgment: knowing what to build, what to avoid, and whether something is right. AI can produce code, but someone has to know whether that code is any good. That someone is you, and this course is how you get there.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **AI assistant** | A program you chat with by typing, such as ChatGPT, Claude or Gemini |
+| **Prompt** | The message you type to an AI assistant |
+| **Code** | Instructions for a computer, written as text in a programming language |
+| **Tutor vs. ghostwriter** | Helping you think, versus doing the work for you |
+| **Learning loop** | Groundwork's five steps: predict, learn, do, recall, review later |

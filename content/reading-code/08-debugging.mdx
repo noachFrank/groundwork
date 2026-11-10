@@ -1,12 +1,24 @@
 ---
 id: debugging
 title: Debugging when there's no error message
-order: 7
+order: 8
 topic: reading-code
-minutes: 50
+minutes: 60
 summary: A calm, repeatable method for finding bugs that don't crash, just give wrong answers. Reproduce, narrow down, look inside, fix, and check.
 connectivity: offline
-prerequisites: [errors-and-tracebacks]
+prerequisites:
+  - id: errors-and-tracebacks
+    need: essential
+    why: This lesson is about the bugs that don't give you an error to read.
+  - id: python-lists-loops
+    need: essential
+    why: The exercise works with list positions, counted from 0.
+  - id: ignore-and-history
+    need: helpful
+    why: git log answers "what changed?", a key debugging question.
+revision: 2
+teaches: [silent-bug, debug-method, reproduce-bug, narrow-down, print-debugging, debugger, list-slicing, one-change-at-a-time, what-changed, injection-intro]
+uses: [list, list-index, off-by-one, function, parameter, return-statement, print-fn, arithmetic, git-log, deployment, package, rubber-duck, good-question, crash-vs-cause, run-and-check]
 predict:
   id: p1
   type: mcq
@@ -25,9 +37,9 @@ tasks:
     instructions: |
       A shop shows products 3 per page. `get_page(items, page_number, per_page)` should return the items for that page, where page 1 is the first page. Customers say page 1 is missing the first product, and the last page sometimes shows nothing.
 
-      There's no error message. Run it, compare what it prints with what it should print, and use extra `print()` calls inside the function to see what's happening. Then fix it.
+      You'll use: the debugging method, print debugging, and slicing (`items[a:b]`), all from this lesson.
 
-      Python's **slicing**, `items[a:b]`, gives the items from position a up to, but not including, position b.
+      There's no error message. Run it, compare what it prints with what it should print, and use extra `print()` calls inside the function to see what's happening. Then fix it.
     starter: |
       products = ["Lamp", "Desk", "Chair", "Shelf", "Rug", "Clock", "Mirror"]
 
@@ -168,21 +180,31 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- Why the worst bugs are the ones that **don't** crash.
+- A calm, repeatable five-step method for finding any bug.
+- **Print debugging**: the simplest and still one of the best tools.
+- **Slicing**: getting a chunk of a list, which the exercise needs.
+- Habits that make debugging faster, including asking AI well.
+
 ## The worst bugs don't crash
 
-A crash at least tells you where to look. The bugs that cost clients money usually **don't** crash: they give a slightly wrong price, skip a customer, or fail only for some people. Finding those takes a method, not luck.
+A crash at least tells you where to look: there's a traceback pointing at a line. The bugs that cost clients money usually **don't** crash. They give a slightly wrong price, skip a customer, or fail only for some people. Everything looks fine, and the program happily carries on with the wrong answer.
+
+Finding those takes a method, not luck.
 
 ## The method
 
-1. **Reproduce it.** Find a small example where you know the right answer and can make the wrong one happen every time. If you can't reproduce it, you can't confirm a fix.
-2. **Narrow it down.** Which part of the program is it in? Cut the problem in half: is the data right going into this function? Coming out?
-3. **Look at the real values.** Don't assume. Add `print()` calls, or use a debugger, to see what variables actually hold.
-4. **Fix the cause**, not the symptom.
-5. **Check it's fixed.** Run the same reproduction. Then check you haven't broken anything nearby, and look for the same mistake elsewhere.
+1. **Reproduce it.** Find a small example where you know the right answer, and can make the wrong one happen every time. If you can't reproduce a bug, you can't confirm you've fixed it.
+2. **Narrow it down.** Which part of the program is it in? Cut the problem in half: is the data right going **into** this function? Is it right coming **out**? Keep halving until you've cornered it.
+3. **Look at the real values.** Don't assume what a variable holds. Check. Add `print()` calls, or use a debugger, and see.
+4. **Fix the cause**, not the symptom. If page 1 is wrong because of a calculation, fix the calculation, don't add a special case for page 1.
+5. **Check it's fixed.** Run the same reproduction. Then check you haven't broken anything nearby, and look for the same mistake elsewhere in the code.
 
 ## Print debugging
 
-The simplest tool is still one of the best. Add temporary prints to see inside:
+The simplest tool is still one of the best. Add temporary `print()` lines to see inside a function while it runs:
 
 ```python
 def get_page(items, page_number, per_page):
@@ -192,14 +214,47 @@ def get_page(items, page_number, per_page):
     return items[start:end]
 ```
 
-Seeing `page 1 start 3 end 6` makes the bug obvious: page 1 should start at 0. Remove the prints once you've fixed it.
+`print` can take several values separated by commas, and shows them with spaces in between. Running `get_page(products, 1, 3)` now also prints:
 
-Editors like VS Code have a proper **debugger**, which pauses the program on a line and lets you inspect every variable. It's the same idea with more power.
+```text
+page 1 start 3 end 6
+```
+
+Page 1 should obviously start at position 0, the first product. Now you know exactly which line to look at. Remove the extra prints once you've fixed it.
+
+Code editors like VS Code have a proper **debugger**, which pauses the program on a line you choose and lets you look at every variable. It's the same idea, with more power. Print debugging works everywhere, including Groundwork's editor.
+
+## Slicing: a chunk of a list
+
+The exercise uses **slicing**, a way to get part of a list:
+
+```python
+items = ["Lamp", "Desk", "Chair", "Shelf", "Rug"]
+#          0       1       2        3       4
+
+items[0:3]    # ["Lamp", "Desk", "Chair"]   positions 0, 1, 2
+items[3:5]    # ["Shelf", "Rug"]            positions 3, 4
+items[3:10]   # ["Shelf", "Rug"]            past the end is fine: you get what's there
+```
+
+`items[a:b]` gives the items from position `a` **up to, but not including**, position `b`. That "not including" is the same rule as `range`, and it's deliberate: `items[0:3]` gives exactly 3 items.
+
+<details>
+<summary>Quick check: with the list above, what's `items[1:3]`?</summary>
+
+`["Desk", "Chair"]`: positions 1 and 2. Position 3 isn't included.
+</details>
+
+### Pages are counted from 1, positions from 0
+
+That mismatch is the heart of the exercise. People say "page 1" for the first page, but the first product is at position 0. Whenever a human-friendly number (starting at 1) meets a list position (starting at 0), watch for off-by-one bugs.
+
+Before you change any code in the exercise, work out by hand what `start` should be for page 1, page 2 and page 3, with 3 per page. Then compare with what the code calculates.
 
 ## Useful habits
 
-- **Change one thing at a time.** Otherwise you won't know which change fixed it, or broke something else.
-- **Ask "what changed?"** A bug that started last Tuesday usually comes from something that changed last Tuesday. `git log` tells you what.
+- **Change one thing at a time.** Otherwise you won't know which change fixed it, or which one broke something else.
+- **Ask "what changed?"** A bug that started last Tuesday usually comes from something that changed last Tuesday: new code, an updated package, a new setting. `git log` tells you exactly what changed, and when.
 - **Explain it out loud.** Rubber duck debugging, from the first module, works remarkably well.
 - **Take a break.** Fresh eyes find bugs that tired ones stare straight past.
 
@@ -207,6 +262,21 @@ Editors like VS Code have a proper **debugger**, which pauses the program on a l
 AI can be good at spotting bugs, if you give it what you'd give a person: the code, the input, what you expected, and what actually happened. "It doesn't work" gets a guess. "For page 1 I expected Lamp, Desk, Chair but got Shelf, Rug, Clock" usually gets the answer.
 </Callout>
 
+## When strange input breaks things
+
+The second task mentions a bug that only hits customers with an apostrophe in their name, like O'Brien. That's a classic. Some code builds commands out of text that people type, and a stray apostrophe or quote mark changes the meaning of the command. Sometimes that's just a crash. Sometimes it lets an attacker sneak in their own commands, a security hole called **injection**. You'll meet it properly in the security part of the course. For now: odd characters breaking things is worth a second look.
+
 <ConsultantNote>
 Clients rarely report bugs precisely. "It's broken sometimes" is normal. Turning that into "it fails for surnames with apostrophes since last Tuesday's update" is a valuable skill. It's careful questions plus this method, and it's what makes clients trust you with their systems.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Silent bug** | A bug that gives wrong results without crashing |
+| **Reproduce** | Make the bug happen on purpose, reliably |
+| **Print debugging** | Adding temporary prints to see what variables hold |
+| **Debugger** | A tool that pauses a program so you can inspect it |
+| **Slicing** | `items[a:b]`: the items from position a up to, not including, b |
+| **Injection** | A security hole where typed-in text is treated as commands |

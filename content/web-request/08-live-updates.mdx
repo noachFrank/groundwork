@@ -3,10 +3,22 @@ id: live-updates
 title: "Live updates: polling, SSE and WebSockets"
 order: 8
 topic: software-talking
-minutes: 50
+minutes: 55
 summary: Three ways to get fresh data to a screen, what each costs, and how to choose the simplest one that's enough.
 connectivity: offline
-prerequisites: [cors]
+prerequisites:
+  - id: cors
+    need: essential
+    why: Finishes the module's tour of how browsers and servers talk.
+  - id: http
+    need: essential
+    why: Explains HTTP's ask-then-answer rule, which this lesson works around.
+  - id: apis
+    need: helpful
+    why: The design task includes an API server and a database.
+revision: 2
+teaches: [client-asks-first, polling, server-sent-events, websocket, signalr, realtime-requirement, open-connections-cost, architecture-diagram]
+uses: [http, request-response, stateless, browser, server-program, api, database, frontend, backend, ai-assistant, deployment]
 predict:
   id: p1
   type: mcq
@@ -192,9 +204,18 @@ videos:
     channel: Fireship
 ---
 
+## In this lesson
+
+- Why HTTP, on its own, can't push fresh data to a screen.
+- Three ways around that: **polling**, **Server-Sent Events** and **WebSockets**.
+- What each one costs, and how to choose the simplest one that's enough.
+- How to turn a client's "it has to be real-time" into a requirement you can actually design for.
+
 ## HTTP's limitation
 
-HTTP has a built-in rule: the client asks, then the server answers. A server can't just start talking. So how do you get a new chat message or a changing price onto someone's screen?
+HTTP has a built-in rule: the **client asks, then the server answers**. (The "client" is whatever sends the request, usually a browser.) A server can't just start talking. It can only reply.
+
+That's fine for loading a page. But what about a new chat message, a changing price, or a delivery driver's position? The server knows something new has happened, and the browser doesn't know to ask. How do you get it onto the screen?
 
 There are three common answers:
 
@@ -202,30 +223,36 @@ There are three common answers:
 
 ## Polling: keep asking
 
-The browser asks "anything new?" on a timer.
+The browser asks "anything new?" on a timer, say every 10 seconds, with ordinary HTTP requests.
 
-- **Good:** dead simple. Uses plain HTTP, and works everywhere.
-- **Bad:** there's a delay, and most requests come back empty.
+- **Good:** dead simple. It's plain HTTP, so it works everywhere, with any server.
+- **Bad:** there's a delay of up to one interval, and most requests come back with nothing new, which wastes work.
 
-It's underrated. For a dashboard that changes hourly, it's often the right call.
+It's underrated. For a dashboard that changes hourly, it's often exactly the right call.
 
 ## Server-Sent Events: the server streams to you
 
-The browser opens one long HTTP request, and the server keeps sending along it. It only goes one way, from server to browser.
+The browser opens one long-lasting HTTP request, and the server **keeps sending** along it whenever there's news, instead of answering once and finishing. It only goes one way: server to browser.
 
-- **Good:** simple, reconnects by itself, and works over regular HTTP.
-- **Bad:** one-way only.
+- **Good:** simple, feels instant, reconnects by itself, and works over regular HTTP.
+- **Bad:** one-way only. The browser still uses normal requests to send anything back.
 
 It suits notifications, news feeds and progress bars. It's also how AI chat tools stream their replies word by word.
 
 ## WebSockets: an open line
 
-A WebSocket starts as HTTP, then "upgrades" into a permanent two-way connection.
+A WebSocket starts as an HTTP request, then "upgrades" into a permanent two-way connection that stays open. Either side can send a message at any moment.
 
 - **Good:** instant, in both directions.
-- **Bad:** the server holds a connection open for every user. That complicates scaling and deploying.
+- **Bad:** the server holds a connection open for **every** user, all the time. That uses resources, and it complicates running several servers and deploying new versions, because every open connection gets cut when a server restarts.
 
-It suits chat, multiplayer games and collaborative editing. **SignalR** is a Microsoft library for .NET that uses WebSockets when it can, and falls back to other methods when it can't.
+It suits chat, multiplayer games and collaborative editing, where both sides send often. **SignalR** is a Microsoft library for .NET, used by many businesses, that uses WebSockets when it can and falls back to other methods when it can't.
+
+<details>
+<summary>Quick check: a page shows a live progress bar for a long upload being processed on the server. Which fits best?</summary>
+
+Server-Sent Events: only the server needs to send updates, and it should feel live. (Polling every couple of seconds would also be perfectly acceptable.)
+</details>
 
 ## How to choose
 
@@ -235,10 +262,29 @@ It suits chat, multiplayer games and collaborative editing. **SignalR** is a Mic
 | Only the server sends, and it should feel live | SSE |
 | Both sides send, instantly | WebSockets |
 
+## Turning "real-time" into a number
+
+Clients often say "it has to be real-time". That's a feeling, not a requirement. Turn it into a number: **how many seconds old is too old?** If staff glance at a screen every few minutes and new orders arrive ten times an hour, "updated within 30 seconds" is more than enough, and polling does that easily. Then pick the simplest technology that meets the number.
+
+## The design task
+
+The last task asks you to design a system by placing parts, like a web page, an API server, a WebSocket server and a database, into zones of a diagram. Drawing how the parts of a system connect is called an **architecture diagram**. It's how consultants explain a design to a client before anyone writes code. Read the scenario's requirements carefully: each one rules some parts in or out.
+
 <Callout title="The takeaway">
-Start with the need, not the technology. "Real-time" is a feeling, so turn it into a number: how many seconds old is too old? The simplest thing that meets that number is usually the best design.
+Start with the need, not the technology. The simplest thing that meets the real requirement is usually the best design.
 </Callout>
 
 <ConsultantNote>
 Clients often ask for a technology when what they really want is an outcome. Your job is to find the outcome, then suggest the cheapest thing that delivers it. Talking a client out of unnecessary complexity saves them money for years, and it's one of the most valuable things a consultant can do.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Client** | Whatever sends the request, usually a browser |
+| **Polling** | Asking "anything new?" on a timer |
+| **Server-Sent Events (SSE)** | One long request the server keeps sending updates along |
+| **WebSocket** | A permanent two-way connection |
+| **SignalR** | A Microsoft .NET library for live updates, built on WebSockets |
+| **Architecture diagram** | A drawing of how a system's parts connect |

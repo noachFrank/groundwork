@@ -1,12 +1,21 @@
 ---
 id: env-and-path
 title: Environment variables and PATH
-order: 5
+order: 6
 topic: how-computers-run-software
-minutes: 50
+minutes: 55
 summary: The hidden settings every program can read, why "is not recognized as a command" happens, and how apps keep passwords out of their code.
 connectivity: offline
-prerequisites: [processes-and-ports]
+prerequisites:
+  - id: kinds-of-programs
+    need: essential
+    why: You ran Node by its full path there. This lesson shows how to just type node.
+  - id: processes-and-ports
+    need: essential
+    why: Environment variables belong to processes, and are passed on to the processes they start.
+revision: 2
+teaches: [environment-variable, path-variable, not-recognized, new-terminal-fix, env-inheritance, env-for-secrets, dotenv-file]
+uses: [program-vs-process, nodejs, console-log, javascript-lang, terminal, powershell, command, pipe, redirect, path, absolute-path, secret, api-key, code]
 predict:
   id: p1
   type: mcq
@@ -23,7 +32,7 @@ tasks:
     type: terminal
     title: See PATH at work, then change it
     instructions: |
-      Groundwork came with its own copy of Node.js, but its folder isn't in your PATH, so the terminal can't find it yet. You'll fix that for one window and see exactly why it works.
+      In the last few lessons you ran Groundwork's Node by typing its full path. Here you'll see why plain `node` doesn't work yet, then fix it for one window.
     steps:
       - text: Open a **new** PowerShell window, go to your practice folder, and make a folder for this lesson.
         command: cd $HOME\Groundwork-Practice; mkdir env-lesson; cd env-lesson
@@ -41,7 +50,7 @@ tasks:
         command: node --version; where.exe node | Out-File where-node.txt
       - text: Set an environment variable of your own, then have a program read it.
         command: $env:GREETING = "Hello from an environment variable"
-      - text: "This runs one line of JavaScript with Node, which prints the variable it inherited from this window."
+      - text: "Run one line of JavaScript with Node. `-e` means \"run this bit of code\" instead of a file. `process.env.GREETING` is how JavaScript reads an environment variable, and `console.log` prints it."
         command: node -e "console.log(process.env.GREETING)" | Out-File env-greeting.txt
       - text: "Close this window and open a new one, then run `node --version` again. It's \"not recognized\" again: changes made with `$env:` last only as long as the window."
     checks:
@@ -126,50 +135,105 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- What **environment variables** are: settings that every program can read.
+- What **PATH** is, and why "is not recognized as a command" happens.
+- Why opening a new terminal fixes so many problems.
+- How apps keep passwords and keys out of their code.
+
 ## Settings every program can see
 
-An **environment variable** is a named piece of text that programs can read. Windows sets lots of them: your user name, where your home folder is, where temporary files go. In PowerShell you read one with `$env:` and its name:
+An **environment variable** is a named piece of text that programs can read. It's a bit like a sticky note the computer hands to every program it starts: "the user's name is sam", "temporary files go here", and so on.
+
+Windows sets lots of them. In PowerShell you read one by writing `$env:` followed by its name:
 
 ```powershell
-$env:USERNAME      # sam
-$env:USERPROFILE   # C:\Users\sam
+$env:USERNAME      # prints: sam
+$env:USERPROFILE   # prints: C:\Users\sam
+$env:TEMP          # prints: C:\Users\sam\AppData\Local\Temp
 ```
 
-Every process gets its **own copy** of these settings, inherited from whatever started it. That detail explains a lot of confusing behavior.
+(The `#` and the text after it are comments, for you to read. Typing just `$env:USERNAME` and pressing Enter shows the value.)
+
+You saw `$env:TEMP` in a script back in *When AI is confidently wrong*. Now you know what it was: an environment variable holding the location of the temporary-files folder. And you know why the misspelled `$env:TMP_DIR` was dangerous: an environment variable that doesn't exist comes out as **empty text**.
+
+You can set one yourself, too:
+
+```powershell
+$env:GREETING = "Hello"
+```
+
+### Each process gets its own copy
+
+Here's the detail that explains a lot of confusing behavior. When a process starts another process, the new one gets a **copy** of the starter's environment variables. Programs **inherit** them from whatever started them.
+
+- A program you start from a PowerShell window gets that window's variables.
+- Change a variable in one PowerShell window, and only that window, plus programs started from it afterwards, see the change.
+- Close the window, and the change is gone.
+
+<details>
+<summary>Quick check: you set `$env:GREETING` in one PowerShell window. Can a program started from a different window read it?</summary>
+
+No. Each window is its own process with its own copy of the environment. Only that window, and programs started from it, have the change.
+</details>
 
 ## PATH: how commands are found
 
-The most important environment variable is **PATH**. It's a list of folders separated by semicolons:
+The most important environment variable is **PATH**. It's a list of folders, separated by semicolons:
 
 ```text
-C:\Windows\system32;C:\Windows;C:\Program Files\Git\cmd;...
+C:\Windows\system32;C:\Windows;C:\Program Files\Git\cmd;C:\Users\sam\AppData\Local\Programs\Python\Python313;...
 ```
 
-When you type a command like `curl` or `node`, Windows looks in each of those folders, in order, for a matching program. It runs the first one it finds. If none of the folders has it:
+When you type a command name that isn't built into PowerShell, like `curl` or `node`, Windows does this:
+
+1. Look in the first folder in PATH for a program with that name (like `node.exe`).
+2. Not there? Try the next folder.
+3. Keep going down the list.
+4. Run the **first** match it finds.
+
+If none of the folders has it, you get this:
 
 ```text
 node : The term 'node' is not recognized as the name of a cmdlet, function, script file, or operable program.
 ```
 
-That message almost never means the program is broken. It means **Windows couldn't find it**.
+That message almost never means the program is broken. It means **Windows couldn't find it** in any PATH folder.
+
+That's why, in the last few lessons, you had to type Node's full path. Groundwork's Node lives in a folder that isn't on your PATH. In the task, you'll add that folder to the front of PATH, for one window, and then plain `node` will work.
+
+`where.exe node` asks Windows "which folder would you find this in?", and lists every match in PATH order. It's the quickest way to check what's going on.
+
+<details>
+<summary>Quick check: two different versions of Node are installed in two PATH folders. Which one runs when you type `node`?</summary>
+
+The one in whichever folder comes first in PATH. Windows stops at the first match.
+</details>
 
 ### Why a new terminal fixes things
 
-Installers often add their folder to PATH. But a terminal copies the environment once, when it opens. A window that was already open still has the old PATH, so close it and open a new one. You just saw the reverse: your `$env:PATH` change vanished when you closed the window.
+Installers usually add their program's folder to PATH for you. But remember: a terminal copies the environment **once, when it opens**. A window that was already open still has the old PATH, so it can't see the new program.
 
-To change PATH permanently, use the Windows settings: search the Start menu for **"environment variables"**. The installer usually does this for you, if you let it.
+So after installing anything: **close the terminal and open a new one.** This fixes "not recognized" more often than anything else.
+
+### Changing PATH for good
+
+Changing `$env:PATH` in PowerShell only lasts as long as that window. You'll see this at the end of the task. To change it permanently, search the Start menu for **"Edit environment variables for your account"**. Usually, though, you let installers do it.
 
 ## Keeping secrets out of code
 
-Apps need passwords, database addresses and API keys. Writing them directly in the code is a classic mistake: code is shared, copied and kept in Git history forever, so anyone with the code gets the keys.
+Programs often need secrets: passwords, database addresses, and API keys (from *Asking good questions*). Writing them straight into the code is a classic and serious mistake. Code gets shared, copied and kept forever, so anyone who gets the code gets the keys.
 
-Instead, apps read them from environment variables:
+Instead, apps read them from environment variables. In JavaScript, `process.env.NAME` reads one:
 
 ```javascript
 const apiKey = process.env.PAYMENT_API_KEY;
 ```
 
-During development, these often live in a file called `.env`:
+That line says: "make a name `apiKey` that holds whatever the PAYMENT_API_KEY environment variable says". The code itself contains no secret. Each computer that runs it provides its own.
+
+During development, these settings often live in a file called `.env`, in the project's folder. Tools read it and turn each line into an environment variable:
 
 ```text
 PAYMENT_API_KEY=sk_test_abc123
@@ -177,9 +241,22 @@ DATABASE_URL=postgres://localhost/shop
 ```
 
 <Callout kind="warn" title="The .env rule">
-A `.env` file must **never** be committed to Git or shared. You'll see how to make Git ignore it in the Git module. Leaked keys get found and abused by automated bots within minutes.
+A `.env` file must **never** be shared or uploaded with the code. You'll see how to stop that happening by accident in the Git module. Leaked keys get found and abused by automated programs within minutes.
 </Callout>
 
 <ConsultantNote>
-When you review a client's code, search it for passwords and keys. Finding them written into the code, or a committed `.env` file, is one of the most common and serious problems in small companies' software, and one of the easiest to fix.
+When you review a client's code, search it for passwords and keys. Finding them written into the code, or a `.env` file shared with it, is one of the most common and serious problems in small companies' software, and one of the easiest to fix.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Environment variable** | A named setting, like USERNAME or PATH, that programs can read |
+| **`$env:NAME`** | How PowerShell reads or sets an environment variable |
+| **Inherit** | A new process gets a copy of the environment of whatever started it |
+| **PATH** | The list of folders Windows searches when you type a command name |
+| **"Not recognized"** | Windows couldn't find a program with that name in any PATH folder |
+| **`where.exe`** | Shows which PATH folder a command would be found in |
+| **`process.env.NAME`** | How JavaScript reads an environment variable |
+| **`.env` file** | A file of secret settings for development. Never share it. |

@@ -1,12 +1,24 @@
 ---
 id: python-lists-loops
 title: "Python: lists and loops"
-order: 3
+order: 4
 topic: reading-code
-minutes: 50
+minutes: 65
 summary: Storing many values in a list, going through them one at a time with a for loop, and the running-total pattern you'll see everywhere.
 connectivity: offline
-prerequisites: [python-decisions]
+prerequisites:
+  - id: python-decisions
+    need: essential
+    why: Loops often contain if statements, and the exercise counts scores at or above a mark.
+  - id: python-first-functions
+    need: essential
+    why: The exercise is two functions that return answers.
+  - id: config-files
+    need: helpful
+    why: JSON lists work just like Python lists, counted from 0.
+revision: 2
+teaches: [list, list-index, negative-index, len-fn, append, for-loop, loop-variable, range-fn, running-total, counting-pattern, build-list-pattern, loop-indentation, builtin-shortcuts, off-by-one, empty-list-guard]
+uses: [function, def-keyword, parameter, return-statement, indented-block, pass-placeholder, none-value, if-statement, comparison-operators, boundary-bug, variable, assignment, reassignment, arithmetic, int-float, print-fn, f-string, json-array]
 predict:
   id: p1
   type: mcq
@@ -19,9 +31,9 @@ tasks:
     type: python
     title: Summarize test scores
     instructions: |
-      A loop runs the same code once for each item: `for score in scores:` gives you each score in turn. Keep a running total in a variable that starts at 0.
+      You'll use: a `for` loop, the running-total and counting patterns, and `len`, all from this lesson, plus `if` and `return`.
 
-      `len(scores)` is how many items are in the list.
+      A loop runs the same code once for each item: `for n in numbers:` gives you each number in turn. Keep a running total in a variable that starts at 0, **before** the loop. `len(numbers)` is how many items are in the list.
     starter: |
       scores = [72, 45, 90, 61, 38, 85]
 
@@ -180,62 +192,163 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- **Lists**: storing many values, in order, under one name.
+- Getting items out of a list by position.
+- **Loops**: running the same lines once for every item.
+- The three loop patterns behind most real code: the running total, counting, and building a new list.
+- How one level of indentation can turn a correct loop into a wrong one.
+
 ## Many values, one name
 
-A **list** holds values in order:
+Programs rarely deal with one value at a time. A shop has many prices, a class has many scores, a company has many customers. A **list** holds many values, in order, under one name:
 
 ```python
 scores = [72, 45, 90]
 names = ["Ada", "Grace", "Linus"]
 ```
 
-| Code | Gives |
-| --- | --- |
-| `names[0]` | `"Ada"`, the first item. Counting starts at 0. |
-| `names[-1]` | `"Linus"`, the last item |
-| `len(names)` | `3`, how many items |
-| `names.append("Margaret")` | Adds an item to the end |
+Square brackets, values separated by commas. It looks exactly like a JSON list from *Settings files*, and it works the same way.
+
+### Getting items out
+
+Each item has a position number, called its **index**. Like JSON, Python counts **from 0**:
+
+```text
+names  =  ["Ada",  "Grace",  "Linus"]
+index:      0        1         2
+from end:  -3       -2        -1
+```
+
+| Code | Gives | Why |
+| --- | --- | --- |
+| `names[0]` | `"Ada"` | The first item is at index 0 |
+| `names[2]` | `"Linus"` | The third item is at index 2 |
+| `names[-1]` | `"Linus"` | Negative indexes count from the end. -1 is the last. |
+| `names[3]` | An error: `IndexError` | There's no fourth item |
+| `len(names)` | `3` | `len` is short for length: how many items |
+| `names.append("Margaret")` | Adds "Margaret" to the end | Lists can grow |
+
+`append` is written differently from `len`: with a dot after the list's name. That's because it's something the list does to itself. You'll see this dot style a lot.
+
+<details>
+<summary>Quick check: with `prices = [4, 8, 15, 16]`, what's `prices[1]`? And `len(prices)`?</summary>
+
+`prices[1]` is `8`, the second item, because counting starts at 0. `len(prices)` is `4`.
+</details>
 
 ## Doing something for each item
 
-A `for` loop runs its indented block once per item:
+A **`for` loop** runs its indented lines once for each item in a list:
 
 ```python
 for name in names:
     print(f"Hello, {name}")
 ```
 
-That prints three lines. On each pass, `name` holds the next item. To repeat something a set number of times, use `range`: `for i in range(3):` gives 0, 1, 2.
+That prints:
+
+```text
+Hello, Ada
+Hello, Grace
+Hello, Linus
+```
+
+Read it as: "**for** each **name in** the list names, do the indented lines". Each time round, called one **pass** of the loop, the variable `name` holds the next item: first "Ada", then "Grace", then "Linus". After the last item, the loop ends, and Python carries on with the first line after it that isn't indented.
+
+You choose the loop variable's name. `for name in names`, `for n in numbers` and `for price in prices` are all common, and reading the plural list name with a singular loop name makes the code read like English.
+
+### Counting with range
+
+To repeat something a set number of times, use `range`:
+
+```python
+for i in range(3):
+    print(i)       # prints 0, then 1, then 2
+```
+
+`range(3)` counts **0, 1, 2**: it starts at 0 and stops **before** 3. Being out by one, like expecting 1, 2, 3, is called an **off-by-one** bug, and it's very common.
 
 ## The patterns you'll see everywhere
 
-Almost every loop in real code is one of a few shapes:
+Almost every loop in real code is one of a few shapes. Learn to spot them and you can read most loops at a glance.
+
+### The running total
 
 ```python
-# Running total
-total = 0
+total = 0                    # 1. start BEFORE the loop
 for price in prices:
-    total = total + price
+    total = total + price    # 2. add each item INSIDE the loop
+print(total)                 # 3. use the result AFTER the loop
+```
 
-# Counting
+Follow it for `prices = [10, 20, 30]`: total starts at 0, becomes 10, then 30, then 60. After the loop, it prints 60.
+
+### Counting
+
+```python
 count = 0
 for score in scores:
     if score >= 50:
         count = count + 1
+```
 
-# Building a new list
-passed = []
+The same shape, but it only adds 1 when a condition is True. Notice the `if` is indented inside the loop, and the line it controls is indented again inside the `if`.
+
+### Building a new list
+
+```python
+passed = []                  # an empty list
 for score in scores:
     if score >= 50:
         passed.append(score)
 ```
 
-Spotting the pattern is most of reading a loop. Notice that the variable always starts **before** the loop, the work happens **inside**, and the result is used **after**.
+The same shape again, but it collects items into a new list instead of adding them up.
+
+In all three: the result variable starts **before** the loop, the work happens **inside**, and the result is used **after**.
+
+<details>
+<summary>Quick check: using the running-total pattern on `[5, 5, 5]`, what's the total after the second pass?</summary>
+
+`10`. It starts at 0, becomes 5 after the first pass, then 10 after the second. (15 after the third.)
+</details>
+
+## Indentation decides what repeats
+
+Lines indented under the `for` run **once per item**. Lines that aren't run **once**, before or after the loop. Moving a single line in or out by one level completely changes what the code does. This lesson's second task is exactly that bug.
+
+## Don't divide by zero
+
+To find an average, you add everything up and divide by how many there are: `total / len(numbers)`. But if the list is **empty**, `len` is 0, and dividing by zero crashes with `ZeroDivisionError`. Real code checks first:
+
+```python
+if len(numbers) == 0:
+    return 0
+```
+
+That check comes **before** the loop, inside the function. Because `return` ends the function, the rest never runs for an empty list. Handling the empty case is something the checks in this lesson's exercise test for.
 
 <Callout title="Python's shortcuts">
-Python has built-in shortcuts for common jobs: `sum(prices)`, `max(scores)`, `min(scores)`, and `sorted(names)`. Experienced programmers use them a lot, but they're doing the same loops underneath. Knowing the loop helps you read both.
+Python has built-in functions for common jobs: `sum(prices)` adds a list up, `max(scores)` and `min(scores)` find the biggest and smallest, and `sorted(names)` gives a sorted copy. Experienced programmers use them a lot, but they're doing the same loops underneath. Knowing the loop helps you read both. For the exercise, write the loops yourself.
 </Callout>
 
 <ConsultantNote>
 Loops are where performance problems hide. A loop that asks the database a question for every one of 10,000 customers can turn a one-second page into a one-minute page. When a client says "it's slow", look for loops doing expensive work.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **List** | Many values, in order, in square brackets |
+| **Index** | An item's position, counted from 0. -1 is the last. |
+| **`len()`** | How many items are in a list |
+| **`.append()`** | Adds an item to the end of a list |
+| **`for` loop** | Runs its indented lines once for each item |
+| **Loop variable** | The name that holds the current item, like `name` in `for name in names` |
+| **`range(n)`** | Counts 0, 1, … up to n-1 |
+| **Running total / counting / building a list** | The three most common loop patterns |
+| **Off-by-one** | Being out by one, often from counting from 0 |
+| **ZeroDivisionError** | The error from dividing by zero |

@@ -3,10 +3,22 @@ id: first-commits
 title: "Install Git and make your first commits"
 order: 1
 topic: git-and-github
-minutes: 50
+minutes: 65
 summary: What Git is for, installing it, and saving the first versions of a tiny website with commits.
 connectivity: needs-internet
-prerequisites: [the-terminal]
+prerequisites:
+  - id: the-terminal
+    need: essential
+    why: Everything in Git is done by typing commands.
+  - id: env-and-path
+    need: essential
+    why: After installing Git you need a new terminal, because of PATH.
+  - id: config-files
+    need: helpful
+    why: Git's settings are a config file, like the ones there.
+revision: 2
+teaches: [version-control, git, repository, commit, staging, git-status, git-add, git-commit, git-diff, git-log, commit-message, git-vs-github, html-intro, html-tags, add-content, git-config, text-editor, branch-intro]
+uses: [terminal, powershell, command, command-parts, folder, file, practice-folder, path-variable, new-terminal-fix, hidden-files, redirect, dot-paths, browser]
 predict:
   id: p1
   type: mcq
@@ -132,6 +144,14 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- What **version control** is, and the problem it solves.
+- Install **Git**, the version control program nearly every software team uses.
+- Make a tiny website, and save versions of it with **commits**.
+- See exactly what changed between versions, and read the history.
+- Just enough **HTML**, the language of web pages, to build a one-line page.
+
 ## The problem Git solves
 
 You've probably seen folders like this:
@@ -143,25 +163,84 @@ report-final-v2.docx
 report-final-v2-REALLY-final.docx
 ```
 
-Now imagine that with hundreds of files and five people editing at once. That's why nearly every software team in the world uses **Git**. It keeps every version of every file, records who changed what and why, and lets people work on the same project without overwriting each other.
+It's an attempt to keep old versions, in case you need to go back. Now imagine that with hundreds of files, and five people editing at the same time, each emailing copies around. Nobody would know which file is current, who changed what, or why.
+
+**Version control** is the solution: a program that keeps every version of every file in a project, records who changed what and why, and lets several people work on the same project without overwriting each other.
+
+**Git** is the version control program almost every software team in the world uses. It's free, and it runs in the terminal.
+
+## A tiny website to practice on
+
+In this module you'll build and track a tiny website. Websites are written in **HTML** (HyperText Markup Language). An HTML file is a plain text file ending in `.html` that a browser knows how to display as a page.
+
+HTML marks up text with **tags**: words in angle brackets that say what each piece of text is. Most come in pairs, an opening tag and a closing tag with a slash:
+
+```html
+<h1>My first page</h1>
+<p>Made by me.</p>
+```
+
+| Tag | Means |
+| --- | --- |
+| `<h1>...</h1>` | A main heading, shown big and bold |
+| `<p>...</p>` | A paragraph of ordinary text |
+
+That's all the HTML you need for now. A file called `index.html` with those two lines is a complete, working web page. `index.html` is the traditional name for a website's home page.
 
 ## Three words to know
 
-- **Repository** (or repo): a project folder that Git tracks. The history lives in a hidden `.git` folder inside it.
-- **Commit**: a saved snapshot of the project, with a short message saying what changed. Like a save point in a game.
-- **Staging**: choosing which changes go into the next commit.
+- **Repository** (or **repo**): a project folder that Git is tracking. Git stores the whole history in a hidden folder called `.git` inside it. You never edit that folder yourself.
+- **Commit**: a saved snapshot of the whole project at one moment, with a short message saying what changed. Like a save point in a game: you can always go back to it.
+- **Staging**: choosing which changes go into the next commit. Staged changes are "lined up, ready to commit".
+
+<details>
+<summary>Quick check: what's the difference between saving a file and committing it?</summary>
+
+Saving writes the file to disk, replacing what was there. Committing takes a snapshot of the project in Git's history, with a message, so you can see or go back to that version later.
+</details>
 
 ## The routine
+
+Nearly every piece of work follows this loop:
 
 ```text
 edit files  →  git status  →  git add  →  git commit -m "what changed"
 ```
 
-Why the extra `add` step? Because you often change several things at once, but they're different pieces of work. Staging lets you commit them separately, so each commit tells one clear story.
+| Command | What it does |
+| --- | --- |
+| `git status` | Shows what's changed since the last commit, and what's staged. Safe to run any time. |
+| `git add index.html` | Stages that file for the next commit |
+| `git add .` | Stages every change in this folder (`.` means "here", as in a path) |
+| `git commit -m "message"` | Takes the snapshot. `-m` gives the message. |
+| `git diff` | Shows exactly what changed in files you haven't staged yet. Lines starting with `+` were added, `-` removed. |
+| `git log --oneline` | Lists the commits, newest first, one per line |
+
+Why the extra `add` step? Because you often change several things at once that are really different pieces of work. Staging lets you commit them separately, so each commit tells one clear story.
+
+All Git commands start with `git`, then a word for what to do, then options. The same command shape you learned in the terminal lesson.
+
+## Setting Git up
+
+Before your first commit, Git needs to know who you are, because your name and email are written into every commit:
+
+```powershell
+git config --global user.name "Sam Lee"
+git config --global user.email "sam@example.com"
+```
+
+`git config` changes Git's settings. `--global` means "for every repository on this computer", so you only do this once. These settings live in a config file in your home folder, like the config files you met earlier.
+
+You'll also set the name of the first **branch** to `main`. A branch is a line of commits. Every repository starts with one, and `main` is the modern standard name for it. Branches get a whole lesson of their own soon.
+
+### Two more commands you'll use
+
+- **`Add-Content file "text"`** adds a line to the end of a file, without replacing what's there. (`Set-Content` replaces the whole file.)
+- During the install you'll pick a **text editor**: a program for editing plain text files, like Notepad. Git opens it when it needs you to write a longer message. The installer's default editor, Vim, is famously confusing for beginners, so you'll pick Notepad instead.
 
 ## Good commit messages
 
-Your future self, and your teammates, will read these. Write what the change does, in a few words:
+Your future self, and your teammates, will read these. Say what the change does, in a few words:
 
 | Not helpful | Helpful |
 | --- | --- |
@@ -169,10 +248,29 @@ Your future self, and your teammates, will read these. Write what the change doe
 | `fix` | `Fix prices showing without tax` |
 | `changes` | `Rename the title on the homepage` |
 
+A good test: does it finish the sentence "This commit will…"? "This commit will add a contact form."
+
 ## Git and GitHub aren't the same thing
 
-**Git** is the program on your computer that tracks history. **GitHub** is a website that stores Git repositories online so people can share them, like Google Drive for code. You can use Git without GitHub, which is what you'll do for most of this module, and you'll connect to GitHub at the end.
+**Git** is the program on your computer that tracks history. **GitHub** is a website that stores Git repositories online so people can share them. Think of it like Google Drive, but for Git repositories.
+
+You can use Git without GitHub, and that's what you'll do for most of this module. You'll connect to GitHub in the last lesson.
 
 <ConsultantNote>
 Git history is a goldmine when you're new to a client's project. `git log` shows who works on what, how often things change, and when problems started. Clients with no version control at all, still emailing zip files around, are common, and getting them onto Git is valuable work.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Version control** | Keeping every version of a project's files, with who changed what and why |
+| **Git** | The version control program almost every team uses |
+| **Repository (repo)** | A project folder Git tracks. History lives in its hidden `.git` folder. |
+| **Commit** | A saved snapshot of the project, with a message |
+| **Staging** | Choosing which changes go into the next commit (`git add`) |
+| **HTML** | The language web pages are written in |
+| **Tag** | An HTML marker like `<h1>` or `<p>`, saying what a piece of text is |
+| **Branch** | A line of commits. The first is called `main`. More in a later lesson. |
+| **Text editor** | A program for editing plain text, like Notepad |
+| **GitHub** | A website that stores Git repositories online for sharing |

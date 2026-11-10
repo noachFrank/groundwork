@@ -1,0 +1,347 @@
+---
+id: packages
+title: Packages, npm, pip and lockfiles
+order: 8
+topic: how-computers-run-software
+minutes: 60
+summary: Why almost no project is written from scratch, how package managers fetch other people's code, what lockfiles are for, and the risks of trusting strangers' code.
+connectivity: offline
+prerequisites:
+  - id: config-files
+    need: essential
+    why: package.json is a JSON file, and you need to read it.
+  - id: kinds-of-programs
+    need: essential
+    why: npm comes with Node.js, introduced there.
+  - id: env-and-path
+    need: helpful
+    why: The impostor package in the task steals environment variables.
+revision: 2
+teaches: [package, dependency, transitive-dependency, package-manager, npm, registry, package-json, dependencies-vs-dev, npm-install, node-modules, semver, caret-range, lockfile, npm-ci, pip, requirements-txt, typosquatting, npm-audit]
+uses: [package-intro, json, json-object, nesting, nodejs, javascript-lang, python-lang, code, environment-variable, secret, api-key, ai-hallucination, folder, file]
+predict:
+  id: p1
+  type: mcq
+  prompt: A typical small website project lists 15 packages it depends on. Roughly how many packages actually get downloaded when you install it?
+  options:
+    - Exactly 15
+    - About 20
+    - Often hundreds, because each package depends on others
+    - None, because packages are built into Node
+  answer: 2
+  why: Packages depend on other packages, which depend on others. Installing Groundwork downloads a few hundred. Every one of them is code written by someone else that runs on your computer.
+tasks:
+  - id: typosquat
+    type: flaw
+    title: Spot the impostor package
+    language: json
+    instructions: |
+      This is a project's `package.json`, the file listing the packages it depends on. It's based on something that really happened in 2017. One line pulls in a harmful package. Which one?
+
+      You'll use: package names and version ranges, from this lesson. (`^19.0.0` means "version 19.0.0, or any newer 19.x version". React, React DOM and Vite are all real, very popular packages.)
+    code: |
+      {
+        "name": "shop-website",
+        "version": "1.0.0",
+        "scripts": {
+          "dev": "vite",
+          "build": "vite build"
+        },
+        "dependencies": {
+          "react": "^19.0.0",
+          "react-dom": "^19.0.0"
+        },
+        "devDependencies": {
+          "crossenv": "^7.0.3",
+          "vite": "^7.0.0"
+        }
+      }
+    flawLines: [13]
+    lineNotes:
+      "2": The project's name. Harmless.
+      "5": This script runs Vite, a popular and legitimate development tool.
+      "9": React is one of the most widely used packages there is.
+      "10": React DOM is React's official companion package.
+      "14": Vite is a widely used, legitimate tool.
+    explanation: |
+      The real, popular package is called **cross-env**, with a dash. In 2017, someone published **crossenv**, without the dash, and a few similar look-alike names. They worked like the real thing, but they also quietly sent the developer's environment variables, often including passwords and API keys, to the attacker.
+
+      This is called **typosquatting**: publishing a harmful package under a name that's one typo away from a popular one. AI tools add a new twist, because they sometimes suggest package names that don't exist, and attackers register those too.
+
+      Before adding a package, check its exact name, who publishes it, how many people download it, and when it was last updated.
+  - id: works-on-my-machine
+    type: case
+    title: "\"It works on my machine\""
+    instructions: A client's two developers disagree. Work out what's going on.
+    scenario: |
+      A client's website builds fine on Priya's laptop but fails on Tom's with an error inside a package called `date-helper`. They both ran `npm install` on the same code. The project has a `package.json` with `"date-helper": "^3.1.0"`, but nobody has ever committed a file called `package-lock.json`. Priya installed months ago, and Tom installed yesterday.
+    questions:
+      - prompt: What's the most likely cause?
+        choices:
+          - text: They have different versions of date-helper. `^3.1.0` allows any newer 3.x, and a new release came out between their installs
+            score: 2
+            why: Right. Without a lockfile, each install picks the newest version that matches. Tom got a newer version with a bug, or one that behaves differently.
+          - text: Tom's laptop is slower
+            score: 0
+            why: Speed doesn't cause errors inside a package.
+          - text: Tom typed the code wrong
+            score: 0
+            why: They're using the same code. The difference is in what got installed.
+      - prompt: What's the lasting fix?
+        choices:
+          - text: Commit `package-lock.json` to Git, and use `npm ci` to install exactly what it lists
+            score: 2
+            why: The lockfile records the exact version of every package, including the hidden ones. Everyone, including the server, then gets identical installs.
+          - text: Tell Tom to use Priya's laptop
+            score: 0
+            why: That's not a fix. The live server will hit the same problem next time it installs.
+          - text: Delete node_modules on both laptops every day
+            score: 0
+            why: That would make things less predictable, not more.
+    passScore: 3
+recall:
+  - id: r1
+    type: mcq
+    prompt: What does a lockfile like `package-lock.json` do?
+    options:
+      - Locks the project so nobody can edit it
+      - Records the exact version of every installed package, so every install is identical
+      - Encrypts the packages
+      - Lists the project's passwords
+    answer: 1
+    why: package.json says what you'd accept, like "3.x". The lockfile says exactly what you got, like 3.4.1.
+  - id: r2
+    type: short
+    prompt: Which folder does npm install packages into?
+    accept: ['node_modules']
+    answerText: node_modules
+  - id: r3
+    type: mcq
+    prompt: What's Python's equivalent of npm?
+    options: [pip, node, conda only, git]
+    answer: 0
+    why: "pip installs packages from PyPI, the Python Package Index. Python projects often list them in `requirements.txt`."
+  - id: r4
+    type: self
+    prompt: What would you check before adding a package you haven't used before?
+    modelAnswer: That the name is exactly right, who publishes it, how many people download it, when it was last updated, and whether it's well known or recommended in official docs. A brand-new package with a name close to a popular one is a red flag.
+cards:
+  - id: package
+    front: What is a package?
+    back: Code someone else wrote and published so others can reuse it. Package managers like npm (JavaScript) and pip (Python) download them.
+  - id: pkg-json
+    front: What's the difference between package.json and package-lock.json?
+    back: package.json lists what the project needs and which versions are acceptable. package-lock.json records the exact versions actually installed.
+  - id: ci-vs-install
+    front: "`npm install` or `npm ci`?"
+    back: "`npm install` may update the lockfile. `npm ci` installs exactly what the lockfile says, so it's best for servers and fresh setups."
+  - id: typosquat
+    front: What is typosquatting?
+    back: Publishing a harmful package with a name one typo away from a popular one, like crossenv instead of cross-env.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Should `node_modules` be committed to Git?
+    options:
+      - Yes, always
+      - No. It's huge and can be rebuilt from package.json and the lockfile
+      - Only on Fridays
+      - Only the first time
+    answer: 1
+    why: node_modules is generated. The lockfile is what you commit, so anyone can rebuild node_modules exactly.
+  - id: t2
+    type: mcq
+    prompt: 'What does `"^2.3.0"` allow in package.json?'
+    options:
+      - Only 2.3.0
+      - 2.3.0 or any newer 2.x version
+      - Any version at all
+      - Versions below 2.3.0
+    answer: 1
+    why: The caret allows newer minor and patch versions, but not a new major version (3.0.0), which may change how things work.
+docs:
+  - title: "npm Docs: package-lock.json"
+    url: https://docs.npmjs.com/cli/configuring-npm/package-lock-json
+  - title: "npm Docs: npm ci"
+    url: https://docs.npmjs.com/cli/commands/npm-ci
+  - title: "Python: Installing packages"
+    url: https://packaging.python.org/en/latest/tutorials/installing-packages/
+videos: []
+---
+
+## In this lesson
+
+- What a **package** is, and why almost no project is written from scratch.
+- What **npm** is, and how it fits with Node.js.
+- How to read a project's `package.json`, line by line.
+- What version numbers like `^19.2.1` mean.
+- What a **lockfile** is, and why "it works on my machine" happens without one.
+- The risks of running code written by strangers, and how to reduce them.
+
+## Nobody starts from scratch
+
+Suppose you're building a website for a shop, and it needs to show dates nicely, send emails, and talk to a payment company. You could write all of that yourself. It would take months, and it would have bugs that other people already found and fixed years ago.
+
+Instead, programmers reuse code that other people have written and published. In *When AI is confidently wrong* you met the idea of a **package**: a bundle of code someone has published so others can reuse it. Now for the details.
+
+A package usually does one job well: handling dates, sending email, drawing charts, building web pages. When your project uses a package, that package is a **dependency** of your project: your project depends on it to work.
+
+### Dependencies have dependencies
+
+Packages are written by programmers too, so they use other packages. Those use others, and so on. These hidden, second-hand dependencies are called **transitive dependencies**.
+
+So a project that lists 15 packages it needs might actually install several hundred. Groundwork lists about 30, and installing it downloads a few hundred. Every one of them is code written by someone else, running on your computer.
+
+<details>
+<summary>Quick check: your project uses package A, and package A uses package B. Is B a dependency of your project?</summary>
+
+Yes, a transitive (indirect) one. It gets installed and runs as part of your project, even though you never asked for it by name.
+</details>
+
+## Package managers
+
+Finding, downloading and updating hundreds of packages by hand would be impossible. A **package manager** is a program that does it for you: you tell it what your project needs, and it fetches all of it, dependencies of dependencies included.
+
+Packages are published to a **registry**: a huge online library of packages that the package manager downloads from.
+
+| Language | Package manager | Registry | The project's list of packages |
+| --- | --- | --- | --- |
+| JavaScript | **npm** | the npm registry (npmjs.com) | `package.json` |
+| Python | **pip** | PyPI, the Python Package Index | `requirements.txt` or `pyproject.toml` |
+
+**npm** (Node Package Manager) comes with Node.js. The copy of Node that came with Groundwork includes npm too, and you'll use it in the next lesson. Remember from the *Code, languages* lesson that in PowerShell you type `npm.cmd` instead of `npm`, to avoid the script block.
+
+## package.json, line by line
+
+Every JavaScript project has a file called `package.json` in its main folder. You now know that it's JSON: an object of named values. Here's a typical one:
+
+```json
+{
+  "name": "shop-website",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0"
+  }
+}
+```
+
+| Name | What it holds |
+| --- | --- |
+| `name` | The project's name |
+| `version` | The project's own version number |
+| `scripts` | Short names for commands, like `dev` and `build`. That's the whole of the next lesson. |
+| `dependencies` | Packages the project needs to **run** |
+| `devDependencies` | Packages only needed while **working on** the project, such as tools that build or test it. Visitors to the website never need these. |
+
+Inside `dependencies` and `devDependencies`, each line is a package name and the versions of it that are acceptable. `"react": "^19.0.0"` means "this project needs the package called react, version 19 or a newer 19-something".
+
+(React and Vite are two hugely popular packages for building websites. You don't need to know what they do yet. They're just good examples.)
+
+<details>
+<summary>Quick check: in the package.json above, which package is only needed while working on the project?</summary>
+
+Vite. It's listed under `devDependencies`.
+</details>
+
+## What happens when you install
+
+When Groundwork's `start.bat` set itself up the first time, npm:
+
+1. Read `package.json` to see what Groundwork needs.
+2. Read `package-lock.json` (coming up shortly) to get the exact versions.
+3. Downloaded every package, plus every package *those* need, from the npm registry.
+4. Put them all in a folder called **`node_modules`**, inside the project's folder.
+
+That's why the first start needed the internet, and later starts don't: everything is already in `node_modules`. Node knows to look in that folder when the code asks for a package.
+
+The command to do this yourself is **`npm install`**. It reads package.json and fills node_modules.
+
+## Version numbers
+
+Most packages use **semantic versioning**: three numbers, `major.minor.patch`, like `19.2.1`.
+
+| Part | Goes up when… | Safe to update? |
+| --- | --- | --- |
+| **Patch** (19.2.**1**) | Bugs are fixed | Almost always |
+| **Minor** (19.**2**.0) | New features are added, nothing old is broken | Usually |
+| **Major** (**19**.0.0) | Something works differently now | Maybe not: your code may need changes |
+
+In `package.json`, versions are often written as a **range**, saying which versions are acceptable:
+
+| Written as | Means |
+| --- | --- |
+| `"19.2.1"` | Exactly 19.2.1 |
+| `"^19.2.1"` | 19.2.1 or any newer **19**.x. Not 20. |
+| `"~19.2.1"` | 19.2.1 or any newer **19.2**.x |
+
+The caret `^` is the most common. It's flexible, which is useful, but it means two installs a few months apart can get **different** versions, if new ones came out in between.
+
+## Lockfiles
+
+A **lockfile** fixes that. `package-lock.json`, which npm writes, records the **exact** version of every package that was installed, including all the hidden transitive ones.
+
+- `package.json` says what you'd **accept**: "react, any 19.x".
+- `package-lock.json` says exactly what you **got**: "react 19.2.1, and these 214 other packages at these exact versions".
+
+**`npm ci`** installs exactly what the lockfile says, nothing newer. It's what servers and fresh setups should use, and it's what `start.bat` used for Groundwork. **`npm install`** may update the lockfile when versions have moved on.
+
+| File or folder | Share it with the code? |
+| --- | --- |
+| `package.json` | Yes |
+| `package-lock.json` | Yes, so everyone gets identical installs |
+| `node_modules` | **No.** It's huge, and anyone can rebuild it from the two files above. |
+
+Python's version of this: `pip install` installs packages, and `pip freeze > requirements.txt` writes the exact installed versions to a file.
+
+<details>
+<summary>Quick check: why can two people with the same package.json end up with different versions of a package?</summary>
+
+Because ranges like `^3.1.0` allow newer versions. Without a lockfile, each install picks the newest version that fits the range at that moment.
+</details>
+
+## Trusting strangers' code
+
+Every package runs with the same access as your own code. It can read your files and your environment variables, which often hold secrets, and it can send things over the internet. Most packages are written in good faith, but attackers do publish harmful ones, and occasionally break into real ones.
+
+One trick is **typosquatting**: publishing a harmful package with a name one typo away from a popular one, and waiting for someone to mistype. You'll find a real example in the task.
+
+AI tools add a new twist. As you saw in *When AI is confidently wrong*, they sometimes suggest package names that don't exist. Attackers notice which names AI tends to invent, and publish harmful packages under exactly those names.
+
+Sensible habits:
+
+- **Check the exact name**, letter by letter.
+- **Look at its track record** on npmjs.com: weekly downloads, who publishes it, when it was last updated.
+- **Prefer fewer, well-known packages.** Every package is something you're trusting.
+- **Run `npm audit`** now and then. It checks your installed packages against a list of known security problems.
+
+<ConsultantNote>
+Auditing a client's dependencies is real, billable work: how many packages there are, how out of date, any known vulnerabilities, any abandoned ones. Old, unmaintained dependencies are behind a huge number of real security breaches.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Package** | Code someone published for others to reuse |
+| **Dependency** | A package your project needs |
+| **Transitive dependency** | A dependency of a dependency, installed automatically |
+| **Package manager** | A program that downloads and updates packages: npm, pip |
+| **Registry** | The online library packages are downloaded from |
+| **npm** | Node's package manager. Comes with Node. |
+| **package.json** | A JavaScript project's settings: name, scripts, and dependencies |
+| **devDependencies** | Packages only needed while working on a project |
+| **node_modules** | The folder npm installs packages into |
+| **Semantic versioning** | `major.minor.patch` version numbers |
+| **`^` range** | "This version or any newer one with the same major number" |
+| **Lockfile** | `package-lock.json`: the exact version of every installed package |
+| **`npm ci`** | Installs exactly what the lockfile says |
+| **pip / requirements.txt** | Python's package manager, and its usual list of packages |
+| **Typosquatting** | Publishing a harmful package under a name one typo from a popular one |

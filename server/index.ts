@@ -15,6 +15,14 @@ import { APP_ROOT, CONTENT_DIR, dataDir, practiceDir } from './paths.ts';
 import { Store } from './store.ts';
 
 const version = JSON.parse(readFileSync(join(APP_ROOT, 'package.json'), 'utf8')).version as string;
+/** Who feedback goes to. Shown in the app as "Send feedback to <name>". */
+const developerName = (() => {
+  try {
+    return String(JSON.parse(readFileSync(join(APP_ROOT, 'groundwork.config.json'), 'utf8')).developerName ?? '').trim() || undefined;
+  } catch {
+    return undefined;
+  }
+})();
 const data = dataDir();
 const backups = join(data, 'backups');
 mkdirSync(backups, { recursive: true });
@@ -58,7 +66,7 @@ app.use(async (c, next) => {
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   c.header('X-Content-Type-Options', 'nosniff');
 });
-app.route('/api', createApi({ store, content, connectivity, labs, practicePath: practice, dataPath: data, version }));
+app.route('/api', createApi({ store, content, connectivity, labs, practicePath: practice, dataPath: data, version, developerName }));
 
 // Pyodide and sql.js come straight from the installed packages, so they work offline.
 const relRoot = (p: string) => relative(process.cwd(), p).replace(/\\/g, '/') || '.';

@@ -1,22 +1,13 @@
 import { useRef, useState } from 'react';
 import { api } from '../api.ts';
-import { CopyButton } from '../components/Rich.tsx';
 import { useApi } from '../hooks.ts';
 import { ExternalLink, NeedsInternet } from '../online.tsx';
 import type { ToolStatus } from '../../shared/types.ts';
-
-interface Problem {
-  id: number;
-  lessonTitle: string;
-  message: string;
-  resolved: boolean;
-  createdAt: string;
-}
+import { FeedbackSection } from './FeedbackSection.tsx';
 
 export function SettingsPage() {
   const { data: about } = useApi<{ version: string; practicePath: string; dataPath: string; labsUnavailable: string[] }>('/about');
   const { data: tools } = useApi<ToolStatus[]>('/tools');
-  const { data: problems, reload: reloadProblems } = useApi<Problem[]>('/problems');
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -31,12 +22,11 @@ export function SettingsPage() {
     }
   };
 
-  const openProblems = (problems ?? []).filter((p) => !p.resolved);
-  const problemText = openProblems.map((p) => `[${p.lessonTitle}] ${p.message}`).join('\n\n');
-
   return (
     <div>
       <h1>Settings</h1>
+
+      <FeedbackSection />
 
       <section className="card">
         <h2>Backup</h2>
@@ -89,35 +79,6 @@ export function SettingsPage() {
         <NeedsInternet what="download new lessons">
           <p>New lessons are downloaded by double-clicking <code>update.bat</code> in your Groundwork folder, after closing this app. Your progress is stored separately, so updates never erase it.</p>
         </NeedsInternet>
-      </section>
-
-      <section className="card">
-        <h2>Problems you reported</h2>
-        {!problems ? null : problems.length === 0 ? (
-          <p className="muted">None yet. Every lesson has a "Report a problem" button. Reports are saved here on your computer, so it works offline.</p>
-        ) : (
-          <>
-            <p className="muted small">To get these fixed, copy them and send them to whoever gave you Groundwork.</p>
-            {openProblems.length > 0 && <CopyButton text={problemText} label="Copy all open reports" />}
-            <ul className="problem-list">
-              {problems.map((p) => (
-                <li key={p.id} className={p.resolved ? 'resolved' : ''}>
-                  <strong>{p.lessonTitle}</strong> <span className="muted small">{new Date(p.createdAt).toLocaleDateString()}</span>
-                  <div>{p.message}</div>
-                  <button
-                    className="link-btn small"
-                    onClick={async () => {
-                      await api(`/problems/${p.id}/resolve`, { body: { resolved: !p.resolved } });
-                      void reloadProblems();
-                    }}
-                  >
-                    {p.resolved ? 'Reopen' : 'Mark as sorted'}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
       </section>
 
       {about && (

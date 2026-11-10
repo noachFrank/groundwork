@@ -3,10 +3,19 @@ id: asking-good-questions
 title: Asking questions that get good answers
 order: 3
 topic: learning-with-ai
-minutes: 40
+minutes: 45
 summary: What to include when you ask AI or a person for help, and what you must never paste in, especially when the work belongs to a client.
 connectivity: offline
-prerequisites: [when-ai-is-wrong]
+prerequisites:
+  - id: when-ai-is-wrong
+    need: essential
+    why: Explains why AI answers need checking, and what a script is.
+  - id: ai-as-a-tutor
+    need: helpful
+    why: The tutor routine, which good questions make work.
+revision: 2
+teaches: [error-message, good-question, minimal-example, secret, api-key, placeholder, private-data, rubber-duck]
+uses: [ai-assistant, prompt, script, code]
 predict:
   id: p1
   type: mcq
@@ -132,31 +141,106 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- Why the quality of an answer depends on the question.
+- The four things every request for help should include.
+- What an **error message** is, and why you copy it exactly.
+- What you must **never** paste into an AI, especially when the work belongs to a client.
+
 ## The answer can only be as good as the question
 
 Whoever you ask, whether it's an AI, a colleague or a forum, they can't see your screen. All they know is what you tell them. A vague question gets a guess. A clear question usually gets the answer.
 
+Compare these two:
+
+> my thing doesnt work pls fix
+
+> I'm on Windows 11, following lesson 3 of a course. I'm trying to run a script called `totals.py`. When I run it I get this error: `'python' is not recognized as an internal or external command`. I already tried closing and reopening the window. What could cause this?
+
+The second one takes a minute longer to write, and gets a useful answer on the first try.
+
+## Error messages
+
+When a program can't do what you asked, it usually tells you why with an **error message**: a few lines of text describing what went wrong. Often it appears in red. For example:
+
+```text
+'python' is not recognized as an internal or external command,
+operable program or batch file.
+```
+
+Error messages can look scary, but they're one of the most helpful things a computer gives you. They usually say **what** went wrong, and often **where**. In this course you'll learn to read lots of them.
+
+When you ask for help, always include the error message **copied and pasted exactly**, not retyped from memory or summarized as "it said something about python". One changed word can point someone in completely the wrong direction.
+
+<Callout title="How to copy text from a window">
+Select the text with your mouse, then press **Ctrl+C** to copy and **Ctrl+V** to paste. In some black terminal windows, selecting text and pressing **Enter**, or right-clicking, copies it. If you truly can't copy it, a clear photo or screenshot is the next best thing.
+</Callout>
+
 ## The four things to include
 
 1. **What you're trying to do.** The goal, in a sentence. Sometimes the best answer is "there's an easier way to do that".
-2. **What actually happens.** The **exact** error message, copied and pasted, not retyped from memory. Small details in errors matter.
-3. **What you've already tried.** This saves time and shows where the problem isn't.
-4. **Your setup.** Operating system, versions, how things were installed. "Works on my machine" problems hide here.
+2. **What actually happens.** The **exact** error message, or exactly what you see. "Nothing happens" is useful too, if that's the truth.
+3. **What you've already tried.** This saves time and rules out the obvious.
+4. **Your setup.** Which computer and system (for example, Windows 11), which program or course, which version, how things were installed. Many problems that only happen "on my machine" hide here.
 
-If you can, add a **small example**: the fewest lines of code, or the smallest bit of data, that still shows the problem. Making one often reveals the answer before you even ask.
+If you can, add a **small example**: the fewest lines of code, or the smallest bit of data, that still shows the problem. People call this a **minimal example**. Cutting a problem down to its smallest form often reveals the answer before you even ask.
+
+<details>
+<summary>Quick check: which of the four is missing from "I installed Python and it doesn't work"?</summary>
+
+Almost all of them. There's no goal, no exact error, nothing about what was tried, and no setup details beyond "Python".
+</details>
 
 <Callout title="A useful side effect">
-Writing a clear question forces you to think clearly about the problem. Programmers call this **rubber duck debugging**: explaining a problem out loud, even to a rubber duck, often makes you spot the answer yourself.
+Writing a clear question forces you to think clearly about the problem. Programmers call this **rubber duck debugging**: explaining a problem out loud, even to a rubber duck on your desk, often makes you spot the answer yourself halfway through.
 </Callout>
 
 ## What never goes in
 
-Anything you paste into an online AI tool is sent to another company's computers. Depending on the tool and its settings, it may be stored or reviewed. So:
+Anything you paste into an online AI tool is sent to another company's computers. Depending on the tool and its settings, it may be stored, or read by staff. So some things must never go in.
 
-- **Never paste secrets.** Passwords, API keys and access tokens get replaced with a placeholder like `YOUR_API_KEY_HERE`.
-- **Never paste private data.** Real customers', patients' or employees' details stay out. Use a few rows of **made-up data** in the same format.
-- **Check the client's rules.** Many organizations have policies about which AI tools can see their data. Ask.
+### Secrets
+
+A **secret** is anything that gives access to something: a password, or an **API key**. An API key is like a password that one program uses to prove who it is when it talks to another service, such as a payment company. You'll see them later in the course. They look like long random strings, for example `sk_live_51HxQ...`.
+
+Never paste a real secret anywhere. Replace it with a **placeholder**: an obviously fake stand-in that shows where the real thing goes.
+
+```text
+Before: password = "Tr0ub4dor&3"
+After:  password = "YOUR_PASSWORD_HERE"
+```
+
+The AI can still help, because it can see where the password is used, just not what it is.
+
+### Private data
+
+Real people's details stay out: customers', patients' or employees' names, phone numbers, addresses, health information, and so on. This is **private data**, and in many countries laws protect it.
+
+Instead, use a few rows of **made-up data in the same format**. If the real spreadsheet has a name, a phone number and a date, invent three rows with a fake name, a fake number and a date. Problems almost always reproduce just as well.
+
+### The client's rules
+
+Many organizations have rules about which AI tools may see their information, especially in healthcare, law and finance. When the work belongs to someone else, **ask what's allowed** before you paste anything.
+
+<details>
+<summary>Quick check: you want help with a script that contains a database password. What do you do with the password?</summary>
+
+Replace it with a placeholder like `YOUR_PASSWORD_HERE` before pasting.
+</details>
 
 <ConsultantNote>
-Clients trust you with access to their systems and their customers' information. Leaking it, even by accident, even "just to an AI", can break privacy laws like GDPR or HIPAA and end the relationship. Handling data carefully is a skill clients notice.
+Clients trust you with access to their systems and their customers' information. Leaking it, even by accident, even "just to an AI", can break privacy laws like GDPR (in Europe) or HIPAA (for US health data), and end the relationship. Handling data carefully is a skill clients notice.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Error message** | Text a program shows when it can't do what you asked, saying what went wrong |
+| **Minimal example** | The smallest code or data that still shows the problem |
+| **Rubber duck debugging** | Explaining a problem out loud until you spot the answer yourself |
+| **Secret** | Anything that gives access: a password, an API key, an access token |
+| **API key** | A password one program uses to prove who it is to another service |
+| **Placeholder** | An obviously fake stand-in, like `YOUR_API_KEY_HERE` |
+| **Private data** | Real people's personal details. Never share it. Use made-up data instead. |

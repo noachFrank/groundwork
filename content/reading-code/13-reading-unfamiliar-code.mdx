@@ -1,12 +1,24 @@
 ---
 id: reading-unfamiliar-code
 title: Reading code you didn't write
-order: 12
+order: 13
 topic: reading-code
-minutes: 50
+minutes: 60
 summary: How to find your way around a project you've never seen, and how to review code, whether a person or an AI wrote it, for the bugs that matter.
 connectivity: offline
-prerequisites: [javascript-in-node]
+prerequisites:
+  - id: javascript-in-node
+    need: essential
+    why: The code you'll review is a Node server route using async and await.
+  - id: remotes-and-pull-requests
+    need: essential
+    why: You'll review a pull request, and code review was introduced there.
+  - id: javascript-basics
+    need: essential
+    why: The bug is the = versus === trap from that lesson.
+revision: 2
+teaches: [codebase-map, entry-point, trace-a-feature, search-project, server-route, req-res, request-body, destructuring, linter, review-checklist, trust-the-server, reviewing-ai-code]
+uses: [pull-request, code-review, readme, package-json, npm-scripts, project-setup-checklist, frontend, backend, request-response, async-function, await-keyword, js-object, js-dot-access, triple-equals, equals-vs-assign, boundary-bug, and-or-not, none-trap, type-coercion, api-intro, secret, ai-hallucination, tutor-not-ghostwriter, json, folder]
 predict:
   id: p1
   type: mcq
@@ -24,6 +36,8 @@ tasks:
     title: Review a pull request
     language: javascript
     instructions: |
+      You'll use: reading a server route and destructuring, from this lesson, and the `=` versus `===` trap from *JavaScript for Python people*.
+
       A developer opens a pull request: "Add a WELCOME10 code for 10% off a customer's first order." It passed a quick manual test with the code WELCOME10. You're reviewing it. One line means **every** customer gets 10% off, whatever code they type. Which one?
     code: |
       app.post("/api/checkout", async (req, res) => {
@@ -156,29 +170,79 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- How to find your way around a project you've never seen, without reading all of it.
+- How to read a typical piece of backend code: a **route** that answers a request.
+- A checklist for reviewing code, whether a teammate or an AI wrote it.
+- The bugs from this whole module, gathered together as things to look for.
+
 ## Most code you read won't be yours
 
-As a consultant, you'll spend far more time reading other people's code than writing your own: client projects, old systems, libraries, and more and more often, AI-written code. Reading code well is the core skill. This lesson is about doing it efficiently.
+As a consultant, you'll spend far more time reading other people's code than writing your own: client projects, old systems, packages, and more and more often, AI-written code. Reading code well is the core skill. This lesson is about doing it efficiently.
 
 ## Finding your way around
 
 Nobody reads a whole codebase. Build a map, then follow one path:
 
 1. **The README.** What is it, and how do you run it? Even a bad README tells you something.
-2. **The package list:** `package.json`, `requirements.txt` or similar. It shows the language, the framework and the major tools. The `scripts` section tells you how it starts.
-3. **Get it running** on your machine. Code you can run is far easier to understand than code you can only read.
-4. **Find the entry point**, where the program starts, and the folder structure. Typical folders are `src/`, `routes/` or `api/`, `components/`, `models/` and `tests/`.
-5. **Trace one real feature** from start to finish. For example: the booking form → the request it sends → the server route → the database. Now you understand how the whole app is wired.
+2. **The package list**: `package.json`, `requirements.txt` or similar. It shows the language, the main packages and tools. The `scripts` section tells you how it starts.
+3. **Get it running** on your machine, using the setup checklist from the npm lesson. Code you can run is far easier to understand than code you can only read.
+4. **Find the entry point**, the file where the program starts (often named in package.json's scripts), and look at the folder structure. Typical folders are `src/` (source code), `routes/` or `api/` (backend request handlers), `components/` (pieces of the frontend), `models/` (descriptions of the data) and `tests/`.
+5. **Trace one real feature** from start to finish. For example: the booking form on the page → the request it sends → the backend code that receives it → where the data is saved. Once you've followed one path all the way through, you understand how the whole app is wired.
 
 ## Search is your superpower
 
 To find where something happens, **search the whole project** for something you can see:
 
 - Text on the screen: a button label or an error message.
-- A URL from the browser's address bar or the network tab.
-- A name from the database or an error log.
+- An address from the browser's address bar.
+- A name from an error log.
 
-In VS Code, **Ctrl+Shift+F** searches every file at once.
+In VS Code, a popular free code editor, **Ctrl+Shift+F** searches every file at once. Search beats reading every time.
+
+## Reading a backend route
+
+Much backend JavaScript looks like this. It's the code in the task:
+
+```javascript
+app.post("/api/checkout", async (req, res) => {
+  const { customerId, code, total } = req.body;
+  // ... work things out, save the order ...
+  res.json({ orderId: order.id, charged: total - discount });
+});
+```
+
+You can read it with what you know:
+
+- `app.post("/api/checkout", ...)` sets up a **route**: "when a request arrives for the address `/api/checkout`, run this function". (`post` is a kind of request used for sending data. Stage 2 covers the kinds.) `app` is the server, built with a popular package.
+- `async (req, res) => { ... }` is an async arrow function. It's given two objects: **`req`**, the **request** that arrived, and **`res`**, the **response** it will send back.
+- **`req.body`** is the data the browser sent with the request, already turned from JSON into a JavaScript object.
+- `res.json({...})` sends back a response, as JSON.
+
+### Destructuring
+
+The second line uses a shortcut called **destructuring**:
+
+```javascript
+const { customerId, code, total } = req.body;
+```
+
+That means exactly the same as:
+
+```javascript
+const customerId = req.body.customerId;
+const code = req.body.code;
+const total = req.body.total;
+```
+
+It pulls several values out of an object into variables of the same names, in one line. You'll see it everywhere.
+
+<details>
+<summary>Quick check: after `const { name, age } = person;`, what's in `name`?</summary>
+
+The same as `person.name`.
+</details>
 
 ## Reviewing code
 
@@ -186,13 +250,28 @@ Whether a teammate or an AI wrote it, ask:
 
 | Question | What you're looking for |
 | --- | --- |
-| Does it do what was **asked**? | Not just what the example tested |
+| Does it do what was **asked**? | Not just what the one example tested |
 | What about the **edges**? | Empty lists, missing values, exactly-on-the-boundary numbers, odd characters like apostrophes |
 | What happens when it **fails**? | Errors swallowed? Network calls that might never answer? |
 | Is it **safe**? | Trusting data from the browser, missing permission checks, secrets in code |
 | Can someone **read** it? | Names that say what things do, and no surprises |
 
-The bugs you've met in this module, like `>` instead of `>=`, `or` instead of `and`, a missing `return`, text instead of numbers, and `=` instead of `===`, are exactly what slips past a quick test and gets caught by a careful reader.
+### Never trust the browser
+
+One safety point deserves its own heading. Anything that comes from the browser, like `req.body`, can be changed by the person using it, with the browser's developer tools or a tool like curl. So a server should never take a **price** or a **total** from the browser and simply believe it. It should work prices out itself, from its own data. Notice this in the task: it's a second problem, beyond the one the question asks about.
+
+### The bugs from this module
+
+You've met these one at a time. Together, they're a checklist of things that slip past a quick test and get caught by a careful reader:
+
+- `>` instead of `>=` (boundary bugs)
+- `or` instead of `and`
+- A missing `return`, giving None or undefined
+- Text instead of numbers ("4.50" + "2.00")
+- `=` instead of `===`
+- A line indented one level too far, or not far enough
+
+Tools called **linters** read code automatically and flag common mistakes like `=` inside an `if`. Good projects run one on every change.
 
 <Callout title="Reviewing AI-written code">
 AI code often looks polished, which makes it easy to trust. Review it like a stranger's: read every line, test the edge cases, and be extra suspicious of anything that "fixes" an error by turning a check off. That's a pattern you've now seen several times.
@@ -200,8 +279,21 @@ AI code often looks polished, which makes it easy to trust. Review it like a str
 
 ## You've finished Stage 1
 
-You can now find your way around a computer and a terminal, explain what happens when software runs, use Git and GitHub, and read, debug and judge real Python and JavaScript. That's a solid foundation. Next comes **Stage 2: How software connects**, starting with how a web request really works.
+You can now find your way around a computer and a terminal, explain what happens when software runs, read settings files, use Git and GitHub, and read, debug and judge real Python and JavaScript. That's a solid foundation. Next comes **Stage 2: How software connects**, starting with how a web request really works.
 
 <ConsultantNote>
 A careful code review is one of the most valuable things a consultant offers. A client usually can't judge their own software. You can tell them, in plain language, what's solid, what's risky, and what it would cost to fix, and that starts with reading code the way you've practiced here.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Codebase** | All the code of one project |
+| **Entry point** | The file where a program starts |
+| **Tracing a feature** | Following one action from the page all the way to where data is saved |
+| **Route** | Backend code that answers requests for one address, like `/api/checkout` |
+| **`req` / `res`** | The request that arrived, and the response being sent back |
+| **`req.body`** | The data the browser sent |
+| **Destructuring** | `const { a, b } = obj`: pulling values out of an object into variables |
+| **Linter** | A tool that automatically flags common mistakes in code |

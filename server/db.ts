@@ -7,7 +7,7 @@ import { localDay } from '../shared/dates.ts';
  * Database changes are added to this list, never edited, so an update can bring
  * an existing database forward without losing a learner's progress.
  */
-const MIGRATIONS: string[] = [
+export const MIGRATIONS: string[] = [
   `
   CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   CREATE TABLE lesson_progress (
@@ -75,11 +75,29 @@ const MIGRATIONS: string[] = [
     created_at TEXT NOT NULL
   );
   `,
+  // 2: rewritten-lesson tracking, and feedback that can be sent to the developer.
+  `
+  ALTER TABLE lesson_progress ADD COLUMN completed_revision INTEGER;
+  ALTER TABLE problems ADD COLUMN sent_at TEXT;
+  ALTER TABLE problems ADD COLUMN updated_at TEXT;
+  CREATE TABLE lesson_feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    lesson_id TEXT NOT NULL,
+    clarity INTEGER,
+    unclear_concepts TEXT NOT NULL DEFAULT '[]',
+    assumed TEXT NOT NULL DEFAULT '',
+    other TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    sent_at TEXT
+  );
+  CREATE INDEX lesson_feedback_lesson ON lesson_feedback (lesson_id);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
 /** Every table that holds learner data, in the order backups restore them. */
-export const TABLES = ['settings', 'lesson_progress', 'task_results', 'attempts', 'notes', 'cards', 'card_reviews', 'time_log', 'problems'];
+export const TABLES = ['settings', 'lesson_progress', 'task_results', 'attempts', 'notes', 'cards', 'card_reviews', 'time_log', 'problems', 'lesson_feedback'];
 
 const versionOf = (db: DatabaseSync) => (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
 

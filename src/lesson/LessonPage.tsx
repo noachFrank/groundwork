@@ -8,7 +8,8 @@ import { TaskCard } from '../exercises/TaskCard.tsx';
 import { mdxComponents } from './mdx-components.tsx';
 import { QuestionForm, type Answer } from './QuestionForm.tsx';
 import { VideoClipBox } from './VideoClipBox.tsx';
-import { STEPS, type Lesson, type LessonProgress, type StepName } from '../../shared/types.ts';
+import { ClarityCard, ConceptContext, PrerequisitePanel, RewrittenBanner, useConceptList, type LessonConcepts } from './LessonExtras.tsx';
+import { STEPS, type ClarityFeedback, type Lesson, type LessonProgress, type PrerequisiteInfo, type StepName } from '../../shared/types.ts';
 import { gradeQuestion } from '../../shared/questions.ts';
 
 const lessonFiles = import.meta.glob<{ default: ComponentType<any> }>('../../content/**/*.mdx');
@@ -21,6 +22,9 @@ interface LessonData {
   progress: LessonProgress;
   note: string;
   cards: { id: string; due: string }[];
+  prerequisites: PrerequisiteInfo[];
+  concepts: LessonConcepts;
+  clarity: ClarityFeedback | null;
 }
 
 export function LessonPage() {
@@ -28,6 +32,7 @@ export function LessonPage() {
   const { data, error, setData } = useApi<LessonData>(`/lessons/${id}`);
   const [step, setStep] = useState<StepName>('predict');
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const concepts = useConceptList();
 
   useEffect(() => {
     if (data && loadedFor !== data.lesson.id) {
@@ -60,6 +65,7 @@ export function LessonPage() {
   };
 
   return (
+    <ConceptContext.Provider value={concepts}>
     <div className="lesson">
       <p className="crumb">
         <Link to="/course">Course</Link> / <Link to={`/course/${data.lesson.module}`}>{data.moduleTitle}</Link>
@@ -76,6 +82,9 @@ export function LessonPage() {
         {progress.status === 'tested_out' && <span className="tag tag-done">tested out</span>}
         {progress.status === 'completed' && <span className="tag tag-done">complete</span>}
       </p>
+
+      {progress.rewritten && <RewrittenBanner lessonId={lesson.id} onDone={update} />}
+      <PrerequisitePanel key={lesson.id} prerequisites={data.prerequisites} />
 
       <ol className="stepper" aria-label="Lesson steps">
         {STEPS.map((s, i) => (
@@ -110,9 +119,18 @@ export function LessonPage() {
           )}
           {step === 'review' && <ReviewStep data={data} goTo={goTo} doPassed={doPassed} />}
         </div>
-        <LessonTools data={data} update={update} hideNotes={step === 'recall'} />
+        <LessonTools
+          data={data}
+          update={update}
+          hideNotes={step === 'recall'}
+          rateClarity={() => {
+            goTo('review');
+            setTimeout(() => document.getElementById('clarity')?.scrollIntoView({ behavior: 'smooth' }), 50);
+          }}
+        />
       </div>
     </div>
+    </ConceptContext.Provider>
   );
 }
 
@@ -301,6 +319,7 @@ function ReviewStep({ data, goTo, doPassed }: { data: LessonData; goTo: (s: Step
   const isComplete = progress.status === 'completed' || progress.status === 'tested_out';
   if (!isComplete) {
     return (
+      <>
       <section className="card">
         <h2>Review later</h2>
         <p>Key ideas come back on a schedule once this lesson is complete. A lesson only counts as complete once Do and Recall both pass.</p>
@@ -310,10 +329,14 @@ function ReviewStep({ data, goTo, doPassed }: { data: LessonData; goTo: (s: Step
         </ul>
         <button className="btn" onClick={() => goTo(doPassed ? 'recall' : 'do')}>Go to {doPassed ? 'Recall' : 'Do'} →</button>
       </section>
+      <ClarityCard key={lesson.id} lessonId={lesson.id} concepts={data.concepts} initial={data.clarity} />
+      </>
     );
   }
   const soonest = cards[0]?.due;
   return (
+    <>
+    <ClarityCard key={lesson.id} lessonId={lesson.id} concepts={data.concepts} initial={data.clarity} />
     <section className="card">
       <h2>{progress.status === 'tested_out' ? 'Tested out' : 'Lesson complete'}</h2>
       <p>
@@ -325,10 +348,11 @@ function ReviewStep({ data, goTo, doPassed }: { data: LessonData; goTo: (s: Step
       <ul>{lesson.cards.map((c) => <li key={c.id}><RichInline text={c.front} /></li>)}</ul>
       <Link className="btn" to="/today">Back to Today →</Link>
     </section>
+    </>
   );
 }
 
-function LessonTools({ data, update, hideNotes }: { data: LessonData; update: (p: LessonProgress) => void; hideNotes: boolean }) {
+function LessonTools({ data, update, hideNotes, rateClarity }: { data: LessonData; update: (p: LessonProgress) => void; hideNotes: boolean; rateClarity: () => void }) {
   const { lesson, progress } = data;
   const [note, setNote] = useState(data.note);
   const [noteState, setNoteState] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -374,11 +398,20 @@ function LessonTools({ data, update, hideNotes }: { data: LessonData; update: (p
       </div>
       <div className="card">
         {problemSent ? (
-          <p className="small">Saved, thank you. Find it under Settings → Problems you reported.</p>
+          <>
+            <p className="small">Saved, thank you. It goes out in your next feedback file (Settings → Send feedback).</p>
+            <button className="link-btn small" onClick={() => { setProblem(''); setProblemSent(false); setProblemOpen(true); }}>Report something else</button>
+          </>
         ) : problemOpen ? (
           <>
-            <h3>Report a problem</h3>
-            <textarea aria-label="Describe the problem" rows={4} value={problem} onChange={(e) => setProblem(e.target.value)} placeholder="What's wrong or confusing?" />
+            <h3>Something unclear or wrong?</h3>
+            <textarea
+              aria-label="Describe what was unclear or wrong"
+              rows={4}
+              value={problem}
+              onChange={(e) => setProblem(e.target.value)}
+              placeholder='What was confusing, wrong, or assumed you already knew? For example: "What is npm?"'
+            />
             <button
               className="btn small"
               disabled={!problem.trim()}
@@ -391,8 +424,17 @@ function LessonTools({ data, update, hideNotes }: { data: LessonData; update: (p
             </button>
           </>
         ) : (
-          <button className="link-btn" onClick={() => setProblemOpen(true)}>Report a problem with this lesson</button>
+          <>
+            <h3>Something unclear or wrong?</h3>
+            <p className="muted small">Tell us any time, even halfway through. It's saved here and sent in your weekly feedback file.</p>
+            <button className="btn small ghost" onClick={() => setProblemOpen(true)}>Write a note about this lesson</button>
+          </>
         )}
+      </div>
+      <div className="card">
+        <h3>How clear was it?</h3>
+        <p className="muted small">{data.clarity && !data.clarity.sentAt ? 'You rated this lesson. You can change it.' : "Rate the lesson and tick anything that wasn't clear."}</p>
+        <button className="btn small ghost" onClick={rateClarity}>{data.clarity && !data.clarity.sentAt ? 'Change my answer' : 'Rate this lesson'}</button>
       </div>
     </aside>
   );

@@ -3,10 +3,22 @@ id: apis
 title: "APIs and JSON: software talking to software"
 order: 6
 topic: software-talking
-minutes: 45
+minutes: 60
 summary: How programs ask each other for things, what JSON is, and where the data behind an API comes from.
 connectivity: offline
-prerequisites: [https]
+prerequisites:
+  - id: https
+    need: essential
+    why: Introduces the requests package and named arguments.
+  - id: http
+    need: essential
+    why: Methods, paths, status codes and headers, which APIs are built from.
+  - id: python-dicts-data
+    need: essential
+    why: API answers are JSON, read as lists and dictionaries.
+revision: 2
+teaches: [api, rest, api-promise, requests-get, status-code-attr, response-json-py, api-key-header, keys-in-browser, database, table, sql, sql-select, sql-where, sql-join, foreign-key, left-join, api-docs]
+uses: [api-intro, json, json-object, json-array, http, http-method, url-path, http-header, status-code, requests-intro, keyword-arguments, import-module, function, return-statement, for-loop, running-total, if-statement, comparison-operators, dictionary, dict-key-access, none-value, type-conversion, api-key, secret, frontend, backend, browser-runs-js, run-and-check, json-loads]
 predict:
   id: p1
   type: mcq
@@ -23,11 +35,9 @@ tasks:
     type: python
     title: Call an API with Python
     instructions: |
-      This calls the practice API running on your computer, so it needs no internet. The `requests` library is what you'd use in real Python, too.
+      You'll use: `requests.get`, `.status_code` and `.json()` from this lesson, plus a loop with a running total and an `if`.
 
-      `requests.get(url)` sends a GET request. On the result, `.status_code` is the status and `.json()` gives you the body as Python data. A JSON list becomes a Python list, and a JSON object becomes a dictionary, where `order["customer"]` reads a value.
-
-      Hint: go through a list with `for order in orders:`. Use `==` to compare things, and keep a running total.
+      This calls the practice API running on your computer, so it needs no internet. The `requests` package is what you'd use in real Python, too.
     starter: |
       import requests
 
@@ -101,6 +111,8 @@ tasks:
     title: Look behind the API at the database
     dataset: shop
     instructions: |
+      You'll use: `SELECT`, `FROM`, `JOIN ... ON` and `WHERE`, all from this lesson's SQL section.
+
       Behind most APIs sits a database. This is **SQL**, the language for asking databases questions. It reads almost like English.
 
       The practice database has two tables: `customers` (id, name, city) and `orders` (id, customer_id, item, total, status). Each order's `customer_id` matches a customer's `id`. A **JOIN** connects them.
@@ -193,54 +205,127 @@ videos:
     note: A bit deeper. Watch it if you want more on REST.
 ---
 
+## In this lesson
+
+- What an **API** is: the same request-and-response idea, when the visitor is a program.
+- **REST**, the most common way APIs are organized.
+- Calling an API from Python with `requests`.
+- **API keys**, and the one place they must never go.
+- A first look at the **database** behind most APIs, and **SQL**, the language for asking it questions.
+
 ## When the visitor is a program
 
-So far a person has been at one end of the request. An **API** (Application Programming Interface) is the same idea when the visitor is a program. Your weather app, a checkout using Stripe, a dashboard pulling in sales numbers: all APIs.
+So far, a person with a browser has been at one end of the request. An **API** (Application Programming Interface) is the same idea when the visitor is a **program**. You met the term in the Python dictionaries lesson. Now for how it works.
 
-An API is a promise: "send me a request shaped like this, and I'll answer in this shape." A lot of modern software is mostly services talking to each other this way.
+Your weather app asks a weather company's API for the forecast. A shop's checkout sends card details to a payment company's API. A dashboard pulls sales numbers from an accounting system's API. A lot of modern software is mostly programs talking to each other this way.
+
+An API is a promise: "send me a request shaped like this, and I'll answer in this shape." The shape is written down in the API's **documentation**, which tells you every address, what to send, and what comes back.
 
 ## REST: the most common style
 
-Most web APIs follow a style called **REST**. URLs name things, and the HTTP methods you already know say what to do:
+Most web APIs follow a style called **REST**. The path names a **thing**, and the HTTP method you already know says **what to do** with it:
 
 | Request | Meaning |
 | --- | --- |
-| `GET /orders` | List the orders |
+| `GET /orders` | List all the orders |
 | `GET /orders/102` | Get order 102 |
-| `POST /orders` | Create an order |
+| `POST /orders` | Create a new order (the details go in the body, as JSON) |
 | `DELETE /orders/102` | Delete order 102 |
 
-## JSON: the shared language
+The answers come back as **JSON**, with a status code saying how it went: `200` for found, `404` if order 102 doesn't exist, and so on.
 
-APIs usually send data as **JSON**. It's just text, which nearly every language can read:
+## Calling an API from Python
 
-```json
-{
-  "id": 102,
-  "customer": "Grace",
-  "paid": true,
-  "items": ["Monitor", "Cable"]
-}
+The `requests` package, which you saw last lesson, makes this short:
+
+```python
+import requests
+
+response = requests.get("http://localhost:4314/orders/102")
+response.status_code     # 200
+response.json()          # {"id": 102, "customer": "Grace", "item": "Monitor", ...}
 ```
 
-Curly braces hold **key and value** pairs. Square brackets hold **lists**. Values can be text, numbers, `true`/`false`, `null`, or more of the same, nested.
+- `requests.get(address)` sends a GET request and waits for the response.
+- `.status_code` is the response's status, as a number.
+- `.json()` reads the body as JSON and gives back Python data: a JSON list becomes a list, and a JSON object becomes a dictionary. It's `json.loads` done for you.
+
+If the order doesn't exist, the status code is `404`. Checking it before using the body is a good habit: `if response.status_code == 404: return None`.
+
+<details>
+<summary>Quick check: `requests.get(BASE + "/orders")` returns a list of orders. How would you get the first order's customer?</summary>
+
+`requests.get(BASE + "/orders").json()[0]["customer"]`: read the JSON, take item 0, then its "customer" key. Usually you'd store the list in a variable first.
+</details>
 
 ## API keys
 
-Many APIs want to know who's calling, usually with a key sent in a header, as you did with `X-API-Key`. Keys let the provider limit and bill usage.
+Many APIs want to know **who's calling**, so they can limit, track and bill usage. Usually the caller sends an **API key** (from *Asking good questions*) in a header, such as `X-API-Key: sk_live_...`. You sent one yourself in the HTTP lesson's lab.
 
 <Callout kind="warn" title="Keep keys out of browser code">
-Anything in a web page's code can be read by anyone. A key in there is public. Real keys belong on a server. This is one of the most common mistakes in AI-generated code, so watch for it.
+Anything in a web page's code can be read by anyone: press F12 and it's all there. A key in frontend JavaScript is a **public** key. Real keys belong on a server, in an environment variable, and the frontend asks your own backend, which then calls the API with the key. This is one of the most common mistakes in AI-generated code, so watch for it.
 </Callout>
 
 ## Where the data lives
 
-Behind most APIs is a database, and a common kind stores data in **tables**. A shop keeps customers in one table and orders in another, with each order holding the id of its customer. **SQL** is the language for asking questions across them.
+Behind most APIs is a **database**: a program built for storing lots of data safely and finding things in it quickly. A very common kind stores data in **tables**, like spreadsheets: each table has columns, and each row is one record.
 
-A `JOIN` connects those tables. Step through how one works, and try switching between `JOIN` and `LEFT JOIN`:
+A shop might have two tables:
+
+```text
+customers                     orders
+id | name  | city             id  | customer_id | item     | total | status
+---+-------+---------         ----+-------------+----------+-------+-----------
+1  | Ada   | London           101 | 1           | Keyboard | 49    | shipped
+2  | Grace | New York         102 | 2           | Monitor  | 189   | processing
+                              103 | 1           | Mouse    | 9     | delivered
+```
+
+Notice orders don't repeat the customer's name and city. Each order holds just the customer's id, in `customer_id`. That's a **foreign key**: a column pointing at a row in another table. It means Ada's details live in exactly one place.
+
+## SQL: asking the database questions
+
+**SQL** (often said "sequel") is the language for asking table databases questions. It reads almost like English. Five words get you a long way:
+
+```sql
+SELECT customers.name, orders.item
+FROM customers
+JOIN orders ON orders.customer_id = customers.id
+WHERE orders.total > 20;
+```
+
+| Part | Means |
+| --- | --- |
+| `SELECT customers.name, orders.item` | Which columns to show. `*` means all of them. `table.column` says which table a column is from. |
+| `FROM customers` | Which table to start from |
+| `JOIN orders ON orders.customer_id = customers.id` | Also bring in the orders table, matching each order to the customer whose id equals its customer_id |
+| `WHERE orders.total > 20` | Only keep rows where this is true |
+| `;` | The end of the query |
+
+Read it aloud: "Show each customer's name and the item, from customers joined to their orders, where the order total is over 20."
+
+A plain `JOIN` only keeps customers who have orders. A `LEFT JOIN` keeps every customer from the first table, even those with no orders. Step through how they differ:
 
 <Viz name="sql-join" />
 
+You'll learn databases properly in Stage 3. For now, the goal is to recognize what's behind an API, and read a simple query.
+
 <ConsultantNote>
-"Do they have an API?" comes up in almost every client project. Connecting to an existing system can be a day's work if it has good API docs, or impossible if it doesn't, and that can decide the whole budget. Reading API docs is a core consulting skill.
+"Do they have an API?" comes up in almost every client project. Connecting to an existing system can be a day's work if it has good API documentation, or impossible if it doesn't, and that can decide the whole budget. Reading API docs is a core consulting skill.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **API** | A way for programs to request things from another program, with documented requests and answers |
+| **REST** | The common style where paths name things and HTTP methods say what to do |
+| **`requests.get()`** | Sends a GET request from Python |
+| **`.status_code` / `.json()`** | The response's status, and its body as Python data |
+| **API documentation** | The written description of every request an API accepts |
+| **Database** | A program for storing and finding lots of data |
+| **Table** | Rows and columns of data, like a spreadsheet |
+| **Foreign key** | A column pointing at a row in another table, like `customer_id` |
+| **SQL** | The language for asking table databases questions |
+| **SELECT / FROM / WHERE / JOIN** | Which columns / which table / which rows / bring in a related table |
+| **LEFT JOIN** | A join that keeps every row from the first table |

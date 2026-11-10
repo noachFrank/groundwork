@@ -3,10 +3,16 @@ id: dns
 title: "DNS: the internet's address book"
 order: 3
 topic: networks-and-the-web
-minutes: 45
+minutes: 50
 summary: How names become addresses, why DNS changes take time, and how to run lookups against a real DNS server.
 connectivity: offline
-prerequisites: [addresses-and-ports]
+prerequisites:
+  - id: addresses-and-ports
+    need: essential
+    why: DNS turns names into the IP addresses explained there.
+revision: 2
+teaches: [dns, domain-name, resolver, dns-hierarchy, authoritative-server, dns-records, ttl-caching, dns-propagation, nslookup]
+uses: [dns-intro, ip-address, ipv4-ipv6, udp, terminal, powershell, command, ip-127, request-trip]
 predict:
   id: p1
   type: mcq
@@ -115,41 +121,92 @@ videos:
     note: A short animated overview.
 ---
 
+## In this lesson
+
+- How names like `shop.example` become IP addresses, through a worldwide system called **DNS**.
+- The servers involved in one lookup, and what each one knows.
+- The DNS records you'll actually edit for clients.
+- Why DNS changes aren't instant, and a trick for making a move go smoothly.
+- Running real DNS lookups yourself.
+
 ## Names for people, numbers for computers
 
-Nobody wants to remember `142.250.190.78`. **DNS**, the Domain Name System, is the worldwide directory that turns names into addresses.
+Nobody wants to remember `142.250.190.78`. People remember names. A **domain name** is a name like `example.com` or `shop.example.co.uk`, which a business rents, usually for a year at a time, from a company called a registrar.
 
-No single computer holds the whole thing. It's split among many servers, arranged in a hierarchy. Here's a full lookup:
+**DNS**, the Domain Name System, is the worldwide directory that turns domain names into IP addresses. Every time you visit a site, send an email or use most apps, DNS is consulted first. Think of it as the internet's phone book.
+
+## Who knows what
+
+No single computer holds the whole directory. It's split among many servers, arranged like a tree. Here's a full lookup:
 
 <Viz name="dns-lookup" />
 
-## The cast
+The cast:
 
-- **Resolver:** does the legwork for you. It's usually run by your internet provider, or a public service like `1.1.1.1`.
-- **Root servers:** the top of the tree. They don't know addresses, just who handles `.com`, `.org`, and so on.
-- **Top-level domain (TLD) servers:** know who handles each domain under `.com`.
+- **Resolver:** does the legwork for you. When your computer needs an address, it asks a resolver, which goes off and finds out. It's usually run by your internet provider, or a public service like `1.1.1.1`.
+- **Root servers:** the top of the tree. They don't know any website's address. They only know who handles each ending: `.com`, `.org`, `.uk`, and so on.
+- **Top-level domain (TLD) servers:** the `.com` servers know which server is responsible for each domain ending in `.com`.
 - **Authoritative server:** the source of truth for one domain. When you "edit DNS" in a domain's control panel, this is what you're changing.
 
+The resolver asks root, then the TLD server, then the authoritative server, and passes the final answer back to your computer.
+
+<details>
+<summary>Quick check: a client changes their website's address in their domain's DNS settings. Which server did they just change?</summary>
+
+Their domain's authoritative server, the source of truth for that one domain.
+</details>
+
 ## The records you'll actually use
+
+Each entry in a domain's DNS is a **record**. Different types do different jobs:
 
 | Type | What it does | Example |
 | --- | --- | --- |
 | A | Name to IPv4 address | `shop.example` → `93.184.216.34` |
 | AAAA | Name to IPv6 address | `shop.example` → `2606:2800::1` |
-| CNAME | Name to another name | `www.shop.example` → `shop.example` |
-| MX | Where email goes | `shop.example` → `mail.provider.example` |
-| TXT | Free text, often for proving you own a domain | `v=spf1 include:...` |
+| CNAME | Name to another name ("look that one up instead") | `www.shop.example` → `shop.example` |
+| MX | Where email for the domain goes | `shop.example` → `mail.provider.example` |
+| TXT | Free text, often to prove you own a domain to some service | `v=spf1 include:...` |
+
+Moving a website to a new host usually means changing an A or CNAME record. Setting up email means MX records. Connecting a domain to a service like GitHub Pages often means adding a CNAME or TXT record.
 
 ## Caching, and why changes aren't instant
 
-Going through all those servers on every lookup would be slow. So every answer comes with a **TTL** (time to live): how many seconds it may be saved. Your laptop and your resolver both keep copies.
+Going through all those servers on every lookup would be slow. So every answer comes with a **TTL** (time to live): how many seconds it may be saved and reused. Your laptop and your resolver both keep saved copies, called a **cache**.
 
-That's what the opening question was about. After you change a record, anyone holding a saved copy keeps the old answer until it expires. Different people's copies expire at different times, so a change seems to spread gradually.
+That's why DNS changes seem to spread gradually. After you change a record, anyone holding a saved copy keeps using the old answer until their copy expires. Different people's copies expire at different times. People call this "waiting for DNS to propagate".
 
 <Callout title="A useful trick">
-Moving a site next week? Lower the TTL now, for example to 300 seconds. Once the old, longer TTL has passed, everyone's copies expire quickly, so the actual move takes effect within minutes. Raise it again afterward.
+Moving a site next week? Lower the TTL now, for example to 300 seconds (five minutes). Once the old, longer TTL has passed, everyone's copies expire quickly, so the actual move takes effect within minutes. Raise it again afterward.
 </Callout>
+
+## Looking things up yourself
+
+Windows includes a command called **`nslookup`** ("name server lookup") that asks DNS for a name's address:
+
+```text
+nslookup shop.example 127.0.0.1
+```
+
+- `shop.example` is the name to look up.
+- The address at the end, if you give one, says **which DNS server** to ask. In the first task, that's Groundwork's practice DNS server on your own computer.
+
+The output first says which server answered (`Server` and `Address`), then the answer itself (`Name` and `Address`). DNS lookups use UDP, the "postcard" protocol from the last lesson, because they're tiny and speed matters.
 
 <ConsultantNote>
 "It's always DNS" is a running joke in IT because so many outages trace back to it. A site suddenly unreachable, email going missing after a host change, a domain that expired because nobody renewed it: all DNS. Asking "who controls your DNS, and when does the domain renew?" is a great early question with a new client.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Domain name** | A rented name like `example.com` |
+| **DNS** | The worldwide system that turns names into IP addresses |
+| **Resolver** | The server that does a lookup for you |
+| **Root / TLD / authoritative servers** | The top of the tree / the `.com`-style servers / the source of truth for one domain |
+| **Record** | One DNS entry: A, AAAA, CNAME, MX, TXT |
+| **TTL** | How long an answer may be saved and reused |
+| **Cache** | Saved copies of answers |
+| **Propagation** | A DNS change spreading as old saved copies expire |
+| **`nslookup`** | Windows' command for DNS lookups |

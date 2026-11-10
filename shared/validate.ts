@@ -127,7 +127,7 @@ export function validateLesson(l: Lesson): string[] {
   return errors;
 }
 
-export function findCycles(lessons: { id: string; prerequisites: string[] }[]): string[] {
+export function findCycles(lessons: { id: string; prerequisites: { id: string }[] }[]): string[] {
   const byId = new Map(lessons.map((l) => [l.id, l]));
   const state = new Map<string, 'visiting' | 'done'>();
   const errors: string[] = [];
@@ -138,7 +138,7 @@ export function findCycles(lessons: { id: string; prerequisites: string[] }[]): 
       return;
     }
     state.set(id, 'visiting');
-    for (const p of byId.get(id)?.prerequisites ?? []) visit(p, [...path, id]);
+    for (const p of byId.get(id)?.prerequisites ?? []) visit(p.id, [...path, id]);
     state.set(id, 'done');
   };
   for (const l of lessons) visit(l.id, []);
@@ -157,8 +157,50 @@ export function validateContent(c: Content): string[] {
   for (const l of c.lessons) {
     if (!topicIds.has(l.topic)) errors.push(`lesson ${l.id}: unknown topic ${l.topic}`);
     if (!moduleIds.has(l.module)) errors.push(`lesson ${l.id}: unknown module ${l.module}`);
-    for (const p of l.prerequisites) if (!lessonIds.has(p)) errors.push(`lesson ${l.id}: unknown prerequisite ${p}`);
+    for (const p of l.prerequisites) {
+      if (!lessonIds.has(p.id)) errors.push(`lesson ${l.id}: unknown prerequisite ${p.id}`);
+      if (p.need !== 'essential' && p.need !== 'helpful') errors.push(`lesson ${l.id}: prerequisite ${p.id} needs "essential" or "helpful"`);
+    }
   }
   errors.push(...findCycles(c.lessons));
+  errors.push(...checkConceptOrder(c));
+  return errors;
+}
+
+/**
+ * The beginner rule: a lesson may only rely on ideas that an earlier lesson (in course
+ * order) teaches, or that it teaches itself. Essential prerequisites must come earlier too.
+ * Only runs once content/concepts.yaml exists.
+ */
+export function checkConceptOrder(c: Pick<Content, 'lessons' | 'concepts'>): string[] {
+  if (!c.concepts?.length) return [];
+  const errors: string[] = [];
+  const known = new Set(c.concepts.map((k) => k.id));
+  const position = new Map(c.lessons.map((l, i) => [l.id, i]));
+  const taughtBy = new Map<string, string>();
+  const taughtSoFar = new Set<string>();
+  for (const l of c.lessons) {
+    if (!l.teaches?.length) errors.push(`lesson ${l.id}: needs a "teaches" list (see content/STYLE.md)`);
+    for (const id of [...(l.teaches ?? []), ...(l.uses ?? [])]) {
+      if (!known.has(id)) errors.push(`lesson ${l.id}: unknown concept "${id}" (add it to concepts.yaml)`);
+    }
+    for (const id of l.teaches ?? []) {
+      if (taughtBy.has(id)) errors.push(`lesson ${l.id}: teaches "${id}", but ${taughtBy.get(id)} already teaches it (use "uses" instead)`);
+    }
+    const here = new Set(l.teaches ?? []);
+    for (const id of l.uses ?? []) {
+      if (!taughtSoFar.has(id) && !here.has(id)) errors.push(`lesson ${l.id}: uses "${id}" but nothing before it teaches it`);
+    }
+    for (const p of l.prerequisites) {
+      if (p.need === 'essential' && (position.get(p.id) ?? -1) > (position.get(l.id) ?? 0)) {
+        errors.push(`lesson ${l.id}: essential prerequisite ${p.id} comes later in the course`);
+      }
+    }
+    for (const id of here) {
+      taughtSoFar.add(id);
+      if (!taughtBy.has(id)) taughtBy.set(id, l.id);
+    }
+  }
+  for (const k of c.concepts) if (!taughtBy.has(k.id)) errors.push(`concept "${k.id}" is in concepts.yaml but no lesson teaches it`);
   return errors;
 }

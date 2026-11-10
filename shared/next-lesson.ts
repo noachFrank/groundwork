@@ -1,15 +1,16 @@
-import type { Connectivity, LessonStatus } from './types.ts';
+import type { Connectivity, LessonStatus, Prerequisite } from './types.ts';
 
 export interface Pickable {
   id: string;
   connectivity: Connectivity;
-  prerequisites: string[];
+  prerequisites: Prerequisite[];
 }
 
 const done = (s?: LessonStatus) => s === 'completed' || s === 'tested_out';
 
+/** Only essential prerequisites count. Nothing is ever blocked from opening; this just steers suggestions. */
 export function isLocked(lesson: Pickable, statuses: Record<string, LessonStatus>): boolean {
-  return lesson.prerequisites.some((p) => !done(statuses[p]));
+  return lesson.prerequisites.some((p) => p.need === 'essential' && !done(statuses[p.id]));
 }
 
 /**

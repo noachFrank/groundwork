@@ -1,0 +1,307 @@
+---
+id: kinds-of-programs
+title: "Code, languages, and the programs that run them"
+order: 4
+topic: how-computers-run-software
+minutes: 60
+summary: What a programming language is, how code becomes something a computer can run, what Python, JavaScript and Node.js are, and why some files run when you double-click them while others need help.
+connectivity: offline
+prerequisites:
+  - id: the-terminal
+    need: essential
+    why: You'll run programs from PowerShell, using redirect (>) to save their output.
+  - id: bash-basics
+    need: helpful
+    why: Introduces scripts on servers and the .sh file type.
+revision: 2
+teaches: [programming-language, source-code, machine-code, compiler, interpreter, python-lang, javascript-lang, browser, browser-runs-js, nodejs, console-log, file-types, call-operator, batch-file, execution-policy, npm-cmd-workaround, smartscreen]
+uses: [code, script, file-extension, terminal, powershell, command, redirect, path, absolute-path, practice-folder, shell, comment]
+predict:
+  id: p1
+  type: mcq
+  prompt: You double-click a file called `hello.js` on a Windows laptop that doesn't have Node installed. What happens?
+  options:
+    - The JavaScript runs
+    - It opens in a text editor or asks which app to use, because Windows has no program to run JavaScript files
+    - Windows downloads Node automatically
+    - The file is deleted
+  answer: 1
+  why: A `.js` file is a script, just text. It needs an **interpreter**, Node, to run it. A `.exe` is different, because it already contains instructions the computer can run directly.
+tasks:
+  - id: run-scripts
+    type: terminal
+    title: Write a program, then run it two ways
+    instructions: |
+      You'll write a one-line JavaScript program, run it with Node, then wrap it in a `.bat` file, just like `start.bat` wraps Groundwork.
+
+      Groundwork came with its own copy of Node, so nothing needs installing. Its folder isn't one Windows searches automatically yet (that's the lesson after next), so for now you'll give its full path each time.
+    steps:
+      - text: Open PowerShell, go to your practice folder, and make a folder for this lesson.
+        command: cd $HOME\Groundwork-Practice; mkdir programs-lesson; cd programs-lesson
+      - text: "Write a JavaScript program. It's one line of text in a file. `console.log(...)` is JavaScript for \"print this\"."
+        command: Set-Content hello.js 'console.log("Hello from JavaScript, run by Node")'
+      - text: "Look at the file. It's plain text: nothing has run yet."
+        command: Get-Content hello.js
+      - text: "Run it. `&` means \"run the program at this path\". `node.exe` is the interpreter, and `hello.js` is the script it reads and runs."
+        command: '& "{{nodeDir}}\node.exe" hello.js'
+      - text: Run it again, saving what it prints with `>`, the redirect from the terminal lesson.
+        command: '& "{{nodeDir}}\node.exe" hello.js > from-node.txt'
+      - text: "Now write a `.bat` file: a list of commands for the older Windows shell, cmd. This one runs your script with the same Node."
+        command: Set-Content run-hello.bat '"{{nodeDir}}\node.exe" hello.js > from-bat.txt'
+      - text: "Run the `.bat` file. `.\\` means \"the file right here, in this folder\"."
+        command: .\run-hello.bat
+      - text: Look at what's in the folder. You've got a script, its output twice, and a batch file.
+        command: Get-ChildItem
+    checks:
+      - path: programs-lesson/from-node.txt
+        contains: Hello from JavaScript
+        hint: This is created by the `& "...\node.exe" hello.js > from-node.txt` step. Copy the whole line with the Copy button, including the `&` at the start.
+      - path: programs-lesson/from-bat.txt
+        contains: Hello from JavaScript
+        hint: Create run-hello.bat with the `Set-Content run-hello.bat ...` step, then run `.\run-hello.bat` in the same folder.
+  - id: suspicious-attachment
+    type: case
+    title: The invoice attachment
+    instructions: A client calls you about an email.
+    scenario: |
+      A client's office manager got an email from a supplier they don't recognize, with an attachment called `Invoice_March.pdf`. When they double-clicked it, nothing seemed to happen. They forwarded it to you. With file extensions turned on, you see its real name is `Invoice_March.pdf.exe`.
+    questions:
+      - prompt: What is this file?
+        choices:
+          - text: A PDF with an unusual name
+            score: 0
+            why: The last extension is what counts, and it's .exe. This is a program pretending to be a document.
+          - text: A program disguised as a PDF, very likely malware
+            score: 2
+            why: Right. Windows hid the real `.exe` extension, so it looked like a PDF. "Nothing happened" is typical. Malware often runs quietly.
+      - prompt: What do you advise first?
+        choices:
+          - text: Disconnect that computer from the network and have it checked, and warn the rest of the office not to open similar emails
+            score: 2
+            why: The program already ran. Isolating the machine limits damage, and warning others stops it spreading.
+          - text: Delete the email and carry on
+            score: 0
+            why: The attachment already ran, so deleting the email doesn't undo whatever it did.
+          - text: Forward it to everyone so they know what it looks like
+            score: 0
+            why: That spreads the malware.
+      - prompt: What would help prevent this next time?
+        choices:
+          - text: Turn on file name extensions on every office computer, and give staff a short training on suspicious attachments
+            score: 2
+            why: Cheap, quick and effective. Seeing `.exe` on an "invoice" is a strong warning sign.
+          - text: Buy faster computers
+            score: 0
+            why: Speed has nothing to do with it.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: What does an interpreter do?
+    options:
+      - Translates a website into another language
+      - Reads a script and runs it, line by line
+      - Compresses files
+      - Connects to the internet
+    answer: 1
+    why: Python and Node are interpreters. Scripts written for them are just text until an interpreter runs them.
+  - id: r2
+    type: mcq
+    prompt: Which of these is usually compiled ahead of time into a program the computer runs directly?
+    options: [A .py file, A .js file, A .exe file, A .bat file]
+    answer: 2
+    why: A .exe already contains machine instructions. The others are text read by an interpreter or shell.
+  - id: r3
+    type: short
+    prompt: Which program runs JavaScript files outside a browser?
+    accept: ['\bnode']
+    answerText: Node.js
+  - id: r4
+    type: mcq
+    prompt: Where can JavaScript run?
+    options:
+      - Only in web browsers
+      - In web browsers, and outside them with Node.js
+      - Only on Linux servers
+      - Only inside Groundwork
+    answer: 1
+    why: JavaScript was made for web pages, so every browser can run it. Node.js lets the same language run anywhere else, such as in the terminal or on a server.
+cards:
+  - id: compiled-interpreted
+    front: What's the difference between compiled and interpreted?
+    back: Compiled code is translated into machine instructions ahead of time (a .exe). Interpreted code is read and run by another program (Python, Node) each time.
+  - id: extensions
+    front: What are .exe, .bat, .ps1, .sh, .py and .js?
+    back: ".exe is a Windows program. .bat is a cmd script. .ps1 is a PowerShell script. .sh is a Bash script. .py is Python and .js is JavaScript, which need their interpreters."
+  - id: ps1-policy
+    front: Why might a `.ps1` script refuse to run on Windows?
+    back: Windows' execution policy blocks PowerShell scripts by default, as a safety measure. `.bat` and `.cmd` files aren't blocked the same way.
+  - id: node
+    front: What is Node.js?
+    back: A program that runs JavaScript outside a web browser, for example in the terminal or on a server. Groundwork itself runs on Node.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: A colleague sends you `report.py`. What do you need to run it?
+    options: [Nothing, Python installed, A web browser, Microsoft Word]
+    answer: 1
+    why: A .py file is a Python script. It needs the Python interpreter.
+  - id: t2
+    type: mcq
+    prompt: Which file is the most suspicious as an email attachment?
+    options: [notes.txt, photo.jpg, Invoice.pdf.exe, budget.xlsx]
+    answer: 2
+    why: A program pretending to be a document is a classic malware trick.
+docs:
+  - title: "Node.js: Introduction to Node.js"
+    url: https://nodejs.org/en/learn/getting-started/introduction-to-nodejs
+  - title: "Microsoft: about Execution Policies"
+    url: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies
+  - title: "MDN: What is JavaScript?"
+    url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/What_is_JavaScript
+videos: []
+---
+
+## In this lesson
+
+- What a **programming language** is, and why there are so many.
+- How the code people write becomes something a computer can actually run.
+- What **Python**, **JavaScript** and **Node.js** are. You'll see these names in nearly every lesson from here on.
+- Which kinds of files run on their own, and which need another program to run them.
+
+## Code is text. Computers need numbers.
+
+In the first lesson of the course you saw that **code** is instructions for a computer, written as text. Here's the catch: a computer's processor, the chip that does the actual work, can't read text at all. It only understands **machine code**: long strings of numbers, each one a tiny instruction like "add these two numbers" or "copy this value over there".
+
+Writing machine code by hand would be unbearably slow, and almost nobody does it. Instead, people write code in a **programming language**: a set of words and punctuation rules designed to be readable by humans *and* precise enough for a computer. The text people write is called **source code**.
+
+Then some program has to turn that source code into machine code. There are two main ways it happens.
+
+## Two ways to run code
+
+### Compiled
+
+A tool called a **compiler** reads the whole program once, ahead of time, and translates it into machine code. The result is a new file, like `app.exe`, that the computer can run directly.
+
+It's like translating a whole book into another language before publishing it. Readers get a translated book and never see the original.
+
+- **Good:** fast to run, and the person running it doesn't need any extra software.
+- **Bad:** after every change to the source code, you have to compile again.
+
+Languages usually compiled this way include C, C++, Go, Rust and C#.
+
+### Interpreted
+
+The source code stays as a text file, a **script**. Each time you want to run it, a program called an **interpreter** reads the script and carries out its instructions as it goes.
+
+It's like having a live interpreter at a meeting, translating each sentence as it's spoken. The original is still there, and changes take effect immediately.
+
+- **Good:** change the script, run it again, and you see the change straight away.
+- **Bad:** whoever runs it needs the interpreter installed.
+
+**Python** and **JavaScript** are usually run this way.
+
+Real life is blurrier than this. Some interpreters secretly compile parts of the code while it runs, to make it faster. But the practical question is always the same: **can this file run by itself, or does it need another program?**
+
+<details>
+<summary>Quick check: a friend sends you `tool.exe` and `tool.py`. Which one needs extra software to run?</summary>
+
+`tool.py`. It's a Python script, so it needs the Python interpreter installed. `tool.exe` is already compiled, so Windows can run it directly.
+</details>
+
+## The languages you'll meet in this course
+
+There are hundreds of programming languages. You'll mostly use two.
+
+**Python** is known for being easy to read. It's used for automating boring jobs, working with data, science, and AI. A line of Python:
+
+```python
+print("Hello")
+```
+
+**JavaScript** is the language of the web. Every web browser, like Chrome or Edge, has a JavaScript interpreter built in. That's how websites become interactive: when you click a button and something changes without the page reloading, that's usually JavaScript running in your browser. A line of JavaScript:
+
+```javascript
+console.log("Hello");
+```
+
+`console.log(...)` is JavaScript's way of printing something. You'll see it in this lesson's task.
+
+You'll learn to read and write both properly in the *Reading code* module. For now, just recognize their names and their file extensions: `.py` for Python, `.js` for JavaScript.
+
+## Node.js: JavaScript outside the browser
+
+For years, JavaScript could **only** run inside web browsers. Then **Node.js**, usually just called **Node**, came along. Node is a JavaScript interpreter that runs on its own, outside any browser. You give it a `.js` file, and it runs it:
+
+```text
+node hello.js
+```
+
+That made JavaScript useful for things that have nothing to do with web pages, like scripts, tools, and **servers**, the always-on programs you met in the Bash lesson.
+
+**Groundwork itself is written in JavaScript and run by Node.** The black window you keep open while you study is Node, running Groundwork's code. And Groundwork brought its own copy of Node with it, in a folder inside the app, which is what you'll use in the task.
+
+<details>
+<summary>Quick check: what's the difference between JavaScript and Node.js?</summary>
+
+JavaScript is a programming language. Node.js is a program, an interpreter, that runs JavaScript outside a web browser.
+</details>
+
+## Running a program by its path
+
+Normally, to run a program from the terminal, you type its name, like `node`. That only works if Windows knows where to find it. How Windows searches for programs is the topic of the lesson after next. Until then, you can always run a program by giving its **full path**:
+
+```powershell
+& "C:\Groundwork\.runtime\node\node.exe" hello.js
+```
+
+- The path is in quotes, in case it has spaces.
+- `&`, the **call operator**, tells PowerShell "run the program at this path", rather than treating the quoted text as just some text.
+- `hello.js` after it is an argument: the script for Node to run.
+
+In the task, the Copy button fills in the real path to Groundwork's Node for you.
+
+## The file types you'll meet
+
+| Extension | What it is | What runs it |
+| --- | --- | --- |
+| `.exe` | A compiled Windows program | Windows itself |
+| `.bat`, `.cmd` | A **batch file**: a list of commands for cmd, the older Windows shell | Windows (cmd) |
+| `.ps1` | A PowerShell script | PowerShell, if allowed |
+| `.sh` | A Bash script | Bash, on Linux or Mac |
+| `.py` | A Python script | The Python interpreter |
+| `.js` | A JavaScript script | Node.js, or a browser |
+
+`start.bat`, the file you double-clicked to start Groundwork, is a batch file. It checks a few things, then asks Node to run Groundwork's JavaScript. In the task you'll make a tiny batch file that does the same thing with your own script.
+
+## Why .ps1 files are blocked
+
+By default, Windows won't run PowerShell script files (`.ps1`). Try, and you get an error mentioning "running scripts is disabled on this system". That setting is called the **execution policy**, and it exists to stop people being tricked into running harmful scripts.
+
+You'll meet one practical effect of this soon. Some tools, like **npm** (a tool that comes with Node, covered in the *Packages* lesson), install two versions of their command: a `.ps1` one and a `.cmd` one. In PowerShell, typing `npm` can pick the `.ps1` version and hit the block. Typing `npm.cmd` picks the batch version, which isn't blocked. That's why later lessons say `npm.cmd`.
+
+<Callout kind="warn" title="'Windows protected your PC'">
+That blue box is Windows **SmartScreen**. It appears for programs downloaded from the internet that Windows doesn't recognize. It's right to make you stop and think. Click **Run anyway** only when you know exactly where the file came from.
+</Callout>
+
+<ConsultantNote>
+"What language is it written in, and what does it need to run?" is one of the first questions to ask about any client system. A Python app needs Python on the server, in the right version. A compiled app might need a particular version of Windows. Missing pieces like these cause many failed launches.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Machine code** | The numbers a processor actually runs |
+| **Programming language** | Words and rules for writing instructions humans can read and computers can follow |
+| **Source code** | The code people write, as text |
+| **Compiler** | Translates source code into machine code ahead of time, making a program like a `.exe` |
+| **Interpreter** | Reads a script and runs it, each time |
+| **Python** | A readable language for scripts, data and automation. Files end in `.py`. |
+| **JavaScript** | The language of the web. Runs in every browser. Files end in `.js`. |
+| **Node.js (Node)** | A program that runs JavaScript outside the browser |
+| **`console.log`** | JavaScript for "print this" |
+| **Call operator `&`** | PowerShell's way to run the program at a given path |
+| **Batch file** | A `.bat` or `.cmd` file of commands for cmd |
+| **Execution policy** | The Windows setting that blocks `.ps1` scripts by default |
+| **SmartScreen** | The "Windows protected your PC" warning for unknown downloads |

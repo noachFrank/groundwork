@@ -1,0 +1,385 @@
+---
+id: python-first-functions
+title: "Python: your first functions"
+order: 2
+topic: reading-code
+minutes: 60
+summary: Wrap code in a function with def, give it inputs called parameters, hand back an answer with return, and call it as many times as you like. Almost every exercise from here on is written this way, so this lesson builds it up slowly.
+connectivity: offline
+prerequisites:
+  - id: python-first-steps
+    need: essential
+    why: Variables, arithmetic, strings and print, which functions are built from.
+revision: 1
+teaches: [function, def-keyword, parameter, argument, function-call, return-statement, indented-block, indentation-error, pass-placeholder, none-value, function-checks]
+uses: [python-lang, variable, assignment, arithmetic, str-type, int-float, print-fn, f-string, run-and-check, error-message, typeerror-str-int, comment]
+predict:
+  id: p1
+  type: mcq
+  prompt: |
+    Here's a small function:
+
+    ```python
+    def double(n):
+        return n * 2
+    ```
+
+    What does `double(4)` give back?
+  options: ["4", "8", '"n * 2"', An error]
+  answer: 1
+  why: '`double(4)` runs the function with `n` set to 4. It works out 4 * 2 and **returns** 8: hands it back to whoever asked. A function is a small machine: a value goes in, a value comes out.'
+tasks:
+  - id: first-functions
+    type: python
+    title: Finish three small functions
+    instructions: |
+      You'll use: `def`, parameters and `return`, from this lesson, plus arithmetic and joining text from the last one.
+
+      Each function has a comment saying what it should give back. The `print` lines at the bottom call your functions, so you can see what they return when you press **Run and check**.
+    starter: |
+      # 1. Give back the price with 20% tax added.
+      #    price_with_tax(10) should give back 12.0
+      #    Hint: replace pass with a return line, like: return price * 1.2
+      def price_with_tax(price):
+          pass
+
+
+      # 2. Give back "Hello, " followed by the name and "!".
+      #    greeting("Ada") should give back "Hello, Ada!"
+      def greeting(name):
+          pass
+
+
+      # 3. Write this one yourself, from the def line down.
+      #    A function called rectangle_area that takes width and height,
+      #    and gives back width times height.
+      #    rectangle_area(3, 4) should give back 12
+
+
+      print(price_with_tax(10))
+      print(greeting("Ada"))
+      # Once you've written rectangle_area, delete the # at the start of the next line:
+      # print(rectangle_area(3, 4))
+    tests:
+      - name: price_with_tax adds 20%
+        code: |
+          r = price_with_tax(10)
+          assert r is not None, "price_with_tax gave back None. Replace pass with a return line, like: return price * 1.2"
+          assert round(r, 2) == 12.0, f"price_with_tax(10) should give back 12.0, but it gave back {r}."
+          assert round(price_with_tax(50), 2) == 60.0, f"price_with_tax(50) should give back 60.0, but it gave back {price_with_tax(50)}. Use the parameter, price, not a fixed number."
+      - name: greeting builds the text
+        code: |
+          r = greeting("Ada")
+          assert r is not None, "greeting gave back None. Use return, not print, to give the text back."
+          assert r == "Hello, Ada!", f'greeting("Ada") should give back "Hello, Ada!", but it gave back {r!r}. Check the comma, the space and the !'
+          assert greeting("Sam") == "Hello, Sam!", "greeting should use whatever name it's given, not always Ada."
+      - name: rectangle_area exists and multiplies
+        code: |
+          assert "rectangle_area" in globals(), "There's no function called rectangle_area yet. Start with: def rectangle_area(width, height):"
+          r = rectangle_area(3, 4)
+          assert r is not None, "rectangle_area gave back None. Did you forget return?"
+          assert r == 12, f"rectangle_area(3, 4) should give back 12, but it gave back {r}."
+          assert rectangle_area(5, 2) == 10, "rectangle_area(5, 2) should give back 10."
+    solution: |
+      def price_with_tax(price):
+          return price * 1.2
+
+
+      def greeting(name):
+          return "Hello, " + name + "!"
+
+
+      def rectangle_area(width, height):
+          return width * height
+
+
+      print(price_with_tax(10))
+      print(greeting("Ada"))
+      print(rectangle_area(3, 4))
+    wrong: |
+      def price_with_tax(price):
+          return price * 1.2
+
+
+      def greeting(name):
+          return "Hello, " + name + "!"
+
+
+      def rectangle_area(width, height):
+          return width + height
+  - id: indent-bug
+    type: flaw
+    title: The function that forgot its last line
+    language: python
+    instructions: |
+      This should print 12.0. Instead, Python refuses to run it at all, with `SyntaxError: 'return' outside function`. Which line is the problem?
+    code: |
+      def add_tax(price):
+          total = price * 1.2
+      return total
+
+      print(add_tax(10))
+    flawLines: [3]
+    lineNotes:
+      "1": The def line is correct. It names the function and its parameter, and ends with a colon.
+      "2": This is indented, so it's inside the function. Correct.
+      "5": Calling the function and printing what it returns is fine, once the function is right.
+    explanation: |
+      Line 3 isn't indented, so Python thinks the function ended after line 2. The `return` then sits outside any function, which isn't allowed. That's exactly what the error says: "return outside function". A **SyntaxError** means Python couldn't even make sense of the code's layout, so it ran none of it.
+
+      The fix is to indent line 3 by four spaces, so it's part of the function, like line 2.
+
+      In Python, **indentation decides what belongs to what**. Every line that's part of a function must be indented under its `def` line.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What does `def` do?
+    options:
+      - Runs a function straight away
+      - Defines a new function, so it can be called later
+      - Deletes a variable
+      - Prints a value
+    answer: 1
+    why: '`def` only creates the function. Its code runs later, each time the function is called.'
+  - id: r2
+    type: short
+    prompt: Which word hands a value back from a function to the code that called it?
+    accept: ['\breturn\b']
+    answerText: return
+  - id: r3
+    type: mcq
+    prompt: 'In `def area(width, height):`, what are `width` and `height`?'
+    options:
+      - The function's name
+      - Parameters, names for the values the function will be given
+      - Values that are always 0
+      - Comments
+    answer: 1
+    why: Parameters are placeholders. When you call `area(3, 4)`, width becomes 3 and height becomes 4.
+  - id: r4
+    type: mcq
+    prompt: How does Python know which lines belong to a function?
+    options:
+      - They're between curly brackets
+      - They're indented underneath the def line
+      - They end with a semicolon
+      - It guesses
+    answer: 1
+    why: Python uses indentation, usually four spaces, to group lines. The function's body is every indented line under its def.
+cards:
+  - id: function
+    front: What is a function?
+    back: A named piece of code you can run whenever you like by calling it. Values go in (parameters), and an answer comes back (return).
+  - id: def-call
+    front: What's the difference between defining and calling a function?
+    back: "`def price_with_tax(price):` defines it, which runs nothing yet. `price_with_tax(10)` calls it, which runs its code with price set to 10."
+  - id: param-arg
+    front: Parameter or argument?
+    back: "The parameter is the name in the def line (`price`). The argument is the actual value you pass when calling (`10`)."
+  - id: return
+    front: What does return do?
+    back: Hands a value back to the code that called the function, and ends the function there. Without it, the function gives back None.
+  - id: indent
+    front: Why does indentation matter in Python?
+    back: It decides which lines belong to what. A function's body is every line indented under its def.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: |
+      What does this print?
+
+      ```python
+      def triple(n):
+          return n * 3
+
+      print(triple(2) + 1)
+      ```
+    options: ["7", "9", "6", An error]
+    answer: 0
+    why: triple(2) gives back 6, then 6 + 1 is 7.
+  - id: t2
+    type: mcq
+    prompt: A function has no return line. What does calling it give back?
+    options: ["0", An empty string, None, An error]
+    answer: 2
+    why: None is Python's value for "nothing". Functions without a return give it back.
+docs:
+  - title: "Python tutorial: Defining functions"
+    url: https://docs.python.org/3/tutorial/controlflow.html#defining-functions
+  - title: "Python tutorial: the pass statement"
+    url: https://docs.python.org/3/tutorial/controlflow.html#pass-statements
+videos: []
+---
+
+## In this lesson
+
+- What a **function** is, and why nearly all real code is made of them.
+- How to write one with `def`, give it inputs called **parameters**, and hand back an answer with `return`.
+- How to **call** a function, as many times as you like.
+- Why **indentation**, the spaces at the start of a line, matters so much in Python.
+- How the exercises in the rest of this module are set up, so they make sense from now on.
+
+This lesson goes slowly on purpose. Every Python exercise after it uses functions.
+
+## A function is a small machine
+
+Imagine a machine in a café: put in a price, and it gives you back the price with tax added. You don't need to know how it works inside. You just use it, as often as you like, with any price.
+
+A **function** is that machine, in code. It's a named piece of code that:
+
+- **takes some values in**,
+- **does some work** with them,
+- and **gives an answer back**.
+
+You've already used functions without knowing it. `print(...)` is a function: you give it a value, and it shows it. `int(...)` is a function: you give it text like `"30"`, and it gives back the number 30. Those were written for you. Now you'll write your own.
+
+## Writing one
+
+Here's a complete function:
+
+```python
+def price_with_tax(price):
+    total = price * 1.2
+    return total
+```
+
+Line by line:
+
+| Line | What it means |
+| --- | --- |
+| `def price_with_tax(price):` | "**Def**ine a new function called `price_with_tax`. When it's used, it will be given one value, and inside the function that value will be called `price`." The line **must** end with a colon `:`. |
+| `    total = price * 1.2` | Indented, so it's part of the function. Works out the price plus 20% and stores it as `total`. |
+| `    return total` | Indented too. Hands the value of `total` **back** to whoever used the function, and ends the function. |
+
+The name in brackets, `price`, is a **parameter**: a placeholder name for a value the function will be given later. It works like a variable that only exists inside the function.
+
+### Defining isn't running
+
+This is the part that surprises people. Writing a `def` **doesn't run anything**. It just builds the machine and gives it a name, ready for later. If your program were only the three lines above, nothing would happen at all.
+
+<details>
+<summary>Quick check: what's the parameter in `def greeting(name):`?</summary>
+
+`name`. It's the placeholder for whatever value the function is given when it's called.
+</details>
+
+## Calling it
+
+To use a function, you **call** it: write its name, followed by round brackets with the value inside.
+
+```python
+price_with_tax(10)
+```
+
+When Python reaches that line, it:
+
+1. Jumps into the function.
+2. Sets `price` to `10`.
+3. Runs the indented lines: `total` becomes `12.0`.
+4. Hits `return total`, and jumps back with the answer, `12.0`.
+
+The value you put in the brackets when calling, here `10`, is called an **argument**. So: the **parameter** is the name in the `def` line, and the **argument** is the actual value you pass in.
+
+The call itself becomes the returned value, so you can use it anywhere you'd use a value:
+
+```python
+print(price_with_tax(10))          # 12.0
+bill = price_with_tax(50)          # bill is now 60.0
+both = price_with_tax(10) + price_with_tax(50)   # 72.0
+```
+
+Write the machine once, use it as often as you like, with any value.
+
+<details>
+<summary>Quick check: after `bill = price_with_tax(100)`, what's in `bill`?</summary>
+
+`120.0`. The function returns 100 * 1.2, and that's stored in `bill`.
+</details>
+
+## More than one parameter
+
+A function can take several values. Separate them with commas, both in the `def` line and when calling:
+
+```python
+def rectangle_area(width, height):
+    return width * height
+
+rectangle_area(3, 4)    # width is 3, height is 4, gives back 12
+```
+
+They're matched up **in order**: the first argument goes to the first parameter, the second to the second.
+
+Notice this function's body is a single line. You can return a calculation directly, without storing it in a variable first.
+
+## Indentation is part of the code
+
+In Python, the spaces at the start of a line aren't just for looks. They decide **what belongs to what**.
+
+Every line that's part of a function must be indented under its `def` line. The usual amount is **four spaces** (in Groundwork's editor, pressing **Tab** puts in four spaces for you). The function ends at the first line that isn't indented any more:
+
+```python
+def add_tax(price):
+    total = price * 1.2     # inside the function
+    return total            # inside the function
+
+print(add_tax(10))          # NOT indented: outside, runs after the def
+```
+
+Get the indentation wrong and Python either refuses to run, with an `IndentationError`, or, worse, runs a line at the wrong time. Many other languages use curly brackets `{ }` to group lines. Python uses indentation instead. You'll see the same idea again with `if` and loops.
+
+## `pass`: an empty placeholder
+
+Python doesn't allow a function with nothing inside it. So when you want an empty function, to fill in later, you write `pass`, which means "do nothing":
+
+```python
+def greeting(name):
+    pass
+```
+
+Exercises often give you functions like this. Your job is to **replace `pass`** with real code.
+
+## `None`: the answer when there's no answer
+
+A function that never reaches a `return` line still gives something back: a special value called **`None`**, which is Python's word for "nothing".
+
+```python
+def greeting(name):
+    pass
+
+print(greeting("Ada"))     # None
+```
+
+So if a check says your function "gave back None", it means your function never returned anything. Usually `return` is missing, or `pass` is still there.
+
+## Why the exercises use functions
+
+From now on, most Python exercises ask you to finish a function. Here's why. The hidden checks need to try your code **many times with different values**, including tricky ones, like an empty list or a number exactly on a boundary. A function makes that easy: the checks just call it again and again, each time with different arguments, and compare what it returns with the right answer.
+
+So when you see:
+
+```python
+def shipping_cost(order_total, is_international):
+    # Your code goes here
+    return 0
+```
+
+read it as: "Write code that works out the shipping cost for **any** order_total and is_international, and `return` the answer." The `print` lines at the bottom of the starter are just there so you can see what your function returns.
+
+<ConsultantNote>
+Real programs are made of hundreds of functions calling each other. Good function names make code readable: `calculate_tax(order)` tells you what's happening without reading inside it. When you read unfamiliar code, start with the function names, what goes in, and what comes back. Then dig into only the ones you need.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Function** | A named piece of code that takes values in and gives an answer back |
+| **`def`** | Defines a function. Runs nothing by itself. |
+| **Parameter** | A placeholder name in the def line, like `price` |
+| **Calling** | Using a function: its name and brackets, like `price_with_tax(10)` |
+| **Argument** | The actual value passed in when calling, like `10` |
+| **`return`** | Hands a value back to the caller, and ends the function |
+| **Indentation** | Spaces at the start of a line. In Python, they decide what belongs inside what. |
+| **IndentationError** | Python's error when indentation doesn't make sense |
+| **`pass`** | "Do nothing", used as a placeholder in an empty function |
+| **`None`** | Python's value for "nothing". What a function without return gives back. |

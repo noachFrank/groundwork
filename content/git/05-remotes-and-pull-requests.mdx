@@ -3,10 +3,19 @@ id: remotes-and-pull-requests
 title: "Push, pull, clone and pull requests"
 order: 5
 topic: git-and-github
-minutes: 50
+minutes: 60
 summary: How a team shares one project. You'll push, clone and pull using a shared copy on your own computer, then learn how GitHub's pull requests let teammates review work before it joins.
 connectivity: offline
-prerequisites: [conflicts]
+prerequisites:
+  - id: conflicts
+    need: essential
+    why: Pulling can cause conflicts, and you need to know how to fix them.
+  - id: branches
+    need: essential
+    why: Pull requests are built on branches.
+revision: 2
+teaches: [distributed, remote, origin, git-remote-add, git-clone, git-push, git-pull, bare-repo, push-rejected, force-push, pull-request, code-review, fork, git-hosts]
+uses: [repository, commit, branch, main-branch, git-merge, merge-conflict, git-log, git-vs-github, secret, secrets-in-history, dotenv-file, gitignore, add-content, commit-am, dot-paths, relative-path, terminal]
 predict:
   id: p1
   type: mcq
@@ -163,9 +172,20 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- How a team shares one project, when everyone has their own full copy.
+- **Remotes**, and the three commands that move work between copies: **clone**, **push** and **pull**.
+- **Pull requests**: how teams review work before it joins main.
+- How to review someone else's pull request, kindly and usefully.
+
+In the task you'll play both yourself and a teammate, entirely offline, using a folder on your own computer as the shared copy.
+
 ## Everyone has a full copy
 
-Git is **distributed**: every person has the entire project and its entire history on their own computer. To share work, teams agree on one shared copy, called a **remote**. Most often it lives on **GitHub**, though GitLab, Bitbucket and Azure DevOps do the same job.
+Git is **distributed**: every person working on a project has the **entire** project and its **entire** history on their own computer. Nobody's copy is special to Git.
+
+To share work, a team agrees on one copy that everyone sends their commits to and gets others' commits from. That shared copy is called a **remote**. Most often it lives on GitHub, though GitLab, Bitbucket and Azure DevOps do the same job.
 
 ```text
             ┌────────────────────┐
@@ -177,40 +197,85 @@ Git is **distributed**: every person has the entire project and its entire histo
      └──────────────┘        └──────────────┘
 ```
 
+A remote doesn't have to be on the internet. It's just another copy of the repository, somewhere Git can reach. In the task, it's a folder on your own computer.
+
+## The commands
+
 | Command | What it does |
 | --- | --- |
-| `git clone url` | Make a new local copy of a remote repository. You do this once, to join. |
-| `git push` | Send your new commits up to the remote. |
-| `git pull` | Get others' new commits and merge them into your copy. |
-| `git remote -v` | List the remotes this copy knows about. |
+| `git clone <where>` | Make a new local copy of a remote repository, with all its history. You do this once, to join a project. |
+| `git push` | Send your new commits **up** to the remote |
+| `git pull` | Get other people's new commits **down** from the remote, and merge them into your copy |
+| `git remote add origin <where>` | Tell an existing repository about a remote, and give it a name |
+| `git remote -v` | List the remotes this repository knows about |
 
-The remote you cloned from is called **`origin`** by convention.
+**`origin`** is the traditional name for the main remote. When you clone, Git names the remote you cloned from `origin` automatically.
 
-If your push is rejected because the remote has commits you don't have, **pull first**, sort out any conflicts, then push. Never "force push" over a shared branch unless you're certain, because it throws away other people's work.
+The first time you push a branch, you add `-u`: `git push -u origin main`. That links your main to the remote's main, so from then on plain `git push` and `git pull` know where to go.
+
+### A bare repository
+
+In the task, the shared copy is made with `git init --bare`. A **bare** repository holds only the history, the contents of a `.git` folder, with no working files you can edit. That's exactly what GitHub keeps on its side: nobody edits files directly on the shared copy, they only push to it and pull from it.
+
+<details>
+<summary>Quick check: what's the difference between push and pull?</summary>
+
+Push sends your commits up to the remote. Pull brings others' commits down from the remote and merges them into your copy.
+</details>
+
+## When a push is rejected
+
+If a teammate pushed while you were working, the remote has commits you don't have. Git **refuses** your push, with a message like "Updates were rejected because the remote contains work that you do not have locally". It's protecting their work.
+
+The fix: **pull first**, sort out any conflicts, then push again.
+
+You may see advice to "force push" (`git push --force`). That makes the remote match your copy, **throwing away** whatever commits you didn't have, which is your teammates' work. Never force push to a shared branch unless you're completely sure what you're doing.
 
 ## Pull requests
 
 On a team, people don't usually push straight to main. Instead:
 
 1. Make a **branch** for the change.
-2. Commit, and **push the branch** to GitHub.
-3. Open a **pull request** (PR): "please merge my branch into main", with a description of what and why.
-4. Teammates **review** it: they read the changes, comment, and ask questions.
-5. **Automated checks** run, such as tests.
-6. Once approved, it's **merged**, and the branch is deleted.
+2. Commit to it, and **push the branch** to GitHub.
+3. On GitHub, open a **pull request** (PR): a request saying "please merge my branch into main", with a description of what changed and why.
+4. Teammates **review** it: they read every change, comment on specific lines, and ask questions. This is **code review**.
+5. **Automated checks** run, such as tests that make sure nothing broke.
+6. Once approved, it's **merged** into main, and the branch is deleted.
 
-Pull requests catch mistakes before they reach main, spread knowledge across the team, and leave a record of why each change was made.
+Pull requests catch mistakes before they reach main, spread knowledge around the team, and leave a permanent record of why each change was made.
 
 ### Good pull requests
 
-- **Small and focused** on one thing.
+- **Small and focused** on one thing. A reviewer can properly check 50 lines. Nobody properly checks 3,000.
 - **A clear title and description**: what changed, why, and how to check it.
-- **No surprises**: no unrelated reformatting, and certainly no secrets.
+- **No surprises**: no unrelated tidying mixed in, and certainly no secrets.
+
+### Good reviews
+
+- Comment on **the code, not the person**: "this file looks like it has live keys" rather than "you leaked the keys".
+- Be **specific**: say what to change and why.
+- **Ask** when you don't understand. Often the question finds the bug.
 
 ### Forks
 
-To contribute to a project you can't push to, like an open-source project, you **fork** it, making your own copy on GitHub, push to your fork, and open a pull request from there.
+To contribute to a project you're not allowed to push to, like a big open-source project, you **fork** it: GitHub makes your own copy of the repository under your account. You push to your fork, then open a pull request from your fork to the original.
 
 <ConsultantNote>
 Reviewing pull requests is a consultant's daily work, and so is having your own work reviewed. Clear, kind, specific comments, about the code and not the person, build trust quickly with a client's team.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Distributed** | Everyone has the full project and history |
+| **Remote** | A shared copy of the repository that everyone pushes to and pulls from |
+| **origin** | The usual name for the main remote |
+| **Clone** | Make your own full copy of a remote repository |
+| **Push** | Send your commits to the remote |
+| **Pull** | Get others' commits from the remote and merge them in |
+| **Bare repository** | A repository with history only, no editable files, like the copy on GitHub |
+| **Force push** | Overwrite the remote with your copy. Throws away others' work. |
+| **Pull request (PR)** | A request to merge a branch, with review before it joins main |
+| **Code review** | Teammates reading and commenting on changes before they're merged |
+| **Fork** | Your own copy of someone else's repository on GitHub |

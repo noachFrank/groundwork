@@ -3,10 +3,19 @@ id: undo-mistakes
 title: Undoing mistakes safely
 order: 6
 topic: git-and-github
-minutes: 45
+minutes: 55
 summary: The right way to undo each kind of mistake, from an unsaved change to a bad commit that's already shared, and how to recover work you thought was lost.
 connectivity: offline
-prerequisites: [remotes-and-pull-requests]
+prerequisites:
+  - id: remotes-and-pull-requests
+    need: essential
+    why: The right undo depends on whether a commit has been pushed.
+  - id: ignore-and-history
+    need: helpful
+    why: Why a pushed secret can't be taken back.
+revision: 2
+teaches: [git-restore, restore-staged, commit-amend, git-reset, rewrite-history, git-revert, git-reflog, revoke-key, undo-choice]
+uses: [commit, git-commit, commit-am, git-push, git-pull, remote, head-ref, commit-id, git-log, git-status, secrets-in-history, secret, api-key, branch, git-switch, css-intro, add-content, gitignore, dotenv-file]
 predict:
   id: p1
   type: mcq
@@ -144,38 +153,88 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- How to undo each kind of mistake, from an unsaved change to a bad commit that's already shared.
+- The one question that decides which undo is safe.
+- How to get back work you thought was lost.
+- The one mistake no Git command can fix.
+
 ## Almost everything in Git can be undone
 
-That's one of the best things about it. The trick is picking the right undo for the situation, and the most important question is: **has anyone else got this commit yet?**
+That's one of the best things about Git. The trick is picking the right undo for the situation. And the most important question is always:
+
+> **Has anyone else got this commit yet?**
+
+In other words: have you pushed it? If not, it only exists on your computer, and you can change it however you like. If you have, other people may already have it, and you need to be more careful.
 
 ## Which undo?
 
 | The mistake | The fix | Safe after pushing? |
 | --- | --- | --- |
-| Changed a file, not committed, want it back as it was | `git restore file` | Yes. Nothing was shared. |
-| Staged something by accident | `git restore --staged file` | Yes |
-| Last commit's message is wrong, or forgot a file | `git commit --amend` | **No.** Only before pushing. |
+| Changed a file, haven't committed, want it back as it was | `git restore file` | Yes. Nothing was shared. |
+| Staged something by accident | `git restore --staged file` | Yes. It's just un-staged, and your changes stay. |
+| Last commit's message is wrong, or you forgot a file | `git commit --amend` | **No.** Only before pushing. |
 | Last commit was a mistake, not pushed | `git reset --soft HEAD~1` | **No.** Only before pushing. |
 | A commit that's already been pushed | `git revert <commit>` | **Yes.** This is what it's for. |
 
+Here's what each one does:
+
+- **`git restore index.html`** throws away your uncommitted changes to that file and puts back the version from the last commit.
+- **`git restore --staged index.html`** takes the file out of staging. Your edits stay in the file.
+- **`git commit --amend`** replaces the last commit with a new one that includes anything you've just staged, and lets you rewrite its message.
+- **`git reset --soft HEAD~1`** removes the last commit, but keeps its changes in your files, staged, so you can redo it properly.
+- **`git revert HEAD`** makes a brand-new commit that does the exact **opposite** of the commit you name. Here, HEAD, the latest. Everything that commit added is removed, and everything it removed is put back.
+
 <Callout kind="warn" title="Commands that throw work away">
-`git restore file` and `git reset --hard` discard uncommitted changes permanently. They're not in the reflog, because they were never committed. Read twice before running them.
+`git restore file` (and `git reset --hard`, which you'll see in AI answers) discard uncommitted changes **permanently**. Those changes were never committed, so Git has no copy of them. Read twice before running them.
 </Callout>
+
+<details>
+<summary>Quick check: you committed a typo in a message five minutes ago and haven't pushed. Which fix?</summary>
+
+`git commit --amend`. It's not pushed yet, so rewriting the last commit is safe.
+</details>
 
 ## Why revert is the safe choice once it's shared
 
-`amend` and `reset` **rewrite history**: they replace commits with new ones. That's fine on your laptop. But if teammates already have the old commits, their copies now disagree with the remote, and things get confusing fast.
+`amend` and `reset` **rewrite history**: they replace or remove commits. That's fine when the commits only exist on your laptop.
 
-`revert` doesn't rewrite anything. It adds a **new** commit that does the opposite of the bad one. History only moves forward, so everyone can just pull.
+But if teammates already pulled the old commits, their copies now disagree with yours about what happened. Pushing gets rejected, people get confused, and someone eventually force-pushes and loses work.
+
+`revert` doesn't rewrite anything. It **adds** a new commit that cancels out the bad one. History only moves forward, so everyone can just pull as normal. The mistake and its undo both stay in the history, which is honest and useful.
 
 ## The safety net: reflog
 
-Deleted a branch? Reset too far? `git reflog` lists everywhere HEAD has been recently, including commits that no longer appear in `git log`. Find the one you want, and get it back with `git switch -c rescued <id>`.
+Deleted a branch you needed? Reset too far? `git reflog` is Git's private diary: a list of everywhere HEAD has pointed recently, on your computer, including commits that no longer show up in `git log`.
+
+Find the commit you want in that list, note its ID, and get it back on a new branch:
+
+```text
+git switch -c rescued ab12cd3
+```
+
+Commits are very hard to truly lose in Git. Uncommitted changes are easy to lose. That's one more reason to commit often.
 
 ## The mistake revert can't fix
 
-If a password or API key was pushed, undoing the commit doesn't help. It's still in the history, and anyone who pulled or scanned the repository has it. The only real fix is to **revoke the key and make a new one**. Cleaning the history afterwards is good housekeeping, not a rescue.
+If a password or API key was pushed, undoing the commit doesn't help. As you learned in *Keeping secrets out*, it's still in the history, and anyone who pulled, or any program that scanned the repository, may already have it.
+
+The only real fix is to **revoke the key** (cancel it, in the service that issued it) and **make a new one**. Cleaning the history afterwards is good housekeeping, not a rescue. Then add the file to `.gitignore` so it can't happen again.
 
 <ConsultantNote>
 When something goes wrong on a client's project, staying calm and knowing the safe undo is worth a lot. "Revert first, investigate after" gets a broken site working again in minutes, without anyone rewriting history in a panic.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **`git restore`** | Throws away uncommitted changes to a file |
+| **`git restore --staged`** | Un-stages a file, keeping your changes |
+| **`git commit --amend`** | Replaces the last commit. Only before pushing. |
+| **`git reset --soft HEAD~1`** | Removes the last commit, keeping its changes. Only before pushing. |
+| **Rewriting history** | Replacing or removing commits. Unsafe once others have them. |
+| **`git revert`** | Adds a new commit that does the opposite of an old one. Safe after pushing. |
+| **reflog** | Git's diary of everywhere HEAD has been, for rescuing lost commits |
+| **Revoke** | Cancel a key, so it stops working |

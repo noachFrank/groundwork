@@ -6,3 +6,7 @@ dist/
 .DS_Store
 .vite/
 coverage/
+
+# Feedback files learners send you (private)
+feedback/*
+!feedback/README.md

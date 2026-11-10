@@ -107,6 +107,21 @@ export interface VideoClip {
   note?: string;
 }
 
+export type PrerequisiteNeed = 'essential' | 'helpful';
+export interface Prerequisite {
+  id: string;
+  /** Essential: the lesson leans on it. Helpful: useful background, not required. */
+  need: PrerequisiteNeed;
+  why?: string;
+}
+
+/** One idea from content/concepts.yaml. Lessons say which they teach and which they use. */
+export interface Concept {
+  id: string;
+  name: string;
+  definition: string;
+}
+
 export interface Lesson {
   id: string;
   title: string;
@@ -116,7 +131,13 @@ export interface Lesson {
   minutes: number;
   summary: string;
   connectivity: Connectivity;
-  prerequisites: string[];
+  prerequisites: Prerequisite[];
+  /** Concept ids this lesson explains properly. */
+  teaches: string[];
+  /** Concept ids this lesson relies on. Each must be taught earlier in the course, or here. */
+  uses: string[];
+  /** Goes up when the lesson is substantially rewritten. */
+  revision: number;
   predict: McqQuestion;
   tasks: Task[];
   recall: Question[];
@@ -159,6 +180,7 @@ export interface Content {
   curriculum: Curriculum;
   modules: Module[];
   lessons: Lesson[];
+  concepts: Concept[];
 }
 
 export type LessonStatus = 'not_started' | 'in_progress' | 'completed' | 'tested_out';
@@ -184,6 +206,8 @@ export interface LessonProgress {
   comeBackLater: boolean;
   startedAt: string | null;
   completedAt: string | null;
+  /** Finished before the lesson was rewritten. */
+  rewritten: boolean;
   seconds: number;
   tasks: TaskResult[];
 }
@@ -236,9 +260,11 @@ export interface LessonSummary {
   minutes: number;
   summary: string;
   connectivity: Connectivity;
-  prerequisites: string[];
+  prerequisites: Prerequisite[];
   status: LessonStatus;
   locked: boolean;
+  /** Finished before the lesson was rewritten, so worth a re-read. */
+  rewritten: boolean;
   needReview: boolean;
   comeBackLater: boolean;
 }
@@ -252,6 +278,8 @@ export interface Today {
   nextIsFallback: boolean;
   comeBackLater: LessonSummary[];
   needReview: LessonSummary[];
+  rewritten: LessonSummary[];
+  feedback: FeedbackStatus;
   week: Schedule['thisWeek'] | null;
   behindHours: number;
   finishDate: string | null;
@@ -279,4 +307,61 @@ export interface LabState {
   goals: LabGoal[];
   log: { at: string; text: string }[];
   data: Record<string, unknown>;
+}
+
+export interface PrerequisiteInfo extends Prerequisite {
+  title: string;
+  module: string;
+  status: LessonStatus;
+}
+
+export interface ClarityFeedback {
+  id: number;
+  lessonId: string;
+  clarity: number | null;
+  /** Concept ids the learner ticked as not fully clear. */
+  unclearConcepts: string[];
+  assumed: string;
+  other: string;
+  createdAt: string;
+  updatedAt: string;
+  sentAt: string | null;
+}
+
+interface FeedbackBase {
+  id: number;
+  lessonId: string;
+  lessonTitle: string;
+  createdAt: string;
+  updatedAt: string;
+  sentAt: string | null;
+}
+/** One thing the learner wrote for the developer: a problem report or a "How clear was this?" answer. */
+export type FeedbackItem =
+  | (FeedbackBase & { kind: 'problem'; message: string })
+  | (FeedbackBase & { kind: 'clarity'; clarity: number | null; unclearConcepts: string[]; assumed: string; other: string });
+
+export interface FeedbackStatus {
+  unsent: number;
+  lastSent: string | null;
+  /** Something is waiting and it's been a week or more. */
+  due: boolean;
+}
+
+/** The file the learner sends to the developer. It only holds items not sent before. */
+export interface FeedbackFile {
+  app: 'groundwork-feedback';
+  version: 1;
+  learner: string;
+  exportedAt: string;
+  /** The dates the items in this file were written or last changed. */
+  period: { from: string; to: string };
+  previousSend: string | null;
+  items: (FeedbackItem extends infer T ? (T extends FeedbackItem ? Omit<T, 'sentAt'> & { key: string } : never) : never)[];
+  context: {
+    lessonsCompleted: string[];
+    lessonsInProgress: string[];
+    /** Failed attempts per lesson, by kind (task, recall, predict, testout). */
+    stepFailures: Record<string, Record<string, number>>;
+  };
 }

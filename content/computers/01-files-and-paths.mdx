@@ -3,10 +3,16 @@ id: files-and-paths
 title: Files, folders and paths
 order: 1
 topic: how-computers-run-software
-minutes: 50
+minutes: 60
 summary: How a computer organizes files, how to write down exactly where one is, and your first steps moving around in a terminal.
 connectivity: offline
-prerequisites: []
+prerequisites:
+  - id: ai-as-a-tutor
+    need: helpful
+    why: How to use AI to get unstuck without it doing the work for you.
+revision: 2
+teaches: [file, folder, drive, home-folder, path, absolute-path, relative-path, dot-paths, file-extension, terminal, powershell, command, current-directory, practice-folder]
+uses: []
 predict:
   id: p1
   type: mcq
@@ -42,7 +48,7 @@ tasks:
         command: mkdir archive; Copy-Item notes.txt archive\notes-copy.txt
       - text: Rename the original. Renaming is really moving a file to a new name.
         command: Move-Item notes.txt plan.txt
-      - text: List everything, including inside the archive folder, and save that list to a file.
+      - text: "List everything, including inside the archive folder, and save that list to a file. `-Recurse` means \"look inside folders too\". The `|` symbol hands the list to `Out-File`, which saves it into `tree.txt` instead of showing it. You'll learn `|` properly in the next lesson."
         command: Get-ChildItem -Recurse | Out-File tree.txt
       - text: "Open this folder in File Explorer to see that the terminal and the mouse are two views of the same files. The dot means \"the folder I'm in\"."
         command: explorer .
@@ -124,15 +130,50 @@ docs:
 videos: []
 ---
 
+## In this lesson
+
+- What files, folders and drives are, and how they fit together.
+- How to write down exactly where a file is, called its **path**.
+- What file extensions are, and why you should always be able to see them.
+- What a **terminal** is, and your first commands typed into one.
+
+You don't need any experience. If you've ever saved a document or a photo on a computer, you know enough to start.
+
 ## Everything is a file in a folder
 
-Your photos, your documents, and every program on your computer, including Groundwork, are **files**. Files live in **folders**, also called **directories**, and folders can hold other folders. Together they make a tree.
+Everything on your computer that you can save, open or run is a **file**: a photo, a document, a song, and every program, including Groundwork itself. A file is a named chunk of information stored on the computer's disk.
 
-At the top of the tree on Windows is a **drive**, usually `C:`. Your own files live in your **home folder**, `C:\Users\your-name`.
+Files live in **folders**. A folder is a named container that holds files, and it can also hold other folders. Folders are also called **directories**. The two words mean exactly the same thing, and you'll see both.
+
+Because folders can hold folders, everything forms a tree shape, branching out from the top:
+
+```text
+C:
+├── Program Files
+│   └── Google
+│       └── Chrome
+├── Users
+│   └── sam
+│       ├── Documents
+│       │   └── cv.docx
+│       ├── Downloads
+│       └── Pictures
+└── Windows
+```
+
+At the very top is a **drive**. A drive is a whole storage device, like the disk inside your laptop or a USB stick. On Windows, drives are named with a letter and a colon. The main one is almost always `C:`. A USB stick might show up as `D:` or `E:`.
+
+Each person who uses a Windows computer has a **home folder**: `C:\Users\` followed by their user name. That's where your Documents, Downloads and Pictures folders live. If your user name is sam, your home folder is `C:\Users\sam`.
+
+<details>
+<summary>Quick check: what's the difference between a folder and a directory?</summary>
+
+Nothing. They're two names for the same thing.
+</details>
 
 ## Paths are addresses
 
-A **path** writes down exactly where a file is, one folder at a time:
+A **path** writes down exactly where a file or folder is, one folder at a time, from the top. It's like a street address, but for files:
 
 ```text
 C:\Users\sam\Documents\cv.docx
@@ -143,37 +184,142 @@ C:\Users\sam\Documents\cv.docx
 └── the C drive
 ```
 
-On Windows, folders are separated by a **backslash** `\`. On Mac, Linux and in web addresses, they use a **forward slash** `/`. You'll see both constantly.
+Read it left to right as directions: start at drive C, go into Users, then into sam, then into Documents, and there's the file `cv.docx`.
 
-### Absolute and relative
+On Windows, the folders in a path are separated by a **backslash** `\`. On Mac and Linux computers, and in web addresses, they're separated by a **forward slash** `/`, like `/home/sam/cv.docx`. You'll see both all the time, so it's worth noticing which way the slash leans.
 
-- An **absolute** path starts at the drive, `C:\...`. It works from anywhere.
-- A **relative** path starts from wherever you are right now. If you're in `C:\Users\sam`, then `Documents\cv.docx` points to the same file.
+### Absolute and relative paths
 
-Two shortcuts appear in relative paths all the time:
+There are two ways to write a path.
 
-| | Means |
-| --- | --- |
-| `.` | The folder I'm in |
-| `..` | The folder above this one |
-| `$HOME` or `~` | My home folder |
+An **absolute path** starts from the drive, like `C:\Users\sam\Documents\cv.docx`. It's a complete address. It works from anywhere, like a full postal address with the country and city.
+
+A **relative path** starts from wherever you are right now. It's like saying "two doors down": it only makes sense if you know where you're standing. If you're already in `C:\Users\sam`, then the relative path `Documents\cv.docx` points to the same file as the absolute path above.
+
+### Shortcuts in paths
+
+A few short symbols appear in paths all the time:
+
+| Symbol | Means | Example |
+| --- | --- | --- |
+| `.` | The folder I'm in now | `.\notes.txt` is notes.txt, right here |
+| `..` | The folder one level up, called the **parent** | From `C:\Users\sam\Documents`, `..` is `C:\Users\sam` |
+| `$HOME` or `~` | My home folder | `$HOME\Documents` is `C:\Users\sam\Documents` for sam |
+
+You can chain them. From `C:\Users\sam\Documents`, the path `..\Pictures` means "go up to sam, then into Pictures".
+
+<details>
+<summary>Quick check: you're in `C:\Projects\shop`. Where does `..\blog` point?</summary>
+
+`C:\Projects\blog`. The `..` goes up to `C:\Projects`, then `blog` goes into the blog folder there.
+</details>
+
+### Spaces in paths
+
+Some folder names have spaces, like `C:\Program Files`. When you type a path with a space in it, put the whole path in quotes: `"C:\Program Files"`. Without quotes, the computer thinks the space separates two different things. You'll see why in a moment.
 
 ## File extensions
 
-The letters after the last dot in a file name, like `.docx`, `.txt` or `.exe`, are the **extension**. They tell Windows what kind of file it is and which program opens it.
+Most file names end with a dot and a few letters, like `.docx`, `.txt`, `.jpg` or `.exe`. That ending is the **extension**. It tells Windows what kind of file it is, and so which program should open it:
 
-Windows hides extensions by default, which is unhelpful. Turn them on: open File Explorer, click **View** → **Show** → **File name extensions**. You'll need to see them for the rest of this course.
+| Extension | Kind of file | Opened by |
+| --- | --- | --- |
+| `.txt` | Plain text | Notepad |
+| `.docx` | Word document | Microsoft Word |
+| `.jpg`, `.png` | Picture | The Photos app |
+| `.pdf` | Document for reading and printing | A browser or PDF reader |
+| `.exe` | A program | Nothing. Windows **runs** it. |
+
+Windows hides extensions by default, which is unhelpful. Turn them on now: open File Explorer (the yellow folder icon), click **View** at the top, then **Show**, then tick **File name extensions**. You'll need to see them for the rest of this course.
 
 <Callout kind="warn" title="Hidden extensions hide tricks">
-A file called `invoice.pdf.exe` shows up as `invoice.pdf` when extensions are hidden. It looks like a document, but it's a program. Seeing extensions helps you spot that.
+Only the **last** extension counts. A file called `invoice.pdf.exe` is a program, not a PDF. With extensions hidden, Windows shows it as `invoice.pdf`, so it looks like a harmless document. This is a classic trick used to spread harmful programs. Seeing extensions helps you spot it.
 </Callout>
 
-## The terminal is another view of the same files
+## The terminal
 
-File Explorer and the terminal show the same files. The terminal just uses typing instead of clicking. Developers use it because it's faster for many jobs, it can be repeated exactly, and instructions for software are almost always written as terminal commands.
+So far you've only moved files around with the mouse, in File Explorer. There's another way: typing instructions.
 
-At any moment, the terminal is "in" one folder, called the **current directory**. Commands work relative to it.
+A **terminal** is a window where you type instructions for the computer and it types back the results. It's text only: no icons and no mouse clicks. Each instruction you type is called a **command**. You type a command, press **Enter**, and the computer carries it out.
+
+On Windows, the terminal program you'll use is called **PowerShell**. To open it, press the **Windows key**, type `powershell`, and press **Enter**. You'll see a mostly empty window with something like this:
+
+```text
+PS C:\Users\sam>
+```
+
+That line is the **prompt**. It's the terminal saying "I'm ready, type a command". (Yes, it's the same word as an AI prompt, with a similar meaning: it's where the conversation happens.) The path in it tells you which folder you're currently in.
+
+### Why bother, when there's a mouse?
+
+File Explorer and the terminal show the **same files**. The terminal just uses typing instead of clicking. Developers use it because:
+
+- It's faster for many jobs once you know the commands.
+- It can be repeated exactly. A list of commands can be saved and run again, but a sequence of mouse clicks can't.
+- Instructions for software are almost always written as terminal commands. Being comfortable here means you can follow any setup guide.
+
+### The current directory
+
+At any moment, the terminal is "in" one folder. That folder is the **current directory**, and the prompt shows it. When you type a relative path, it starts from there.
+
+When PowerShell opens, you're usually in your home folder. You move around with `cd`, which stands for "change directory".
+
+### Your first commands
+
+Each command has a name, and usually some extra words after it that say what to work on. Here are the ones you'll use in the task:
+
+| Command | What it does | Example |
+| --- | --- | --- |
+| `cd` | Change directory: move into a folder | `cd Documents`, or `cd ..` to go up one |
+| `Get-Location` | Show the current directory's full path | `Get-Location` |
+| `mkdir` | Make a new folder | `mkdir notes` |
+| `Get-ChildItem` | List what's in the current folder (also called `ls`) | `Get-ChildItem` |
+| `Set-Content` | Create a file with some text in it | `Set-Content hi.txt "Hello"` |
+| `Copy-Item` | Copy a file | `Copy-Item hi.txt copy.txt` |
+| `Move-Item` | Move or rename a file | `Move-Item hi.txt hello.txt` |
+| `explorer .` | Open the current folder in File Explorer | `explorer .` |
+
+Notice how the extra words follow the command, separated by spaces. That's why a path with a space needs quotes. Without them, `cd C:\Program Files` looks like `cd` followed by two separate things, `C:\Program` and `Files`.
+
+You can run two commands on one line by putting a semicolon `;` between them: `mkdir notes; cd notes` makes a folder and then goes into it.
+
+<details>
+<summary>Quick check: you type `cd ..`. What happens?</summary>
+
+The terminal moves up one level, into the parent of the current folder. The prompt shows the new path.
+</details>
+
+## Your practice folder
+
+Groundwork made a folder called `Groundwork-Practice` inside your home folder: `C:\Users\your-name\Groundwork-Practice`. Every terminal task in this course happens inside it. That way nothing you try can affect your own documents.
+
+When you click **Check my work** on a task, Groundwork looks inside this folder for the files the task should have made. It only ever looks in there, and it only reads.
+
+How to do the task below:
+
+1. Click the **Copy** button next to a command.
+2. Click inside the PowerShell window, then **right-click** to paste. (Right-click means paste in PowerShell.)
+3. Press **Enter**.
+4. Read what comes back before moving on.
 
 <ConsultantNote>
-"I can't find the file" and "it says the file doesn't exist" are some of the most common problems you'll help people with. Nine times out of ten, the program is looking in a different folder than they think. Asking "what's the full path?" solves a lot.
+"I can't find the file" and "it says the file doesn't exist" are some of the most common problems you'll help people with. Nine times out of ten, the program is looking in a different folder from the one the person thinks. Asking "what's the full path?" solves a lot.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **File** | A named chunk of information on the disk: a document, photo, program, and so on |
+| **Folder / directory** | A named container for files and other folders |
+| **Drive** | A whole storage device, named with a letter, like `C:` |
+| **Home folder** | Your own folder, `C:\Users\your-name` |
+| **Path** | The address of a file or folder, written folder by folder |
+| **Absolute path** | A path that starts at the drive. Works from anywhere. |
+| **Relative path** | A path that starts from the folder you're in |
+| **`.` and `..`** | This folder, and the folder one level up (the parent) |
+| **Extension** | The letters after the last dot in a file name, saying what kind of file it is |
+| **Terminal** | A window where you type commands and see the results |
+| **PowerShell** | The terminal program used on Windows in this course |
+| **Command** | One instruction typed into a terminal |
+| **Current directory** | The folder the terminal is in right now |

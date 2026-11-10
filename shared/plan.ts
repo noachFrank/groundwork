@@ -13,7 +13,7 @@ const isDone = (s: LessonStatus | undefined) => s === 'completed' || s === 'test
 
 /**
  * What's left to learn, in order. Lessons that exist come first, then every
- * curriculum topic not written yet, so the plan shows the whole 180-hour road.
+ * curriculum topic not written yet, so the plan shows the whole road.
  */
 export function buildPlanItems(content: Content, statuses: Record<string, LessonStatus>): PlanItem[] {
   const items: PlanItem[] = [];

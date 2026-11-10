@@ -3,10 +3,25 @@ id: publish-a-page
 title: "Milestone: put your page on the internet"
 order: 7
 topic: git-and-github
-minutes: 60
+minutes: 70
 summary: The Stage 1 milestone. Use AI to help build a small page, push it to GitHub, and publish it free with GitHub Pages, so anyone in the world can open it.
 connectivity: needs-internet
-prerequisites: [undo-mistakes, asking-good-questions]
+prerequisites:
+  - id: undo-mistakes
+    need: essential
+    why: Finishes the Git module, which this milestone builds on.
+  - id: remotes-and-pull-requests
+    need: essential
+    why: You'll push to GitHub, a remote.
+  - id: asking-good-questions
+    need: essential
+    why: You'll use AI to help build the page, without pasting anything private.
+  - id: ai-as-a-tutor
+    need: helpful
+    why: The routine for using AI without it doing your learning for you.
+revision: 2
+teaches: [github-account, github-pages, deployment, static-site, credential-manager, start-command, public-site-privacy]
+uses: [git-push, remote, origin, git-remote-add, repository, commit, git-add, git-commit, html-intro, html-tags, css-intro, browser, tutor-not-ghostwriter, private-data, read-before-run, git-vs-github, server-program, backend, terminal]
 predict:
   id: p1
   type: mcq
@@ -136,9 +151,16 @@ docs:
 videos: []
 ---
 
-## Stage 1's milestone
+## In this lesson
 
-This is where it comes together: the terminal, Git, asking AI good questions and checking what it gives you. By the end, you'll have a real page on the public internet, with an address you can send to anyone.
+The Stage 1 milestone. You'll put a page on the public internet, with an address you can send to anyone.
+
+- Use AI to help write a small web page, the right way.
+- Push it to **GitHub**.
+- Publish it, free, with **GitHub Pages**.
+- Understand what a **deployment** and a **static site** are.
+
+It pulls together everything from Stage 1: the terminal, Git, and using AI well. This lesson needs the internet throughout.
 
 ## How it fits together
 
@@ -147,30 +169,78 @@ your laptop                GitHub                       the world
 my-site/index.html  ──push──▶  my-first-site repo  ──Pages──▶  https://you.github.io/my-first-site/
 ```
 
-1. **Git** tracks your page's versions on your laptop.
-2. **Pushing** copies those commits to a repository on **GitHub**.
-3. **GitHub Pages** serves the files in that repository as a website.
+1. **Git** tracks your page's versions on your laptop, as it has all module.
+2. **Pushing** copies those commits to a repository on **GitHub**: a remote, exactly like the practice shared copy from the remotes lesson, except it's on the internet.
+3. **GitHub Pages**, a free GitHub feature, takes the files in that repository and serves them as a website, at a public address.
 
-Every time you push a change, Pages republishes the site, usually within a minute or two. That's a **deployment**, and plenty of professional hosting works exactly the same way.
+Every time you push a change, Pages republishes the site, usually within a minute or two. Putting a new version of software where people use it is called a **deployment**, and plenty of professional hosting works exactly this way: push, and it goes live.
 
-## Using AI for this, the right way
+## GitHub accounts and repositories
 
-It's fine, and realistic, to have AI help write the page. But it's *your* page:
+You'll make a free GitHub account, then a new, empty repository on GitHub's website. Each repository on GitHub has an address like:
 
-- **Read the code** before you publish it, and ask about anything you don't understand.
-- **Change something yourself**, like the colors, a heading or a section.
-- **Check what's in it.** AI sometimes adds links to outside scripts or images you didn't ask for. For this page, it should be one HTML file with no outside links.
+```text
+https://github.com/YOUR-USERNAME/my-first-site.git
+```
+
+Your `my-site` repository already has a remote called `origin`: the practice shared copy from the remotes lesson. A repository can have several remotes, each with its own name, so you'll add GitHub as a second remote called `github`:
+
+```text
+git remote add github https://github.com/YOUR-USERNAME/my-first-site.git
+git push -u github main
+```
 
 ## Signing in from Git
 
-GitHub doesn't accept your account password from the terminal. Git for Windows includes **Git Credential Manager**, which opens a browser window to sign in securely the first time you push. After that, it remembers.
+GitHub doesn't accept your account password from the terminal. Instead, Git for Windows includes **Git Credential Manager**, which opens a browser window to sign in securely the first time you push. After that, it remembers you on this computer.
+
+## Using AI for this, the right way
+
+It's fine, and realistic, to have AI help write the page. But it's *your* page, with your name on it. Use the routine from the first lesson of the course:
+
+- **Ask for something simple:** a single HTML file about you and what you're learning, using only HTML and CSS.
+- **Read the code** before you publish it. You know `<h1>`, `<p>`, `<a>` and basic CSS rules now. Ask the AI about every tag or rule you don't recognize, until you could explain the whole page.
+- **Change something yourself**: the colors, a heading, a section.
+- **Check what's in it.** AI sometimes adds links to outside scripts, fonts or images you didn't ask for. For this page, it should be one HTML file that doesn't load anything from elsewhere.
+
+<Callout kind="warn" title="Your page is public">
+Anyone in the world can open it, and search engines may find it. Don't put your address, phone number, or anything else private on it. Remember *Asking good questions*: private data stays private.
+</Callout>
+
+## Opening a file from the terminal
+
+`start index.html` opens a file with whatever program normally opens that kind of file, as if you'd double-clicked it. For an `.html` file, that's your browser. It's a quick way to check the page looks right before you commit it.
 
 ## Static sites
 
-Your page is a **static site**: files that are sent to the browser exactly as they are. There's no server code and no database. Static sites are cheap or free to host, very fast, and hard to hack, because there's very little to attack. Many real business websites are static.
+Your page is a **static site**: a set of files that are sent to the browser exactly as they are. There's no server program running code for each visitor, and no database.
 
-When a site needs logins, a database or payments, it needs a server too. That's Stage 3.
+| Static site | Site with a backend |
+| --- | --- |
+| Just files: HTML, CSS, images | Files, plus a server program and usually a database |
+| Free or very cheap to host | Costs money to run all the time |
+| Very fast | Slower, because it does work for each request |
+| Little to attack, so hard to hack | More to secure |
+| Can't do logins, saved data or payments by itself | Can do anything |
+
+Many real business websites are static. When a site needs logins, a database or payments, it needs a backend too. That's Stage 3.
+
+<details>
+<summary>Quick check: a bakery wants a website with its opening hours, menu and a map. Does it need a backend?</summary>
+
+No. That's all information that rarely changes, so a static site is enough, and much cheaper and safer.
+</details>
 
 <ConsultantNote>
 "Do we really need a server for this?" is a question that saves clients money. Many small business sites would be faster, safer and nearly free as static sites. Recognizing when the simple option is enough is good consulting.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **GitHub Pages** | A free GitHub feature that publishes a repository's files as a website |
+| **Deployment** | Putting a new version of software where people use it |
+| **Git Credential Manager** | Signs you in to GitHub from Git, through your browser |
+| **`start file`** | Opens a file with its usual program |
+| **Static site** | A website made only of files sent as they are, with no server code or database |

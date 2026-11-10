@@ -1,12 +1,21 @@
 ---
 id: python-functions
-title: "Python: functions, and return versus print"
-order: 4
+title: "Python: functions in depth, and return versus print"
+order: 5
 topic: reading-code
-minutes: 50
-summary: Packaging code into reusable functions with inputs and outputs, and the return-versus-print confusion that trips up nearly every beginner.
+minutes: 60
+summary: Why code is split into functions, the return-versus-print confusion that trips up nearly every beginner, how None sneaks into a program, and a few string tools you'll use constantly.
 connectivity: offline
-prerequisites: [python-lists-loops]
+prerequisites:
+  - id: python-lists-loops
+    need: essential
+    why: The examples loop and branch inside functions.
+  - id: python-first-functions
+    need: essential
+    why: Introduces def, parameters and return, which this lesson builds on.
+revision: 2
+teaches: [return-vs-print, none-trap, crash-vs-cause, string-index, upper-lower, format-decimals, nested-calls, local-variable, function-reuse, honest-function-names]
+uses: [function, def-keyword, parameter, argument, function-call, return-statement, none-value, if-statement, elif-else, return-in-branch, list-index, str-type, f-string, print-fn, arithmetic, typeerror-str-int, error-message, variable]
 predict:
   id: p1
   type: mcq
@@ -19,9 +28,9 @@ tasks:
     type: python
     title: Fix and finish three small functions
     instructions: |
-      `full_name` is written, but it prints instead of returning, so other code can't use its answer. Fix it, then finish the other two.
+      You'll use: `return` versus `print`, `[0]` on a string, `.upper()`, and `:.2f` inside an f-string, all from this lesson.
 
-      `name[0]` is the first letter of a string. `f"{amount:.2f}"` shows a number with exactly two decimal places.
+      `full_name` is written, but it prints instead of returning, so other code can't use its answer. Fix it, then finish the other two.
     starter: |
       def full_name(first, last):
           print(first + " " + last)
@@ -175,52 +184,156 @@ docs:
 videos: []
 ---
 
-## A function is a named recipe
+## In this lesson
 
-A **function** packages some code under a name, so you can use it again and again:
+- Why programmers split code into functions at all.
+- **return versus print**: the difference that trips up nearly every beginner.
+- How **None** sneaks into a program and causes crashes far away from the real mistake.
+- Why the line that crashes often isn't the line that's wrong.
+- A few string tools you'll use constantly: first letters, capitals, and money with two decimal places.
 
-```python
-def shipping_cost(order_total):
-    if order_total >= 50:
-        return 0
-    return 5
+In *Python: your first functions* you learned how to write and call a function. This lesson is about using them well, and reading them critically.
 
-print(shipping_cost(20))   # 5
-print(shipping_cost(80))   # 0
-```
+## Why bother with functions?
 
-- `def` starts it. `shipping_cost` is its name.
-- `order_total` is a **parameter**: a name for whatever value is passed in.
-- `return` hands the answer back, and ends the function right there.
-- `shipping_cost(20)` **calls** it with 20 as the input.
+You could write every program as one long list of lines. Programmers don't, for four reasons:
+
+- **Reuse.** Write the shipping rules once, and use them from the checkout, the invoice and the order history. Fix a bug in one place, and it's fixed everywhere.
+- **Names explain.** `calculate_tax(order)` tells you what's happening without reading a single line inside it.
+- **Testing.** A function can be checked on its own, with lots of inputs. That's exactly what Groundwork's hidden checks do with yours.
+- **Smaller pieces.** Big programs are hundreds of small functions calling each other. Each one is small enough to understand.
 
 ## return versus print
 
-This is the most common beginner confusion, so it's worth getting firmly:
+This is the most common beginner confusion of all, so it's worth getting completely solid.
+
+```python
+def add_printing(a, b):
+    print(a + b)       # shows 5 on screen, gives back None
+
+def add_returning(a, b):
+    return a + b       # gives back 5
+
+x = add_printing(2, 3)    # the screen shows 5, but x is None
+y = add_returning(2, 3)   # nothing appears, but y is 5, ready to use
+```
+
+Both look like they "work" when you try them. The difference only shows when other code tries to **use** the answer.
 
 | | `print(x)` | `return x` |
 | --- | --- | --- |
 | Who is it for? | A person looking at the screen | The code that called the function |
 | Can other code use the value? | No | Yes |
-| Does the function stop? | No | Yes |
+| Does the function stop there? | No, it carries on | Yes, immediately |
+
+A function that **works something out** should almost always **return** it. Let the code that called it decide whether to print it, store it, or use it in another calculation.
+
+<details>
+<summary>Quick check: `total = add_printing(2, 3)`. What's in `total`?</summary>
+
+`None`. The function printed 5, but never returned anything, so the call gives back None.
+</details>
+
+## How None sneaks in
+
+You know that a function that ends without reaching a `return` gives back `None`. The tricky case is a function that returns **on some paths but not others**:
 
 ```python
-def add_printing(a, b):
-    print(a + b)       # shows 5, gives back None
-
-def add_returning(a, b):
-    return a + b       # gives back 5
-
-x = add_printing(2, 3)    # screen shows 5, but x is None
-y = add_returning(2, 3)   # y is 5, and you can keep using it
+def discount_for(total):
+    if total >= 100:
+        return total * 0.1
+    if total >= 50:
+        total * 0.05        # works it out, then throws it away!
 ```
 
-A function that falls off its end without a `return` gives back **None**. That's often how None sneaks into a program and causes a crash somewhere far away.
+For 150, it returns 15. For 60, the second `if` is True, but that line has no `return`, so the answer is thrown away and the function falls off the end, returning None. For 20, neither `if` matches, and it also returns None.
 
-## Why functions matter for reading code
+The None doesn't cause a problem straight away. It travels on, stored in a variable, until some later line tries to do maths with it:
 
-Real programs are made of hundreds of functions calling each other. Good function names make code readable: `calculate_tax(order)` tells you what's happening without reading inside. When you read unfamiliar code, start with the function names and what they return, and only dig into the inside of the ones you need.
+```text
+TypeError: unsupported operand type(s) for -: 'int' and 'NoneType'
+```
+
+"Unsupported operand types for `-`" means "you can't subtract these two things", and `NoneType` is the type of None. That's the clue: **something is None that shouldn't be**.
+
+### The crash is where it was noticed, not where it started
+
+That error points at the line doing the subtraction, which is perfectly fine. The real mistake is the missing `return`, several lines earlier, in a different function. When a crash makes no sense on its own line, work **backwards**: where did this value come from, and why is it wrong? You'll practice exactly this in the second task.
+
+## Calls inside calls
+
+A function call is a value, so you can pass one call straight into another:
+
+```python
+def double(x):
+    return x * 2
+
+print(double(double(3)))    # 12
+```
+
+Python works from the **inside out**: `double(3)` gives 6, then `double(6)` gives 12, then print shows it.
+
+## Variables inside a function stay inside
+
+A variable created inside a function, like `total` here, only exists while that function runs:
+
+```python
+def add_tax(price):
+    total = price * 1.2
+    return total
+
+add_tax(10)
+print(total)      # NameError: name 'total' is not defined
+```
+
+Outside the function, there's no `total`. That's a good thing: two functions can both use a variable called `total` without interfering. Such variables are called **local** variables. The only way to get a value **out** of a function is to `return` it.
+
+## String tools for the exercise
+
+Three things you'll need in the task, and in plenty of real code:
+
+**A string's letters have positions too.** Like a list, `name[0]` is the first letter, and `name[-1]` the last:
+
+```python
+name = "Ada"
+name[0]     # "A"
+name[-1]    # "a"
+```
+
+**`.upper()` and `.lower()`** give back a copy in capitals or small letters. Like `append` on lists, they're written with a dot after the value:
+
+```python
+"grace".upper()      # "GRACE"
+"grace"[0].upper()   # "G"
+```
+
+**Two decimal places for money.** Inside an f-string's curly brackets, `:.2f` means "show this number with exactly 2 digits after the decimal point":
+
+```python
+amount = 3
+f"${amount:.2f}"     # "$3.00"
+f"${12.5:.2f}"       # "$12.50"
+```
+
+(The `$` there is just a dollar sign in the text.)
+
+## Reading functions in other people's code
+
+When you read unfamiliar code, start with the function names, what goes in, and what comes back. Only dig into the inside of the ones you need. And check that each function does what its name says.
 
 <ConsultantNote>
 A function called `get_user` that also deletes old records, or `calculate_total` that quietly sends an email, is a warning sign in a code review. Functions should do what their name says, and nothing surprising. Spotting names that lie is part of judging code quality.
 </ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **return vs print** | return gives a value back to code. print only shows it to a person. |
+| **NoneType** | The type of None. Seeing it in an error means something is None that shouldn't be. |
+| **Crash vs cause** | Errors show where a problem was noticed. Work backwards to where it started. |
+| **Local variable** | A variable made inside a function. It doesn't exist outside. |
+| **NameError** | Python's error when a name doesn't exist (where it's used) |
+| **`text[0]`** | The first character of a string |
+| **`.upper()` / `.lower()`** | A copy of the text in capitals / small letters |
+| **`:.2f`** | In an f-string, show a number with two decimal places |

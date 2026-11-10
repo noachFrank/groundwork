@@ -46,7 +46,8 @@ If it stops with a message about the internet, reconnect and double-click **star
 - **No internet?** Lessons, quizzes, coding exercises and labs all still work. Anything that needs internet, like a video, says so clearly. Connect later to do those bits.
 - **New lessons:** when you're told new lessons are ready, close Groundwork, connect to the internet, and double-click **update.bat** in the same folder. Your progress is kept.
 - **Back up your progress:** in the app, go to **Settings**, then click **Download a backup**. Keep the file somewhere safe, like a USB stick or your email.
-- **Found a mistake in a lesson?** Click **Report a problem** on that lesson. Your reports are listed in **Settings**, where you can copy them and send them on.
+- **Something unclear in a lesson?** Click **Something unclear or wrong?** on that lesson, any time. At the end of each lesson there's also a short **How clear was this?** box. Fill them in honestly, especially when a lesson used a word it never explained.
+- **Once a week, send your feedback.** Go to **Settings**, then **Send feedback**, and click **Download feedback file**. Send that file to whoever gave you Groundwork (on WhatsApp, attach it as a document). Each file only contains what's new since your last one. Sent something too early? Click **Mark as not sent** on it, change it, and it goes out next time. The **Today** page reminds you when a week has passed.
 
 ## If something goes wrong
 
