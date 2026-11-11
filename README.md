@@ -36,7 +36,7 @@ Three lessons need the internet, and say so: installing Python, installing Git (
 | You want to… | Do this |
 | --- | --- |
 | Get it | Download the ZIP from https://github.com/noachFrank/groundwork (green **Code** button → **Download ZIP**), see [GETTING-STARTED.md](GETTING-STARTED.md) |
-| Start the app | Double-click **start.bat**, or the **Groundwork** shortcut on the Desktop |
+| Start the app | Double-click **start.bat**, or the **Groundwork** shortcut on the Desktop or in the Start menu. To pin it to the taskbar, right-click the shortcut and choose **Pin to taskbar** (on Windows 11, **Show more options** first) |
 | Stop the app | Close the black window |
 | Get new lessons | Close the app, connect to the internet, double-click **update.bat** |
 | Back up progress | In the app, go to **Settings → Download a backup** |
@@ -68,7 +68,7 @@ The app checks for a real connection: the server makes a tiny request, every 20 
 2. **Downloads Node.js** (about 35 MB) into `.runtime\node`, inside this folder. It needs no admin rights, uses only `curl` and `tar`, which come with Windows, resumes broken downloads, and checks the file's fingerprint (SHA-256) before using it.
 3. **Downloads the app's packages** (about 100 MB) with `npm ci`, retrying on slow connections.
 4. **Prepares the lessons** (`vite build`). No internet is needed for this part.
-5. **Creates the database**, adds a **Desktop shortcut**, starts the app, and opens the browser.
+5. **Creates the database**, adds a **Groundwork shortcut** (with its own icon, pinnable to the taskbar) to the Desktop and Start menu, starts the app, and opens the browser.
 
 If the connection drops partway through, double-clicking `start.bat` again picks up where it stopped. On later starts it just compares two fingerprints and launches, with no internet needed.
 

@@ -84,18 +84,37 @@ async function installPackages() {
   });
 }
 
-function makeDesktopShortcut() {
+// Raise this to give everyone the newest kind of shortcut on their next start.
+const SHORTCUT_VERSION = 2;
+
+/**
+ * Adds a "Groundwork" shortcut, with its own icon, to the Desktop and the Start menu.
+ * It runs start.bat through cmd.exe, because Windows won't pin a .bat file to the
+ * taskbar, but will pin this. Made once per shortcut version, so deleting it sticks.
+ */
+export function makeShortcuts() {
   if (process.platform !== 'win32' || process.env.GROUNDWORK_NO_SHORTCUT === '1') return;
+  if (readStamp().shortcut === SHORTCUT_VERSION) return;
   const q = (s) => s.replace(/'/g, "''");
   const script = `
-    $desktop = [Environment]::GetFolderPath('Desktop');
-    $s = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $desktop 'Groundwork.lnk'));
-    $s.TargetPath = '${q(join(ROOT, 'start.bat'))}';
-    $s.WorkingDirectory = '${q(ROOT)}';
-    $s.Description = 'Start Groundwork';
-    $s.Save();`;
+    $shell = New-Object -ComObject WScript.Shell;
+    $places = @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'));
+    foreach ($place in $places) {
+      if (-not $place) { continue }
+      $s = $shell.CreateShortcut((Join-Path $place 'Groundwork.lnk'));
+      $s.TargetPath = (Join-Path $env:SystemRoot 'System32\\cmd.exe');
+      $s.Arguments = '/c "${q(join(ROOT, 'start.bat'))}"';
+      $s.WorkingDirectory = '${q(ROOT)}';
+      $s.IconLocation = '${q(join(ROOT, 'scripts', 'groundwork.ico'))},0';
+      $s.Description = 'Start Groundwork';
+      $s.Save();
+    }`;
   const result = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script], { stdio: 'ignore' });
-  if (result.status === 0) say('Added a "Groundwork" shortcut to your Desktop.');
+  if (result.status === 0) {
+    writeFileSync(STAMP, JSON.stringify({ ...readStamp(), shortcut: SHORTCUT_VERSION }));
+    say('Added a "Groundwork" shortcut to your Desktop and Start menu.');
+    say('To pin it to the taskbar: right-click it, then choose "Pin to taskbar" (on Windows 11, "Show more options" first).');
+  }
 }
 
 /**
@@ -139,7 +158,7 @@ export async function ensureReady() {
     writeFileSync(STAMP, JSON.stringify({ ...readStamp(), builtFrom: source }));
   }
 
-  if (firstRun) makeDesktopShortcut();
+  makeShortcuts();
   return true;
 }
 
