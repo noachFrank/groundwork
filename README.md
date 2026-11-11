@@ -8,23 +8,26 @@ A free personal learning app, running on one computer, that takes a near-complet
 
 ## What's in this version
 
-All of **Stage 1** is written, plus the first module of Stage 2.
+All of **Stage 1** and **Stage 2** are written: 64 lessons.
 
 | | Status |
 | --- | --- |
 | The app: Today page, study plan, reviews, tracking, notes, flags, backups | Done |
 | All 9 exercise types: terminal mission, live lab, Python, JavaScript, SQL, find the flaw, architecture builder, explain it back, consultant case | Done |
-| All 7 visualizations: web request trip, DNS lookup, HTTPS handshake, CORS decision, polling vs. WebSockets, Git branches, SQL join | Done |
+| 16 visualizations: web request trip, DNS lookup, HTTPS handshake, CORS decision, polling vs. WebSockets, Git branches, SQL join, TCP handshake, reverse proxy, load balancer, CDN cache, OAuth, webhooks, message queue, pub/sub, API gateway | Done |
 | Study plan generator and test-out quiz | Done |
 | Prerequisites at the top of every lesson (needed or helpful, done or not, with links), never locking anything | Done |
 | Weekly feedback: "How clear was this?" after each lesson, notes at any time, and a feedback file the learner sends you | Done |
 | The beginner rule: every idea a lesson uses is taught first, checked automatically (see [content/STYLE.md](content/STYLE.md)) | Done |
-| **Stage 1, Learning with AI** (3 lessons): AI as a tutor, when AI is confidently wrong, asking good questions | Done |
+| **Stage 1, Learning with AI** (4 lessons): AI as a tutor, when AI is confidently wrong, asking good questions, studying with AI (quizzes, explaining back, the stuck rule) | Done |
 | **Stage 1, How computers run software** (10 lessons): files and paths, the terminal, Bash, code and the programs that run it, processes and ports, environment variables and PATH, settings files (JSON, YAML, .env), packages and lockfiles, npm run dev, installing Python | Done |
 | **Stage 1, Git and GitHub** (7 lessons): first commits, .gitignore and history, branches, conflicts, push/pull/pull requests, undoing mistakes, and the milestone: publishing a page with GitHub Pages | Done |
 | **Stage 1, Reading code** (13 lessons): Python values, first functions, decisions, loops, functions in depth, data, tracebacks, debugging and scripts, then JavaScript basics, array methods, Node and async, and reading unfamiliar code | Done |
 | **Stage 2, How a web request really works** (8 lessons: the request trip, IPs and ports, DNS, HTTP, HTTPS, APIs and JSON, CORS, live updates) | Done |
-| Every other topic in Stages 2–4 | Shown in the plan as "not written yet", delivered later through `update.bat` |
+| **Stage 2, Networks in the real world** (9 lessons): your own network and troubleshooting, TCP and UDP, domains and email records, cookies and sessions, HTTP/2, HTTP/3 and caching, proxies, load balancers, CDNs, firewalls and VPNs | Done |
+| **Stage 2, APIs in depth** (8 lessons): REST design, errors, API keys and tokens, OAuth, pagination and rate limits, versions and OpenAPI docs, GraphQL, gRPC and choosing a style | Done |
+| **Stage 2, Connecting services** (5 lessons): webhooks, message queues, pub/sub and event-driven design, API gateways, and the milestone: two services with live updates | Done |
+| Every topic in Stages 3–4 | Shown in the plan as "not written yet", delivered later through `update.bat` |
 
 Three lessons need the internet, and say so: installing Python, installing Git (the first Git lesson), and the GitHub Pages milestone. When offline, Today skips them and suggests the next lesson that works offline. The terminal lessons use the copy of Node that came with Groundwork, so learners can run real JavaScript and npm without installing anything.
 
@@ -122,6 +125,7 @@ npm start              # the production build at http://localhost:4310
 npm test               # progress, scheduling, plan, API, labs, security
 npm run check-content  # validates every lesson and runs every exercise's solution and wrong answer
 npm run check-content -- --links   # also confirms videos and doc links still exist (needs internet)
+npm run check-content -- --alt-ports   # checks against a private copy of the lab, even while an older Groundwork is running
 npm run e2e            # drives a real browser through every lesson (start the app first)
 npm run typecheck
 npm run feedback-report  # summarizes the feedback files in feedback/ (see below)

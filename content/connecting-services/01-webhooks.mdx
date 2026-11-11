@@ -1,0 +1,402 @@
+---
+id: webhooks
+title: "Webhooks: don't call us, we'll call you"
+order: 1
+topic: software-talking
+minutes: 60
+summary: How services tell each other the moment something happens, by sending an HTTP request to an address you give them. Covers answering fast, coping with retries and duplicates, and checking a signature so nobody can fake one. You'll receive real webhooks on your own computer.
+connectivity: offline
+prerequisites:
+  - id: grpc-and-choosing
+    need: essential
+    why: Finishes the APIs module. Webhooks were the "between companies" choice there.
+  - id: npm-run-dev
+    need: essential
+    why: You'll run your own small Node server again, in two windows.
+  - id: javascript-in-node
+    need: essential
+    why: The receiver uses require and Node's fs module.
+revision: 1
+teaches: [webhook, webhook-endpoint, event-payload, respond-fast, webhook-retries, dedupe-by-event-id, hmac-signature, signing-secret, node-http-server, str-encode, tunnel-tool]
+uses: [polling, client-asks-first, api, http, http-method, http-header, json, request-response, status-families, idempotent, server-program, port, localhost, listen-address, nodejs, node-require, fs-module, console-log, arrow-function, ctrl-c, curl, terminal, powershell, practice-folder, set-content-lines, path-variable, secret, env-for-secrets, import-module, json-loads, function, return-statement, list, append, in-operator, if-statement, dict-key-access, run-and-check]
+predict:
+  id: p1
+  type: mcq
+  prompt: Your shop wants to know the moment a customer's payment succeeds at the payment company. What's the usual way?
+  options:
+    - Ask the payment company's API "any news?" every second
+    - Give the payment company an address on your server, and it sends you an HTTP request when a payment succeeds
+    - Check your email
+    - Wait for the customer to tell you
+  answer: 1
+  why: That's a webhook. Instead of you polling them, they call you, once, at the moment it happens. Payment companies, GitHub, shops and most SaaS tools send webhooks.
+tasks:
+  - id: receive-webhook
+    type: terminal
+    title: Receive real webhooks
+    instructions: |
+      You'll write a tiny webhook receiver in Node, run it, and get Groundwork's practice API to send it real, signed webhooks. You'll need **two** PowerShell windows, as in *What "npm run dev" actually does*.
+
+      The receiver's code is explained line by line in the Learn section, under "A receiver in ten lines". Groundwork must be running. Nothing here needs the internet.
+    steps:
+      - text: In the first window, go to your practice folder and make a folder for this lesson.
+        command: cd $HOME\Groundwork-Practice; mkdir webhook-lesson; cd webhook-lesson
+      - text: Put Groundwork's Node on PATH for this window.
+        command: $env:PATH = "{{nodeDir}};" + $env:PATH
+      - text: Write the receiver. Each quoted piece becomes one line of receiver.js.
+        command: Set-Content receiver.js 'const http = require("http");', 'const fs = require("fs");', '', 'http.createServer((req, res) => {', '  let body = "";', '  req.on("data", (chunk) => { body += chunk; });', '  req.on("end", () => {', '    const signature = req.headers["x-groundwork-signature"];', '    fs.appendFileSync("received.txt", signature + " " + body + "\n");', '    console.log("Webhook arrived:", body);', '    res.end("thanks");', '  });', '}).listen(4398, "127.0.0.1", () => console.log("Waiting for webhooks on http://localhost:4398/hook"));'
+      - text: Start it. The window says "Waiting for webhooks" and stays busy. Leave it running.
+        command: node receiver.js
+      - text: "In a **second** PowerShell window, go to the same folder."
+        command: cd $HOME\Groundwork-Practice\webhook-lesson
+      - text: Ask the practice API to send a test webhook to your receiver. Watch the first window when you press Enter.
+        command: curl.exe -s -o trigger.txt -d "url=http://localhost:4398/hook" http://localhost:4314/webhooks/test; Get-Content trigger.txt
+      - text: Now pretend your server was slow, so the sender retried. `repeat=2` sends the same event twice. Look at received.txt and spot the two identical event ids.
+        command: curl.exe -s -o trigger-twice.txt -d "url=http://localhost:4398/hook&repeat=2" http://localhost:4314/webhooks/test; Get-Content received.txt
+      - text: Go back to the first window and press **Ctrl+C** to stop the receiver.
+    checks:
+      - path: webhook-lesson/receiver.js
+        contains: "4398"
+        hint: Run the `Set-Content receiver.js ...` step in the webhook-lesson folder. Copy the whole line.
+      - path: webhook-lesson/trigger.txt
+        contains: event_id
+        hint: Start the receiver with `node receiver.js` in one window first, then run the first curl step in a second window.
+      - path: webhook-lesson/received.txt
+        contains: order.created
+        hint: The receiver writes this file when a webhook arrives. Is it running, in the webhook-lesson folder?
+      - path: webhook-lesson/received.txt
+        contains: sha256=
+        hint: Each line should start with the signature header. Check the receiver.js step was copied exactly.
+      - path: webhook-lesson/trigger-twice.txt
+        contains: '"sent":2'
+        hint: Run the `repeat=2` step while the receiver is still running.
+  - id: verify-webhook
+    type: python
+    title: Check the signature and skip repeats
+    instructions: |
+      You'll use: `hmac` and `hashlib` from this lesson, `.encode()`, `json.loads` (from *Python: dictionaries and real data*), and a list with `in`.
+
+      This is what your webhook handler must do before trusting anything. The sender signs each body with the secret `whsec_practice`, and the signature header looks like `sha256=` followed by the HMAC in hex.
+
+      1. `signature_ok(body, header)` returns `True` only if `header` equals `"sha256=" + ` the HMAC-SHA256 of `body` using `SECRET`, compared with `hmac.compare_digest`.
+      2. `handle(body, header, seen)` returns:
+         - `"rejected"` if the signature isn't OK,
+         - `"duplicate"` if the event's `"id"` is already in the `seen` list,
+         - otherwise it adds the id to `seen` and returns `"processed"`.
+    starter: |
+      import hashlib
+      import hmac
+      import json
+
+      SECRET = "whsec_practice"
+
+
+      def signature_ok(body, header):
+          # expected = "sha256=" + hmac.new(SECRET.encode(), body.encode(), hashlib.sha256).hexdigest()
+          # return hmac.compare_digest(expected, header)
+          pass
+
+
+      def handle(body, header, seen):
+          # 1. Bad signature? "rejected"
+          # 2. json.loads(body)["id"] already in seen? "duplicate"
+          # 3. Otherwise add it to seen, and return "processed"
+          pass
+
+
+      seen = []
+      body = '{"id": "evt_0001", "type": "order.created"}'
+      good = "sha256=" + hmac.new(SECRET.encode(), body.encode(), hashlib.sha256).hexdigest()
+      print(handle(body, good, seen))
+      print(handle(body, good, seen))
+      print(handle(body, "sha256=forged", seen))
+    tests:
+      - name: a correct signature is accepted
+        code: |
+          body = '{"id": "evt_1", "type": "order.created"}'
+          sig = "sha256=" + hmac.new(b"whsec_practice", body.encode(), hashlib.sha256).hexdigest()
+          assert signature_ok(body, sig) is True, "This signature was made with the right secret, so it should be accepted."
+      - name: a forged signature is refused
+        code: |
+          body = '{"id": "evt_1", "type": "order.created"}'
+          assert signature_ok(body, "sha256=0000") is False, "A made-up signature must be refused."
+      - name: a changed body is refused
+        code: |
+          body = '{"id": "evt_1", "type": "order.created", "total": 35}'
+          sig = "sha256=" + hmac.new(b"whsec_practice", body.encode(), hashlib.sha256).hexdigest()
+          tampered = body.replace("35", "3500")
+          assert signature_ok(tampered, sig) is False, "Someone changed the body, so the signature no longer matches."
+      - name: handle processes a new event, then spots the repeat
+        code: |
+          seen = []
+          body = '{"id": "evt_42", "type": "order.created"}'
+          sig = "sha256=" + hmac.new(b"whsec_practice", body.encode(), hashlib.sha256).hexdigest()
+          assert handle(body, sig, seen) == "processed", "The first delivery should be processed."
+          assert seen == ["evt_42"], f"Add the event id to seen. seen is {seen}."
+          assert handle(body, sig, seen) == "duplicate", "The same event id again is a duplicate (a retry)."
+      - name: handle rejects before anything else
+        code: |
+          seen = []
+          body = '{"id": "evt_43", "type": "order.created"}'
+          assert handle(body, "sha256=forged", seen) == "rejected", "Check the signature first."
+          assert seen == [], "A rejected event must not be recorded."
+    solution: |
+      import hashlib
+      import hmac
+      import json
+
+      SECRET = "whsec_practice"
+
+
+      def signature_ok(body, header):
+          expected = "sha256=" + hmac.new(SECRET.encode(), body.encode(), hashlib.sha256).hexdigest()
+          return hmac.compare_digest(expected, header)
+
+
+      def handle(body, header, seen):
+          if not signature_ok(body, header):
+              return "rejected"
+          event_id = json.loads(body)["id"]
+          if event_id in seen:
+              return "duplicate"
+          seen.append(event_id)
+          return "processed"
+    wrong: |
+      import hashlib
+      import hmac
+      import json
+
+      SECRET = "whsec_practice"
+
+
+      def signature_ok(body, header):
+          return header.startswith("sha256=")
+
+
+      def handle(body, header, seen):
+          if not signature_ok(body, header):
+              return "rejected"
+          return "processed"
+recall:
+  - id: r1
+    type: mcq
+    prompt: How is a webhook different from polling?
+    options:
+      - With a webhook, the other service sends you a request when something happens. With polling, you keep asking
+      - They're the same
+      - Webhooks only work in browsers
+      - Polling is always faster
+    answer: 0
+    why: Webhooks get around HTTP's "client asks first" rule by making the other service the client. You run a small server, and they call it.
+  - id: r2
+    type: mcq
+    prompt: Why should a webhook handler answer 200 quickly and do slow work afterwards?
+    options:
+      - If it's slow, the sender may give up, count it as a failure and send it again, causing duplicates
+      - Because 200 is the only valid answer
+      - To save electricity
+      - It shouldn't answer at all
+    answer: 0
+    why: Senders wait only a few seconds. Save the event, answer 2xx, then do the slow work, often by putting it on a queue (next lesson).
+  - id: r3
+    type: short
+    prompt: Each webhook event has an id. What should your handler do with it to cope with retries?
+    accept: ['dup', 'repeat', 'seen', 'already', 'skip', 'ignore', 'idempot', 'remember', 'store', 'record']
+    answerText: Remember the ids it has handled, and skip any event it has already seen
+  - id: r4
+    type: self
+    prompt: Why must a webhook handler check the signature before trusting the request?
+    modelAnswer: The webhook address is public, so anyone could send a fake "payment succeeded" request to it. The signature is made from the body with a secret only the sender and you know. If it matches, the request really came from the sender, and nobody changed the body on the way.
+cards:
+  - id: webhook
+    front: What is a webhook?
+    back: An HTTP request (usually a POST with JSON) that a service sends to an address you registered, when something happens.
+  - id: rules
+    front: The four rules for a webhook handler?
+    back: Check the signature, answer 2xx fast, skip duplicate event ids, and do slow work afterwards (often on a queue).
+  - id: hmac
+    front: How does webhook signing work?
+    back: The sender computes an HMAC of the body with a shared secret and puts it in a header. You compute the same with your copy of the secret. A match proves who sent it and that it wasn't changed.
+  - id: local
+    front: How do you test webhooks on your laptop from a real service?
+    back: Use a tunnel tool (like ngrok or the provider's own CLI) that gives your local server a temporary public address. Or, like here, a local practice sender.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: A payment webhook arrives twice for the same payment. What went wrong?
+    options:
+      - Probably nothing. Senders retry when they don't get a quick 2xx, so handlers must skip duplicates by event id
+      - The customer paid twice
+      - The signature is wrong
+      - DNS is broken
+    answer: 0
+    why: At-least-once delivery is normal for webhooks. The handler is responsible for not acting twice.
+  - id: t2
+    type: mcq
+    prompt: Where should the webhook signing secret be kept?
+    options:
+      - In an environment variable on your server
+      - In the frontend JavaScript
+      - In the webhook URL
+      - In a public Git repository
+    answer: 0
+    why: It's a secret like any other. Anyone who has it can forge webhooks.
+docs:
+  - title: "GitHub Docs: About webhooks"
+    url: https://docs.github.com/en/webhooks/about-webhooks
+  - title: "GitHub Docs: Validating webhook deliveries"
+    url: https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries
+  - title: "Python: hmac module"
+    url: https://docs.python.org/3/library/hmac.html
+  - title: "Node.js: http.createServer"
+    url: https://nodejs.org/api/http.html#httpcreateserveroptions-requestlistener
+videos: []
+---
+
+## In this lesson
+
+This module is about separate programs working together. It starts with the simplest way for one service to tell another that something happened:
+
+- What a **webhook** is, and why it beats polling between services.
+- What arrives: the **endpoint**, the **event payload** and its headers.
+- The rules for a good handler: **answer fast**, cope with **retries and duplicates**, and **check the signature**.
+- How **HMAC** signing works, in Python.
+- A webhook receiver of your own, in Node, receiving real webhooks.
+
+## Turning polling around
+
+In *Live updates* you saw HTTP's rule: the client asks, then the server answers. A server can't start a conversation with a browser. But a server **can** start a conversation with **another server**, because a server can send requests too.
+
+That's a **webhook**. Instead of your shop asking the payment company "has it been paid yet?" every few seconds, you give the payment company an address on **your** server. When a payment succeeds, **it** sends **you** an HTTP request. One request, at exactly the right moment, and nothing wasted.
+
+Step through it:
+
+<Viz name="webhook-flow" />
+
+Stripe, PayPal, GitHub, Shopify, Twilio, Slack and most online services send webhooks. "Does it support webhooks?" is a standard question when evaluating a vendor.
+
+## What arrives
+
+You register a **webhook endpoint**: an address on your server, like `https://shop.example/webhooks/payments`. When something happens, the sender POSTs to it:
+
+```text
+POST /webhooks/payments HTTP/1.1
+Content-Type: application/json
+X-Signature: sha256=8f2b6c…
+
+{"id": "evt_0042", "type": "payment.succeeded", "created": "2026-11-11T14:03:00Z",
+ "data": {"order_id": 501, "amount": 3500}}
+```
+
+The JSON body is the **event payload**. Most senders include:
+
+- an **`id`** for the event, unique and never reused,
+- a **`type`**, like `payment.succeeded` or `order.created`, so one endpoint can handle many kinds,
+- **when** it happened, and the **data** itself.
+
+The practice API's test webhook looks just like this, with its signature in an `X-Groundwork-Signature` header.
+
+## Rule 1: answer fast
+
+The sender waits a few seconds for your answer. Any **2xx** status means "got it". Anything else, or no answer in time, counts as a **failure**.
+
+So a handler should do the minimum: check the signature, **save** the event somewhere safe, answer `200`, and do any slow work, like sending emails or generating invoices, **afterwards**. The next lesson, on message queues, is the usual way to do "afterwards".
+
+## Rule 2: expect retries, and skip duplicates
+
+When a delivery fails, senders **retry**, often for hours or days, with longer gaps each time. That's good: a brief outage on your side doesn't lose events. But it has a consequence. If your server **did** get the event but answered too slowly, the sender counts it as a failure and sends it **again**. The same event can arrive twice, or more.
+
+So your handler must cope with **duplicates**. The standard way: **remember the ids of events you've handled, and skip any id you've already seen**. A repeated "payment succeeded" must never ship an order twice. This is the "idempotent" idea from *Designing REST APIs*, applied to your own handler: processing an event twice should have the same effect as processing it once.
+
+In the terminal task you'll send the same event twice on purpose, and see two identical ids arrive.
+
+<details>
+<summary>Quick check: your handler answered 200 after 40 seconds. What will probably happen?</summary>
+
+The sender gave up waiting long before, counted it as a failure, and will send the same event again. Your handler needs to skip it as a duplicate.
+</details>
+
+## Rule 3: check the signature
+
+Your webhook endpoint is a **public address**. Anyone can send a POST to it, including someone sending a fake `payment.succeeded` to get free goods. How do you know a request really came from the payment company?
+
+When you set up the webhook, the sender gives you a **signing secret** that only the two of you know. For each delivery, the sender computes an **HMAC** of the body using that secret. An HMAC is a short fingerprint that can only be produced by someone who has the secret, and that changes completely if even one character of the body changes. It's sent in a header.
+
+Your handler computes the same HMAC with **its** copy of the secret and compares them:
+
+- **They match**: the request came from someone with the secret, and the body wasn't changed on the way.
+- **They don't**: refuse it, with a `401`, and don't act on it.
+
+In Python, the standard library does the work:
+
+```python
+import hashlib
+import hmac
+
+SECRET = "whsec_practice"   # in real code: from an environment variable
+
+expected = "sha256=" + hmac.new(SECRET.encode(), body.encode(), hashlib.sha256).hexdigest()
+ok = hmac.compare_digest(expected, header)
+```
+
+- **`hmac.new(key, message, hashlib.sha256)`** computes the HMAC with the SHA-256 method. `.hexdigest()` gives it as text, in hexadecimal (digits and the letters a to f).
+- **`.encode()`** turns text into **bytes**, the raw form that cryptography functions work on. `"abc".encode()` gives `b"abc"`.
+- **`hmac.compare_digest(a, b)`** compares two values in a way that takes the same time whether they differ early or late, so an attacker can't guess the signature one character at a time by measuring. Use it instead of `==` for secrets.
+
+The signing secret is a **secret** like any other: keep it in an environment variable, never in code or Git.
+
+## A receiver in ten lines
+
+In the terminal task you'll write this webhook receiver, using only Node's built-in **`http`** module, as in *What "npm run dev" actually does*:
+
+```javascript
+const http = require("http");
+const fs = require("fs");
+
+http.createServer((req, res) => {
+  let body = "";
+  req.on("data", (chunk) => { body += chunk; });
+  req.on("end", () => {
+    const signature = req.headers["x-groundwork-signature"];
+    fs.appendFileSync("received.txt", signature + " " + body + "\n");
+    console.log("Webhook arrived:", body);
+    res.end("thanks");
+  });
+}).listen(4398, "127.0.0.1", () => console.log("Waiting for webhooks on http://localhost:4398/hook"));
+```
+
+Line by line:
+
+- `require("http")` and `require("fs")` load Node's built-in modules for servers and files.
+- **`http.createServer((req, res) => { … })`** makes a server. The arrow function runs for **every** request that arrives, with the request (`req`) and the response you'll send (`res`).
+- A request's body can arrive in pieces. `req.on("data", …)` runs for each piece, and adds it to `body`. `req.on("end", …)` runs once it has all arrived.
+- `req.headers["x-groundwork-signature"]` reads a header. Node gives header names in lowercase.
+- `fs.appendFileSync` adds a line to `received.txt` (creating it the first time), so you have a record.
+- `res.end("thanks")` sends the answer. With no status set, it's `200 OK`.
+- `.listen(4398, "127.0.0.1", …)` starts listening on port 4398, on this computer only, and prints a message once it's ready.
+
+This receiver records everything without checking signatures, which is fine for seeing what arrives. The Python task adds the checks a real one needs.
+
+## Testing webhooks from real services
+
+A real service on the internet can't reach `localhost` on your laptop. To test with one, developers use a **tunnel tool**, like ngrok, Cloudflare Tunnel or a provider's own command-line tool, which gives your local server a temporary public address and forwards requests to it. Here, Groundwork's practice API plays the sender on your own computer, so no tunnel is needed.
+
+<ConsultantNote>
+Webhook handlers are among the most common sources of quiet, expensive bugs: duplicate orders from retries, missed events from slow handlers, and forged "payment succeeded" requests to endpoints that never check signatures. Reviewing one is quick. Does it verify the signature, answer fast, skip duplicate ids, and alert someone when deliveries fail? Those four questions are worth asking about every integration a client has.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Webhook** | An HTTP request a service sends to your address when something happens |
+| **Webhook endpoint** | The address on your server that receives them |
+| **Event payload** | The JSON body: id, type, time and data |
+| **Answer fast** | Save the event, answer 2xx, do slow work afterwards |
+| **Webhook retries** | Senders try again when they don't get a quick 2xx |
+| **Skipping duplicates** | Remember handled event ids, and skip repeats |
+| **HMAC signature** | A fingerprint of the body made with a shared secret |
+| **Signing secret** | The secret the sender and you share, for signatures |
+| **http.createServer** | Node's built-in way to make a server |
+| **`.encode()`** | Turns text into bytes |
+| **Tunnel tool** | Gives a local server a temporary public address, for testing |

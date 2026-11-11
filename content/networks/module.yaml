@@ -1,0 +1,5 @@
+id: networks
+title: Networks in the real world
+summary: What sits between your laptop and a website once you look closer. Covers your own home network and how to troubleshoot it, TCP and UDP, domains and email records, cookies and logins, faster HTTP and caching, proxies, load balancers, CDNs, firewalls and VPNs. Each one is something clients pay to have explained.
+stage: stage-2
+order: 2

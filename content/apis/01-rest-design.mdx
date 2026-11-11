@@ -1,0 +1,394 @@
+---
+id: rest-design
+title: "Designing REST APIs: resources, methods and queries"
+order: 1
+topic: software-talking
+minutes: 60
+summary: How a well-designed REST API is laid out. Covers nouns in the address, methods for actions, PUT versus PATCH, filtering with query strings, and why some methods are safe to repeat. You'll create, change and delete real orders.
+connectivity: offline
+prerequisites:
+  - id: apis
+    need: essential
+    why: Introduces REST, requests.get and API keys.
+  - id: http
+    need: essential
+    why: Methods, status codes and headers.
+  - id: firewalls-and-vpns
+    need: helpful
+    why: Finishes the networks module, which comes before this one.
+revision: 1
+teaches: [resource, collection, crud, put-vs-patch, safe-methods, idempotent, query-string, requests-params, location-header, nested-resources, status-201-204]
+uses: [api, rest, http, http-method, url-path, http-header, status-code, status-families, response-body, json, json-object, api-key-header, requests-intro, requests-get, status-code-attr, response-json-py, keyword-arguments, import-module, function, return-statement, dictionary, dict-key-access, list, for-loop, build-list-pattern, f-string, type-conversion, run-and-check, api-docs]
+predict:
+  id: p1
+  type: mcq
+  prompt: An API has the address `GET /orders/102/delete`, which deletes order 102. What's wrong with it?
+  options:
+    - Nothing, it's clear
+    - GET is meant to be safe, only reading. Link previews, browsers and crawlers send GET requests freely, so they could delete orders by accident
+    - It should be POST /deleteOrder?id=102
+    - Addresses can't contain numbers
+  answer: 1
+  why: In REST, the address names the thing (/orders/102) and the method says what to do (DELETE). GET must never change anything, because all sorts of software sends GET requests without asking anyone.
+tasks:
+  - id: rest-crud
+    type: python
+    title: Create, change and delete an order
+    instructions: |
+      You'll use: `requests.post`, `.patch`, `.delete`, `json=`, `headers=` and `params=`, all from this lesson, plus `.json()` and `.status_code` from *APIs and JSON*.
+
+      The practice API on your computer needs the header `X-API-Key: practice-key` for anything that changes data. Orders 101 to 103 are read-only, so other lessons keep working. Create your own orders and change those.
+
+      1. `create_order(customer, item, total)` creates an order and returns its new **id**.
+      2. `ship(order_id)` changes just its status to `"shipped"` and returns the response's **status code**.
+      3. `shipped_items(customer)` asks the API for only that customer's shipped orders (with `params=`, not by filtering in Python) and returns a list of their `item` names.
+      4. `cancel(order_id)` deletes the order and returns the status code.
+    starter: |
+      import requests
+
+      BASE = "http://localhost:4314"
+      KEY = {"X-API-Key": "practice-key"}
+
+
+      def create_order(customer, item, total):
+          # POST to BASE + "/orders" with json={...} and headers=KEY. Return the new order's "id".
+          pass
+
+
+      def ship(order_id):
+          # PATCH BASE + "/orders/" + the id, sending only {"status": "shipped"}.
+          pass
+
+
+      def shipped_items(customer):
+          # GET BASE + "/orders" with params={"customer": ..., "status": "shipped"}.
+          # Return a list of the "item" of each order in the answer.
+          pass
+
+
+      def cancel(order_id):
+          # DELETE BASE + "/orders/" + the id.
+          pass
+
+
+      new_id = create_order("Lin", "Desk lamp", 35)
+      print("created", new_id)
+      print("ship:", ship(new_id))
+      print("Lin's shipped items:", shipped_items("Lin"))
+      print("cancel:", cancel(new_id))
+    tests:
+      - name: create_order returns the new id
+        code: |
+          import random
+          name = "Tester" + str(random.randint(10000, 99999))
+          new_id = create_order(name, "Notebook", 4)
+          assert isinstance(new_id, int), f"Return the order's id, a number. Got {new_id!r}. Check the X-API-Key header."
+          check = requests.get(BASE + "/orders/" + str(new_id)).json()
+          assert check["customer"] == name and check["item"] == "Notebook", f"The order saved as {check}."
+      - name: ship changes the status
+        code: |
+          import random
+          new_id = create_order("Tester" + str(random.randint(10000, 99999)), "Stapler", 9)
+          code = ship(new_id)
+          assert code == 200, f"Expected 200 OK, got {code}. Use requests.patch with headers=KEY."
+          assert requests.get(BASE + "/orders/" + str(new_id)).json()["status"] == "shipped", "The order's status should now be shipped."
+      - name: ship can't change a read-only order
+        code: |
+          code = ship(101)
+          assert code == 403, f"Order 101 is read-only, so the API should answer 403 Forbidden. Got {code}."
+      - name: shipped_items asks the API to filter
+        code: |
+          import random
+          name = "Tester" + str(random.randint(10000, 99999))
+          a = create_order(name, "Pen", 2)
+          create_order(name, "Ruler", 3)
+          ship(a)
+          got = shipped_items(name)
+          assert got == ["Pen"], f"Only the Pen was shipped, so expected ['Pen'], got {got!r}."
+          assert "Keyboard" in shipped_items("Ada"), "Ada's Keyboard (order 101) is shipped, so it should be in her list."
+      - name: cancel deletes the order
+        code: |
+          import random
+          new_id = create_order("Tester" + str(random.randint(10000, 99999)), "Tape", 1)
+          code = cancel(new_id)
+          assert code == 204, f"A successful DELETE answers 204 No Content. Got {code}."
+          assert requests.get(BASE + "/orders/" + str(new_id)).status_code == 404, "After deleting, the order should be gone (404)."
+    solution: |
+      import requests
+
+      BASE = "http://localhost:4314"
+      KEY = {"X-API-Key": "practice-key"}
+
+
+      def create_order(customer, item, total):
+          response = requests.post(BASE + "/orders", json={"customer": customer, "item": item, "total": total}, headers=KEY)
+          return response.json()["id"]
+
+
+      def ship(order_id):
+          response = requests.patch(BASE + "/orders/" + str(order_id), json={"status": "shipped"}, headers=KEY)
+          return response.status_code
+
+
+      def shipped_items(customer):
+          response = requests.get(BASE + "/orders", params={"customer": customer, "status": "shipped"})
+          items = []
+          for order in response.json():
+              items.append(order["item"])
+          return items
+
+
+      def cancel(order_id):
+          return requests.delete(BASE + "/orders/" + str(order_id), headers=KEY).status_code
+    wrong: |
+      import requests
+
+      BASE = "http://localhost:4314"
+      KEY = {"X-API-Key": "practice-key"}
+
+
+      def create_order(customer, item, total):
+          response = requests.post(BASE + "/orders", json={"customer": customer, "item": item, "total": total}, headers=KEY)
+          return response.json()["id"]
+
+
+      def ship(order_id):
+          response = requests.put(BASE + "/orders/" + str(order_id), json={"status": "shipped"}, headers=KEY)
+          return response.status_code
+
+
+      def shipped_items(customer):
+          items = []
+          for order in requests.get(BASE + "/orders").json():
+              if order["customer"] == customer:
+                  items.append(order["item"])
+          return items
+
+
+      def cancel(order_id):
+          return requests.delete(BASE + "/orders/" + str(order_id)).status_code
+  - id: api-review
+    type: flaw
+    title: Review an API design
+    language: text
+    instructions: |
+      A client's developer sketched these addresses for a new orders API and asks for your review. Several are unusual, but one is actually dangerous. Which?
+    code: |
+      GET     /getOrders
+      GET     /orders/102
+      POST    /orders
+      GET     /orders/102/delete
+      PATCH   /orders/102
+      GET     /customers/1/orders
+      GET     /orders?status=shipped&sort=newest
+    flawLines: [4]
+    lineNotes:
+      "1": Unusual. In REST the method already says "get", so this would normally be GET /orders. It's untidy, but it doesn't break anything.
+      "2": Exactly right. A path naming one resource, read with GET.
+      "3": Right. POST to the collection creates a new order.
+      "5": Right. PATCH changes part of an order.
+      "6": Fine. A nested path for one customer's orders reads naturally.
+      "7": Fine. Query strings are the usual way to filter and sort a list.
+    explanation: |
+      `GET /orders/102/delete` **changes data with a GET**. GET is meant to be **safe**: it only reads. So browsers prefetch links, chat apps fetch link previews, search engines crawl, and caches may repeat GET requests whenever they like. Any of them could delete order 102 without anyone clicking anything.
+
+      The REST way is `DELETE /orders/102`: the address names the thing, and the method says what to do. Line 1 is untidy for a related reason (it puts a verb in the address), but it's only reading, so it's harmless.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What's the difference between PUT and PATCH?
+    options:
+      - PUT replaces the whole resource with what you send. PATCH changes only the fields you send
+      - PUT creates, PATCH deletes
+      - They're identical
+      - PATCH is only for passwords
+    answer: 0
+    why: Send PUT with only a status and, in a strict API, you'd wipe the other fields (or get a 400, as the practice API gives). PATCH {"status":"shipped"} touches only the status.
+  - id: r2
+    type: mcq
+    prompt: Which methods are idempotent, so sending the same request twice has the same effect as once?
+    options:
+      - GET, PUT and DELETE
+      - Only POST
+      - POST and PATCH
+      - None of them
+    answer: 0
+    why: Deleting order 102 twice leaves it deleted. Putting the same data twice leaves the same data. POST usually creates a second order, so it isn't idempotent.
+  - id: r3
+    type: short
+    prompt: In `/orders?status=shipped&customer=Ada`, what is the part after the `?` called?
+    accept: ['query']
+    answerText: The query string
+  - id: r4
+    type: self
+    prompt: Explain the REST rule of thumb for designing addresses, with an example.
+    modelAnswer: The address names a thing (a noun), and the HTTP method says what to do with it. For example, /orders is the collection of orders, /orders/102 is one order, GET reads, POST to the collection creates, PATCH or PUT changes, and DELETE removes. There are no verbs like /getOrders or /deleteOrder in the address.
+cards:
+  - id: crud
+    front: Map create, read, update and delete to REST requests on orders.
+    back: "Create: POST /orders. Read: GET /orders or GET /orders/102. Update: PATCH (or PUT) /orders/102. Delete: DELETE /orders/102."
+  - id: safe
+    front: What does it mean that GET is "safe"?
+    back: It only reads and never changes anything, so browsers, caches and crawlers can send it freely. Never make a GET that changes data.
+  - id: idempotent
+    front: What does idempotent mean?
+    back: Doing it twice has the same effect as doing it once. GET, PUT and DELETE are. POST usually isn't, because a second POST creates a second thing.
+  - id: created
+    front: What do 201 and 204 mean, and what's the Location header?
+    back: "201 Created: a new resource was made, and Location says its address, like /orders/104. 204 No Content: it worked, and there's nothing to send back, typical after a DELETE."
+testOut:
+  - id: t1
+    type: mcq
+    prompt: How would you ask a REST API for only customer 7's unpaid invoices?
+    options:
+      - GET /customers/7/invoices?status=unpaid
+      - POST /getUnpaidInvoicesForCustomer7
+      - DELETE /invoices?paid=true
+      - GET /invoices/unpaid/7/get
+    answer: 0
+    why: A nested path for "this customer's invoices", and a query string to filter.
+  - id: t2
+    type: mcq
+    prompt: 'In Python, what does `requests.get(url, params={"status": "shipped"})` do?'
+    options:
+      - Adds ?status=shipped to the address, with any special characters made safe
+      - Sends status in the body
+      - Sends a header called params
+      - Nothing
+    answer: 0
+    why: params builds the query string for you, so you don't have to glue text together by hand.
+docs:
+  - title: "MDN: HTTP request methods"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods
+  - title: "MDN: Idempotent"
+    url: https://developer.mozilla.org/en-US/docs/Glossary/Idempotent
+  - title: "Requests: Passing parameters in URLs"
+    url: https://requests.readthedocs.io/en/latest/user/quickstart/#passing-parameters-in-urls
+videos: []
+---
+
+## In this lesson
+
+In *APIs and JSON* you met REST and called an API to read orders. This module goes deeper into APIs, starting with how a good one is **designed**. That matters even if you never build one, because you'll judge them, and a well-designed API is easier and safer to use:
+
+- **Resources** and **collections**: nouns in the address.
+- The four everyday actions (**CRUD**) and their methods, including **PUT versus PATCH**.
+- **Query strings** for filtering, and **nested** addresses.
+- **Safe** and **idempotent** methods: which requests can be repeated without harm.
+- **201**, **204** and the **Location** header.
+
+## Nouns in the address, verbs in the method
+
+REST's central idea fits in one sentence: **the address names a thing, and the method says what to do with it.**
+
+- A **resource** is one thing the API knows about: order 102, customer 7, invoice 5501. Its address is like `/orders/102`.
+- A **collection** is the set of all things of one kind: `/orders`. It's usually plural.
+
+The methods do the rest. Almost everything an app does to data is one of four actions, called **CRUD** (create, read, update, delete):
+
+| Action | Request | Typical answer |
+| --- | --- | --- |
+| **Create** an order | `POST /orders` with the details as JSON | `201 Created`, with the new order |
+| **Read** all orders | `GET /orders` | `200 OK`, with a list |
+| **Read** one order | `GET /orders/102` | `200 OK`, or `404 Not Found` |
+| **Update** part of an order | `PATCH /orders/102` with the changed fields | `200 OK`, with the updated order |
+| **Replace** a whole order | `PUT /orders/102` with every field | `200 OK` |
+| **Delete** an order | `DELETE /orders/102` | `204 No Content` |
+
+So there's no `/getOrders`, `/createOrder` or `/deleteOrder`. Once you know an API is RESTful and has orders, you can almost guess its addresses.
+
+## PUT versus PATCH
+
+Both change an existing resource, but differently:
+
+- **PUT** means "**replace** it with exactly this". You send the **whole** resource. Anything you leave out could be wiped.
+- **PATCH** means "**change** just these fields". `PATCH /orders/104` with `{"status": "shipped"}` changes the status and leaves everything else alone.
+
+Many APIs use PATCH for everyday edits because it's harder to get wrong. Groundwork's practice API refuses a PUT that's missing fields, with a 400 explaining why. The task's `ship()` needs PATCH.
+
+<details>
+<summary>Quick check: you want to change only an order's status. PUT or PATCH?</summary>
+
+PATCH, sending only the status. PUT would replace the whole order with what you send.
+</details>
+
+## 201, 204 and Location
+
+Two success codes you'll see constantly in REST APIs:
+
+- **201 Created** answers a POST that made something. A good API also sends a **Location** header with the new resource's address, like `Location: /orders/104`, and usually the new resource in the body, including its new `id`.
+- **204 No Content** means "done, and there's nothing to send back". It's typical after a DELETE. There's no body, so don't call `.json()` on it.
+
+## Filtering with query strings
+
+A list can be huge, so APIs let you ask for just part of it with a **query string**: everything after a `?` in the address, as `name=value` pairs joined by `&`:
+
+```text
+GET /orders?customer=Ada&status=shipped
+```
+
+It's the standard way to **filter**, **search** and **sort**. Asking the API to filter is much better than downloading everything and filtering in your own code, because the server does the work and sends far less.
+
+In Python, `requests` builds the query string for you with **`params=`**:
+
+```python
+requests.get(BASE + "/orders", params={"customer": "Ada", "status": "shipped"})
+```
+
+It turns the dictionary into `?customer=Ada&status=shipped`, and safely encodes any spaces or symbols, which is easy to get wrong when gluing text together yourself.
+
+### Nested addresses
+
+When one thing belongs to another, a **nested** address can read naturally: `/customers/7/orders` means "customer 7's orders". It's the same as `/orders?customer_id=7`, and both styles are common. Keep nesting to one level, because `/customers/7/orders/102/items/3/notes` gets unwieldy fast.
+
+## Safe and idempotent: can I send it again?
+
+Networks fail. A request times out, and you don't know whether it arrived. Can you just send it again? That depends on the method, and REST gives two promises:
+
+- **Safe** methods only **read**. GET is safe. It must never change anything, which is why browsers, caches, link previews and search engines send GET requests freely.
+- **Idempotent** methods have the **same effect whether you send them once or five times**. GET, PUT and DELETE are idempotent: deleting order 102 twice still leaves it deleted (the second attempt probably answers 404, but nothing extra happens). **POST is not**: sending "create an order" twice usually creates **two** orders.
+
+| Method | Safe? | Idempotent? |
+| --- | --- | --- |
+| GET | Yes | Yes |
+| PUT | No | Yes |
+| DELETE | No | Yes |
+| PATCH | No | Usually not guaranteed |
+| POST | No | No |
+
+That's why the API review task's `GET /orders/102/delete` is dangerous, and why retrying a POST needs care. Stage 4 covers how payment APIs make POST safe to retry.
+
+## Sending changes from Python
+
+The `requests` methods match the HTTP methods:
+
+```python
+KEY = {"X-API-Key": "practice-key"}
+
+requests.post(BASE + "/orders", json={"customer": "Lin", "item": "Desk lamp", "total": 35}, headers=KEY)
+requests.patch(BASE + "/orders/104", json={"status": "shipped"}, headers=KEY)
+requests.delete(BASE + "/orders/104", headers=KEY)
+```
+
+- **`json=`** turns a Python dictionary into a JSON body and sets the `Content-Type: application/json` header for you.
+- **`headers=`** adds headers, here the API key. The practice API answers 401 without it.
+
+<ConsultantNote>
+When you evaluate a vendor's API for a client, design quality is a real signal. Consistent nouns, correct methods, proper status codes and filtering on the server usually mean a careful team and fewer surprises. Verbs in addresses, GETs that change data, and "200 OK" with an error message inside usually mean a long, expensive integration. Say so early, before the client commits.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Resource** | One thing an API knows about, like /orders/102 |
+| **Collection** | All things of one kind, like /orders |
+| **CRUD** | Create, read, update, delete: POST, GET, PATCH/PUT, DELETE |
+| **PUT vs. PATCH** | Replace the whole resource / change only the fields sent |
+| **Safe method** | Only reads, never changes anything (GET) |
+| **Idempotent** | Same effect whether sent once or many times (GET, PUT, DELETE) |
+| **Query string** | The `?name=value&…` part of an address, for filtering and sorting |
+| **`params=`** | Makes requests build the query string for you |
+| **Location header** | Where a newly created resource lives |
+| **Nested address** | /customers/7/orders: things that belong to another thing |
+| **201 / 204** | Created / done, with nothing to send back |

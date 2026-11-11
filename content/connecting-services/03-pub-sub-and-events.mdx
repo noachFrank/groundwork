@@ -1,0 +1,367 @@
+---
+id: pub-sub-and-events
+title: "Publish and subscribe: event-driven design"
+order: 3
+topic: software-talking
+minutes: 55
+summary: How one event can reach many services that don't know about each other. Covers topics and subscribers, events versus commands, loose coupling, and the honest costs of eventual consistency and harder debugging.
+connectivity: offline
+prerequisites:
+  - id: message-queues
+    need: essential
+    why: Pub/sub builds directly on queues.
+  - id: javascript-arrays
+    need: essential
+    why: The task uses arrays, objects and find().
+  - id: webhooks
+    need: helpful
+    why: Webhooks are events sent between companies.
+revision: 1
+teaches: [pub-sub, topic, subscriber, fan-out, event-vs-command, loose-coupling, eventual-consistency, event-driven-architecture, event-log-kafka, event-tracing-cost]
+uses: [nullish-coalescing, message-queue, producer-consumer, worker, at-least-once, dedupe-by-event-id, webhook, event-payload, service, api, database, architecture-diagram, js-function, const-let, js-object, js-dot-access, js-array, for-of, find-method, arrow-function, triple-equals, js-logic-operators, js-null-undefined, run-and-check]
+predict:
+  id: p1
+  type: mcq
+  prompt: When an order is placed, four other services need to know (email, stock, analytics, loyalty points). Next month a fifth will be added. Which design means the order service never has to change?
+  options:
+    - The order service calls each of the four services' APIs in turn
+    - The order service announces "an order was placed" once, and any service that cares listens for that announcement
+    - Each service checks the orders database every second
+    - Staff email each team about every order
+  answer: 1
+  why: That's publish/subscribe. The order service doesn't know or care who's listening, so adding the fifth service means adding a listener, not changing the order service.
+tasks:
+  - id: tiny-broker
+    type: javascript
+    title: Build a tiny publish/subscribe broker
+    instructions: |
+      You'll use: objects with square-bracket keys, arrays, `.push()` and `.find()` (from *JavaScript: arrays, objects and arrow functions*).
+
+      The broker is an object like `{ topics: {} }`. `broker.topics["order.placed"]` holds an array of subscribers, each `{ name: "email", inbox: [] }`.
+
+      1. `subscribe(broker, topic, name)` adds a subscriber with an empty inbox to that topic. If the topic has no array yet, create one. If a subscriber with that name is already on the topic, don't add it twice.
+      2. `publish(broker, topic, event)` pushes the event into **every** subscriber's inbox on that topic, and returns how many subscribers received it (0 if none).
+      3. `inbox(broker, topic, name)` returns that subscriber's inbox array, or an empty array if there's no such subscriber.
+    starter: |
+      function subscribe(broker, topic, name) {
+        // if (!broker.topics[topic]) { broker.topics[topic] = []; }
+        // Use .find() to check the name isn't already there, then .push() a new subscriber.
+      }
+
+      function publish(broker, topic, event) {
+        // Loop over broker.topics[topic] (it may not exist!) and push the event into each inbox.
+        return 0;
+      }
+
+      function inbox(broker, topic, name) {
+        return [];
+      }
+
+      const broker = { topics: {} };
+      subscribe(broker, "order.placed", "email");
+      subscribe(broker, "order.placed", "stock");
+      console.log(publish(broker, "order.placed", { id: 501 }));
+      console.log(inbox(broker, "order.placed", "stock"));
+    tests:
+      - name: every subscriber gets a copy
+        code: |
+          const b = { topics: {} };
+          subscribe(b, "order.placed", "email");
+          subscribe(b, "order.placed", "stock");
+          const count = publish(b, "order.placed", { id: 501 });
+          assert(count === 2, "Two subscribers should receive it, got " + count);
+          assert(inbox(b, "order.placed", "email").length === 1 && inbox(b, "order.placed", "stock")[0].id === 501, "Both inboxes should hold the event.");
+      - name: topics are separate
+        code: |
+          const b = { topics: {} };
+          subscribe(b, "order.placed", "email");
+          subscribe(b, "order.refunded", "accounts");
+          publish(b, "order.placed", { id: 1 });
+          assert(inbox(b, "order.refunded", "accounts").length === 0, "A subscriber to order.refunded shouldn't get order.placed events.");
+      - name: publishing to a topic nobody follows is fine
+        code: |
+          const b = { topics: {} };
+          assert(publish(b, "nobody.cares", { id: 1 }) === 0, "No subscribers means 0, not an error.");
+      - name: a subscriber added later only gets later events
+        code: |
+          const b = { topics: {} };
+          subscribe(b, "order.placed", "email");
+          publish(b, "order.placed", { id: 1 });
+          subscribe(b, "order.placed", "loyalty");
+          publish(b, "order.placed", { id: 2 });
+          const got = inbox(b, "order.placed", "loyalty");
+          assert(got.length === 1 && got[0].id === 2, "loyalty subscribed after event 1, so it should only have event 2.");
+          assert(inbox(b, "order.placed", "email").length === 2, "email has been there all along, so it has both.");
+      - name: subscribing twice doesn't double up
+        code: |
+          const b = { topics: {} };
+          subscribe(b, "order.placed", "email");
+          subscribe(b, "order.placed", "email");
+          assert(publish(b, "order.placed", { id: 1 }) === 1, "The same name twice should still be one subscriber.");
+      - name: an unknown subscriber has an empty inbox
+        code: |
+          const b = { topics: {} };
+          const got = inbox(b, "order.placed", "nobody");
+          assert(Array.isArray(got) && got.length === 0, "Return an empty array for an unknown subscriber.");
+    solution: |
+      function subscribe(broker, topic, name) {
+        if (!broker.topics[topic]) {
+          broker.topics[topic] = [];
+        }
+        const existing = broker.topics[topic].find((s) => s.name === name);
+        if (!existing) {
+          broker.topics[topic].push({ name: name, inbox: [] });
+        }
+      }
+
+      function publish(broker, topic, event) {
+        const subscribers = broker.topics[topic];
+        if (!subscribers) {
+          return 0;
+        }
+        for (const subscriber of subscribers) {
+          subscriber.inbox.push(event);
+        }
+        return subscribers.length;
+      }
+
+      function inbox(broker, topic, name) {
+        const subscribers = broker.topics[topic] ?? [];
+        const found = subscribers.find((s) => s.name === name);
+        if (!found) {
+          return [];
+        }
+        return found.inbox;
+      }
+    wrong: |
+      function subscribe(broker, topic, name) {
+        if (!broker.topics[topic]) {
+          broker.topics[topic] = [];
+        }
+        broker.topics[topic].push({ name: name, inbox: [] });
+      }
+
+      function publish(broker, topic, event) {
+        const subscribers = broker.topics[topic];
+        subscribers[0].inbox.push(event);
+        return 1;
+      }
+
+      function inbox(broker, topic, name) {
+        return broker.topics[topic].find((s) => s.name === name).inbox;
+      }
+  - id: events-design
+    type: architecture
+    title: Design what happens when an order is placed
+    instructions: Place each part, and leave out anything that breaks the requirements.
+    scenario: |
+      An outdoor-gear shop wants several things to happen whenever an order is placed: a confirmation email, a stock update, a sale recorded in analytics, and loyalty points added. Requirements: a slow or broken analytics service must never stop orders from being placed; new reactions (like a "thank you" text message) will be added later without touching the order service; and no event may be lost if a service is down for a few minutes.
+    parts:
+      - id: orders
+        label: Order service
+        hint: Saves the order, then publishes "order.placed"
+      - id: topic
+        label: The "order.placed" topic
+        hint: Delivers a copy of each event to every subscriber
+      - id: email
+        label: Email service
+        hint: Subscribes, and sends the confirmation
+      - id: stock
+        label: Stock service
+        hint: Subscribes, and reduces stock
+      - id: analytics
+        label: Analytics service
+        hint: Subscribes, and records the sale
+      - id: chain
+        label: Order service calls email, then stock, then analytics, then loyalty, one by one
+        hint: Each call must succeed before the order is confirmed
+    zones:
+      - id: publishers
+        label: Publishes events
+        hint: Says what happened, without knowing who listens
+      - id: broker
+        label: Event broker
+        hint: Holds events and fans them out, waiting for slow subscribers
+      - id: subscribers
+        label: Subscribers
+        hint: Each reacts independently, at its own pace
+    checklist:
+      - text: The order service announces each order once
+        all: [{ part: orders, zone: publishers }]
+      - text: A broker fans each event out and holds it for slow subscribers
+        all: [{ part: topic, zone: broker }]
+      - text: Email, stock and analytics each react independently
+        all: [{ part: email, zone: subscribers }, { part: stock, zone: subscribers }, { part: analytics, zone: subscribers }]
+      - text: Don't make placing an order depend on every other service working
+        none: [chain]
+    model:
+      placements:
+        orders: publishers
+        topic: broker
+        email: subscribers
+        stock: subscribers
+        analytics: subscribers
+      explanation: |
+        The order service saves the order and publishes one "order.placed" event. The topic gives each subscriber its own copy, and holds it until that subscriber is ready, so a broken analytics service just catches up later, and orders keep flowing.
+
+        Adding the text-message reaction means adding one new subscriber. The order service doesn't change. The cost: for a moment, an order exists before stock is reduced (eventual consistency), and tracing one order means looking at several services' logs.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What's the difference between a queue and a pub/sub topic?
+    options:
+      - On a queue, each message goes to one worker. On a topic, every subscriber gets its own copy
+      - They're the same
+      - Topics are slower
+      - Queues can only hold one message
+    answer: 0
+    why: Queues share work out. Topics broadcast news. Many systems combine them, with a topic feeding a queue per subscriber.
+  - id: r2
+    type: mcq
+    prompt: Which is an event rather than a command?
+    options: ['"OrderPlaced"', '"SendReceiptEmail"', '"ReduceStock"', '"ChargeCard"']
+    answer: 0
+    why: An event says what happened, in the past tense, and anyone may react. A command tells one specific service to do something.
+  - id: r3
+    type: short
+    prompt: What's it called when the parts of a system briefly disagree but catch up a moment later, like stock not yet reduced for a new order?
+    accept: ['eventual']
+    answerText: Eventual consistency
+  - id: r4
+    type: self
+    prompt: Name one benefit and one cost of event-driven design.
+    modelAnswer: "Benefit: loose coupling. The publisher doesn't know its subscribers, so new reactions can be added without changing it, and a slow subscriber doesn't hold up the others. Cost: it's harder to follow what happens. One order touches several services at different moments, so debugging needs good logging and tracing, and the parts are only eventually consistent."
+cards:
+  - id: pubsub
+    front: Publish/subscribe in one sentence?
+    back: A publisher sends an event to a topic, and every service subscribed to that topic gets its own copy. The publisher doesn't know who's listening.
+  - id: event-command
+    front: Event vs. command?
+    back: "Event: \"OrderPlaced\", something that happened, which anyone may react to. Command: \"SendEmail\", an instruction to one specific service."
+  - id: coupling
+    front: What does loose coupling buy you?
+    back: Services can change, be added or fail without the others needing to change or stop. The cost is that the overall flow is harder to see.
+  - id: kafka
+    front: What's special about Kafka?
+    back: It keeps events in a long-lived, ordered log, so subscribers can read at their own pace and even replay old events, for example to rebuild data or add a new service.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Which of these is an event-streaming product?
+    options: [Kafka, nginx, Git, npm]
+    answer: 0
+    why: Kafka is the best-known. Amazon SNS and EventBridge, Azure Event Grid and Google Cloud Pub/Sub are other common choices.
+  - id: t2
+    type: mcq
+    prompt: A subscriber is down for ten minutes. In a good pub/sub setup, what happens to the events it missed?
+    options:
+      - They wait for it, and it catches up when it comes back
+      - They're lost
+      - The publisher stops
+      - Every other subscriber stops too
+    answer: 0
+    why: Durable subscriptions (often a queue per subscriber) hold events until the subscriber is ready.
+docs:
+  - title: "AWS: What is pub/sub messaging?"
+    url: https://aws.amazon.com/what-is/pub-sub-messaging/
+  - title: "Microsoft Learn: Event-driven architecture style"
+    url: https://learn.microsoft.com/en-us/azure/architecture/guide/architecture-styles/event-driven
+  - title: "Apache Kafka: Introduction"
+    url: https://kafka.apache.org/intro
+videos: []
+---
+
+## In this lesson
+
+A queue shares work out: each message goes to **one** worker. Often, though, one thing that happens matters to **many** parts of a system. This lesson covers how that's done:
+
+- **Publish/subscribe**: **topics**, **subscribers** and **fan-out**.
+- **Events versus commands**.
+- **Loose coupling**: why it's the big win.
+- **Eventual consistency** and harder debugging: the costs.
+- **Event-driven architecture**, and **Kafka**'s replayable log.
+
+## One event, many listeners
+
+Picture the order service from the Predict question. After saving an order, it could call the email service, then the stock service, then analytics, then loyalty points, one after another. That works, but:
+
+- If analytics is slow, every order waits for it.
+- If loyalty is down, does the order fail?
+- Adding a fifth reaction means changing, testing and redeploying the order service, for something it doesn't care about.
+
+**Publish/subscribe** ("pub/sub") turns it around. The order service **publishes** one **event**, "order.placed", to a **topic**: a named channel. Any service that cares has **subscribed** to that topic, and each gets **its own copy**. Step through it:
+
+<Viz name="pub-sub" />
+
+Sending one event to many subscribers is called **fan-out**. The order service doesn't know who's listening, and doesn't wait for any of them.
+
+<details>
+<summary>Quick check: how is a topic different from the queues in the last lesson?</summary>
+
+On a queue, each message goes to one worker, which shares out the work. On a topic, every subscriber gets its own copy, which spreads the news.
+</details>
+
+## Events and commands
+
+There are two kinds of message, and the difference shapes a whole design:
+
+| | Event | Command |
+| --- | --- | --- |
+| Example | `OrderPlaced`, `PaymentFailed` | `SendReceiptEmail`, `ReduceStock` |
+| Says | **What happened**, in the past tense | **What to do** |
+| Sent to | Anyone who's interested | One specific service |
+| The sender | Doesn't care who reacts | Expects it to get done |
+
+Pub/sub carries events. Queues often carry commands. Naming events in the past tense ("order **placed**", not "place order") keeps the difference clear, and it's a useful habit when reading or designing systems. Webhooks, from earlier in this module, are events sent between companies.
+
+## Loose coupling: the big win
+
+When the publisher doesn't know its subscribers, the parts are **loosely coupled**: each can change without the others changing.
+
+- **Add a reaction** (a "thank you" text message): add a subscriber. The order service is untouched.
+- **A subscriber fails**: the others carry on, and in a good setup, its events **wait** until it's back (often each subscriber has its own queue fed by the topic). It catches up.
+- **Different teams** can own different subscribers and release them independently.
+
+A design built mainly around services publishing and reacting to events like this is called **event-driven architecture**.
+
+## The costs: be honest about them
+
+Event-driven design isn't free, and consultants earn their keep by naming the costs:
+
+- **Eventual consistency.** For a moment after an order is placed, the order exists but stock hasn't been reduced and the email hasn't gone. The parts **agree eventually**, not instantly. Usually that's fine, but not always. If two customers buy the last tent in the same second, something must decide who gets it.
+- **Harder to follow.** With direct calls, you can read one function to see what happens. With events, one order sets off reactions in several services at different moments. Debugging means good logs, a shared id carried through every event, and tracing tools. You'll meet those in Stage 3's lessons on seeing inside production.
+- **Duplicates.** Like queues and webhooks, pub/sub is usually at-least-once, so every subscriber must cope with seeing an event twice.
+
+A useful rule: use events where **many** parts react to one thing, or where a slow part must never hold up an important one. Don't turn every simple function call into an event.
+
+## Kafka: events as a log
+
+Most brokers deliver an event and then forget it. **Apache Kafka** is different: it keeps every event in a long-lived, ordered **log**, for days or forever. Each subscriber keeps its own place in the log and reads at its own pace. That makes things possible that ordinary pub/sub can't do:
+
+- **Replay**: a new service can read the whole history of events and build its data from scratch.
+- **Recovery**: after a bug, rewind and process events again.
+
+Kafka is powerful and widely used at large companies, and it's also a serious system to run. Managed services include Amazon MSK and Confluent. For smaller needs, simpler managed pub/sub services are common: Amazon SNS and EventBridge, Azure Event Grid and Service Bus topics, and Google Cloud Pub/Sub.
+
+## The task: a tiny broker
+
+In the JavaScript task you'll build the heart of a broker: topics, each with a list of subscribers, and each subscriber with its own **inbox** of events. You'll see fan-out, separate topics, and why a subscriber that joins late only sees events from then on, which is exactly why Kafka's replayable log is valuable.
+
+<ConsultantNote>
+"Should we go event-driven?" comes up in many architecture conversations, often because it sounds modern. Good answers are specific: which events, which subscribers, what happens when one is down, how a duplicate is handled, and how someone will trace a single order through the system at 2am. If those questions don't have answers yet, a few direct API calls might be the better design for now.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Publish/subscribe** | Publishers send events to topics, and every subscriber gets a copy |
+| **Topic** | A named channel for one kind of event |
+| **Subscriber** | A service that receives every event on a topic |
+| **Fan-out** | One event delivered to many subscribers |
+| **Event vs. command** | "This happened" for anyone / "do this" for one service |
+| **Loose coupling** | Parts that can change or fail without the others changing |
+| **Eventual consistency** | The parts agree a moment later, not instantly |
+| **Event-driven architecture** | A design built around services publishing and reacting to events |
+| **Kafka** | An event system that keeps a replayable, ordered log |
+| **Tracing cost** | Following one action through many services needs good logs and shared ids |

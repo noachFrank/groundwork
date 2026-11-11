@@ -1,0 +1,319 @@
+---
+id: studying-with-ai
+title: "Studying with AI: quizzes, explaining back, and knowing when you're stuck"
+order: 4
+topic: learning-with-ai
+minutes: 45
+summary: Turn an AI assistant into a study partner that tests you, finds the holes in your understanding, and explains things a different way, plus what to do when you've been stuck too long.
+connectivity: offline
+prerequisites:
+  - id: ai-as-a-tutor
+    need: essential
+    why: Introduces the tutor routine that this lesson builds on.
+  - id: when-ai-is-wrong
+    need: essential
+    why: You'll check AI's explanations against the lesson, because AI can be wrong.
+  - id: asking-good-questions
+    need: helpful
+    why: Good questions make every technique here work better.
+revision: 1
+teaches: [retrieval-practice, ai-quiz-prompt, explain-back, interleaving, another-angle, learning-log, stuck-rule]
+uses: [ai-assistant, prompt, tutor-not-ghostwriter, learning-loop, ai-hallucination, official-docs, good-question]
+predict:
+  id: p1
+  type: mcq
+  prompt: You've just finished a lesson. Which way of spending the next ten minutes will help you remember it best next week?
+  options:
+    - Read the lesson again, slowly
+    - Highlight the most important sentences
+    - Close the lesson and answer questions about it from memory
+    - Ask an AI to write a summary of it for you
+  answer: 2
+  why: Pulling an idea out of your memory is what strengthens it. Re-reading and highlighting feel productive, but they mostly build recognition, not recall. A summary someone else wrote is even further from the work your brain needs to do.
+tasks:
+  - id: study-choices
+    type: case
+    title: How would you study this?
+    instructions: Each question is a real study moment. Pick what helps the learner most.
+    scenario: |
+      Priya is working through Groundwork in the evenings. She has finished the lessons on files and folders and is about to start on the terminal. She uses an AI assistant, and she wants to make sure what she learns actually sticks.
+    questions:
+      - prompt: Priya has just finished a lesson. What should she ask the AI?
+        choices:
+          - text: '"Summarize this lesson in 5 bullet points."'
+            score: 0
+            why: A summary is something to read, so it builds recognition, not recall. It also does the remembering for her.
+          - text: '"Quiz me on this lesson. One question at a time, wait for my answer, then tell me if I was right and why."'
+            score: 2
+            why: This makes Priya pull the ideas out of memory, which is exactly what makes them stick. One at a time stops the AI from giving away answers.
+          - text: '"Is there anything important I missed?"'
+            score: 1
+            why: Useful, but it's still the AI doing the work. A quiz would show her what she missed, from her own answers.
+      - prompt: A paragraph about relative paths makes no sense to her, even after reading it twice. What now?
+        choices:
+          - text: Skip it and hope it becomes clear later
+            score: 0
+            why: Later lessons build on it, so the confusion grows. One unclear idea is much cheaper to fix now.
+          - text: Paste the paragraph into the AI and ask for a different explanation, with an everyday example, then check it against the lesson
+            score: 2
+            why: A different angle often clicks when the first one didn't. Checking it against the lesson catches the times AI is confidently wrong.
+          - text: Ask the AI to just tell her the answers to the exercises
+            score: 0
+            why: That gets her past the exercise without the understanding, and the next lesson will expose the gap.
+      - prompt: She's been stuck on one exercise for 50 minutes and is getting frustrated. What's the best move?
+        choices:
+          - text: Keep going until she cracks it, however long it takes
+            score: 0
+            why: Some struggle helps, but past a point she's just practicing frustration. Her evening is gone, and she has learned very little.
+          - text: Write down exactly what she tried, ask for a bigger hint, and if that fails, flag the lesson and ask a person
+            score: 2
+            why: Writing it down often reveals the answer by itself. If not, a bigger hint or a human helps. Flagging the lesson also tells whoever wrote it that something needs fixing.
+          - text: Give up on the course
+            score: 0
+            why: Being stuck is a normal part of learning to code, not a sign that you can't do it.
+    passScore: 5
+  - id: quiz-prompt
+    type: explain
+    title: Write your quiz-me prompt
+    instructions: |
+      Write a prompt you'll actually use after each lesson to get an AI to quiz you. Use your own words. You can test it on a real AI assistant afterwards if you like.
+    prompt: |
+      Write a prompt that gets an AI assistant to quiz you on a lesson you've just finished, in a way that really tests your memory.
+    rubric:
+      - Says what topic or lesson to quiz you on, and that you're a beginner
+      - Asks for one question at a time, waiting for your answer before giving the correct one
+      - Asks it to explain why an answer is right or wrong, not just say "correct"
+      - Asks it to go back over the ones you got wrong, or to mix in an older topic
+    minScore: 3
+    modelAnswer: |
+      I'm a beginner and I've just finished a lesson on files, folders and paths. Please quiz me on it.
+
+      Ask me one question at a time and wait for my answer. Don't show me the answer until I've replied. After each answer, tell me if I was right, and explain why in a sentence or two.
+
+      Ask about 6 questions, from easy to harder. At the end, ask me again about any I got wrong, worded differently. Throw in one question about an earlier topic too.
+    gradingPrompt: |
+      I'm a beginner learning to code. This is the prompt I wrote to get an AI assistant to quiz me after each lesson. Please tell me whether it would really test my memory, what's missing, and suggest one improvement. Keep it short.
+
+      My prompt:
+      {{ANSWER}}
+recall:
+  - id: r1
+    type: mcq
+    prompt: Why does answering questions from memory beat re-reading?
+    options:
+      - It's faster
+      - Pulling an idea out of memory strengthens it. Re-reading only makes it feel familiar
+      - Re-reading is bad for your eyes
+      - It doesn't. They're equally good
+    answer: 1
+    why: This is called retrieval practice. The effort of remembering is what makes the memory stronger.
+  - id: r2
+    type: mcq
+    prompt: Why should an AI quiz ask one question at a time?
+    options:
+      - So it doesn't give away the answers before you've tried
+      - Because AI can only ask one question
+      - To save typing
+      - It shouldn't. A list of all the questions is better
+    answer: 0
+    why: If you can see the answers, you'll read them instead of remembering, and that's re-reading in disguise.
+  - id: r3
+    type: self
+    prompt: What is "explaining back", and why does it work?
+    modelAnswer: You explain an idea in your own plain words, as if to someone who doesn't know it, and ask the AI to find gaps or ask follow-up questions. Wherever you get vague or stuck is exactly where your understanding has a hole, so you find out what to study next.
+  - id: r4
+    type: short
+    prompt: When an AI's different explanation of an idea seems to disagree with the lesson, what should you check?
+    accept: ['lesson', 'official', 'doc', 'source']
+    answerText: Check it against the lesson, or the official documentation
+    why: AI can be confidently wrong. The lesson and the official documentation are the sources to trust.
+cards:
+  - id: retrieval
+    front: What's the most effective thing to do right after a lesson?
+    back: Close it and answer questions from memory, for example by getting an AI to quiz you, one question at a time.
+  - id: explain-back
+    front: How do you use AI for "explaining back"?
+    back: Explain the idea in your own words, then ask the AI to point out gaps and ask follow-up questions until you hit something you can't explain.
+  - id: stuck
+    front: You've been stuck for 30 minutes. What do you do?
+    back: Write down exactly what you tried, ask for a bigger hint, and if you're still stuck, flag it and ask a person. Don't just keep grinding.
+  - id: another-angle
+    front: A lesson's explanation doesn't click. How can AI help?
+    back: Ask for a different explanation, such as an everyday example or a simpler version, then check it against the lesson in case the AI is wrong.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Which prompt makes the best study partner?
+    options:
+      - '"Summarize what I learned today."'
+      - '"Quiz me on today''s lesson, one question at a time. Wait for my answer, then explain if I''m right."'
+      - '"Write me notes I can memorize."'
+      - '"Tell me everything about this topic."'
+    answer: 1
+    why: It makes you retrieve the ideas from memory, and it doesn't hand you the answers first.
+  - id: t2
+    type: mcq
+    prompt: Why mix questions about older topics into a quiz?
+    options:
+      - It makes the quiz longer
+      - Older topics fade if you never revisit them, and mixing makes you work out which idea applies
+      - AI forgets older topics
+      - It doesn't help
+    answer: 1
+    why: Mixing topics, called interleaving, keeps older knowledge alive and trains you to choose the right idea, which is what real problems ask of you.
+docs:
+  - title: "Anthropic: Prompt engineering overview"
+    url: https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview
+  - title: "The Learning Scientists: evidence-based study strategies"
+    url: https://www.learningscientists.org/
+videos: []
+---
+
+## In this lesson
+
+The first lesson gave you the routine for when you're stuck: try it yourself, ask for a hint, finish it yourself, explain it back. This lesson is about everything **around** that: how to make what you learn actually stay in your head, using an AI assistant as a study partner.
+
+You'll learn:
+
+- Why answering questions from memory beats re-reading, and how to get an AI to quiz you properly.
+- **Explaining back**: the fastest way to find the holes in your own understanding.
+- How to ask for a **different explanation** when a lesson doesn't click, and why you still check it.
+- Keeping a short **learning log**.
+- What to do when you've been stuck **too long**.
+
+## Remembering is a workout
+
+Think about the last time you read something, nodded along, and then couldn't remember it a week later. That's normal. Reading puts ideas in front of you, but it doesn't make you **use** them.
+
+What does work is pulling an idea **out** of your memory: answering a question with the lesson closed. It feels harder than re-reading, and that's the point. Every time you dig an idea out of memory, it gets easier to find the next time, a bit like a path through grass that gets clearer each time someone walks it. This is called **retrieval practice**, and it's one of the best-proven ways to learn anything.
+
+You've already been doing it. Groundwork's **Recall** step, where you answer from memory with no notes, is retrieval practice. So are the review cards that come back days later. An AI assistant lets you do more of it, on anything, whenever you want.
+
+<details>
+<summary>Quick check: re-reading a lesson or answering questions about it with the lesson closed. Which builds memory better?</summary>
+
+Answering with the lesson closed. Re-reading makes ideas feel familiar, but pulling them out of memory is what makes them stick.
+</details>
+
+## Getting an AI to quiz you properly
+
+Asking "quiz me on DNS" usually gets you a list of ten questions with the answers right underneath. That's re-reading with extra steps: your eyes slide to the answer before your brain has done any work.
+
+A good quiz prompt sets a few rules:
+
+```text
+I'm a beginner and I've just finished a lesson on files and folders.
+Quiz me on it. Ask ONE question at a time and wait for my answer.
+Don't show the answer until I've replied. Then tell me if I was
+right and explain why in a sentence or two. Start easy, get harder.
+At the end, ask me again about the ones I got wrong, worded differently.
+```
+
+Each line has a job:
+
+- **"I'm a beginner … a lesson on files and folders"** keeps the questions at the right level and on the right topic. You can paste in the lesson's "Words in this lesson" table to keep it focused.
+- **"One question at a time … don't show the answer"** forces you to remember instead of recognize.
+- **"Explain why"** turns a wrong answer into a mini-lesson, not just a red cross.
+- **"Ask again … worded differently"** makes sure you understood the idea, not just memorized one sentence.
+
+### Mix in older topics
+
+Add one more line: *"Also include one question about something I learned last week, like the terminal."* Ideas you never revisit fade. Mixing topics also makes you work out **which** idea a question needs, which is exactly what real problems ask of you. Mixing topics like this is called **interleaving**.
+
+<Callout title="Answer for real">
+Type your actual answer, even if you're unsure. "I think it's something about the folder above?" is a perfectly good answer. A guess that's wrong, then corrected, sticks better than no guess at all. That's also why every Groundwork lesson starts with Predict.
+</Callout>
+
+## Explaining back
+
+Here's a test of whether you really understand something: can you explain it in plain words to someone who's never heard of it? Wherever you get vague, wave your hands or say "it just sort of works", there's a hole in your understanding.
+
+AI is a great audience for this, because it can push back. Try:
+
+```text
+I'm going to explain what a file path is, in my own words, as if to a
+friend who doesn't use computers much. Then point out anything I got
+wrong or left vague, and ask me two follow-up questions that test
+whether I really understand it.
+```
+
+Then write your explanation **without looking at the lesson**. The follow-up questions are the valuable part: they find the edge of what you know. When you hit a question you can't answer, you've found exactly what to go back and re-read. This is **explaining back**.
+
+Some Groundwork lessons have an "Explain it to a client" task that works the same way: you write an explanation, score it against a checklist, and you can paste it into an AI for feedback. Being able to explain technical ideas simply is a big part of a consultant's job, so this is practice for the work itself, not just for learning.
+
+<details>
+<summary>Quick check: when you're explaining back, which part shows you what to study next?</summary>
+
+The places where you get vague or stuck, and the follow-up questions you can't answer. That's where the gaps are.
+</details>
+
+## When a lesson doesn't click: ask for another angle
+
+Sometimes you read an explanation twice and it still doesn't land. That's not a sign you can't learn this. Often the explanation just isn't the right one **for you**. A different example, a different comparison or a simpler version can make it click.
+
+AI is very good at this:
+
+```text
+I'm learning about relative paths. This paragraph from my course doesn't
+make sense to me: [paste the paragraph]. Can you explain the same idea
+a different way, with an everyday example? Keep it short.
+```
+
+Other useful versions:
+
+- *"Explain it as if I'm 12."*
+- *"Give me three different examples, from simple to realistic."*
+- *"What's the most common misunderstanding about this?"*
+
+Asking for a fresh explanation like this is getting **another angle**.
+
+<Callout kind="warn" title="Then check it against the lesson">
+A different explanation is still an AI answer, and AI can be confidently wrong. Read the lesson again after the new explanation. If they seem to disagree, trust the lesson or the official documentation, not the AI, and maybe flag the lesson so it can be improved.
+</Callout>
+
+## Keep a learning log
+
+A **learning log** is a few lines you write after each study session, in your own words. Nothing fancy:
+
+```text
+Tue: Relative paths. ".." means the folder above. Finally get it:
+it's like directions from where you're standing, not a full address.
+Still unsure: when do I need the full path instead?
+```
+
+It takes two minutes and does three jobs:
+
+1. Writing it is itself retrieval practice.
+2. The "still unsure" line tells you, or your AI tutor, exactly what to ask next time.
+3. Weeks later, you can see how far you've come, which helps a lot on the days it feels slow.
+
+Every Groundwork lesson has a **notes** box, which is a good place for this. You can also paste your log into an AI and ask it to quiz you on everything from the past week.
+
+## Knowing when you're stuck too long
+
+Some struggle is good. It's how you find out where your understanding ends. But past a certain point, struggling stops teaching you anything and just eats your evening.
+
+A simple rule: **if you've made no progress for about 30 minutes, change something.** In order:
+
+1. **Write down exactly what you tried** and what happened. Surprisingly often, the answer appears while you're writing it out.
+2. **Ask your AI tutor for a bigger hint**, pasting in what you wrote.
+3. **Take a break.** A walk really does help. Your brain keeps working on it.
+4. **Ask a person**, and **flag the lesson**. In Groundwork, the "How clear was this?" question and the problem button are there for exactly this. If something is confusing you, it's probably confusing other people too, and the lesson can be fixed.
+
+This **stuck rule** isn't giving up. Professional developers follow it too: they ask a colleague after half an hour, because an hour lost to something a teammate could explain in a minute is a waste.
+
+<ConsultantNote>
+These habits don't stop when the course ends. Consultants constantly learn new tools on the job, often under time pressure: a client uses a system you've never seen, and you need to understand it by Thursday. Quizzing yourself, explaining things back and knowing when to ask for help are how you get up to speed fast, and how you avoid confidently telling a client something you only half understand.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Retrieval practice** | Answering from memory, with nothing to look at, which makes ideas stick |
+| **Quiz-me prompt** | A prompt that makes an AI ask one question at a time and hold the answer back until you've tried |
+| **Interleaving** | Mixing older topics into practice so they don't fade |
+| **Explaining back** | Explaining an idea in your own words and letting the AI find the gaps |
+| **Another angle** | A different explanation or example when the first one doesn't click |
+| **Learning log** | A few lines in your own words after each study session |
+| **The stuck rule** | No progress for about 30 minutes? Write it down, ask for a bigger hint, take a break, ask a person |

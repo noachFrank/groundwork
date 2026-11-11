@@ -1,0 +1,5 @@
+id: connecting-services
+title: Connecting services
+summary: How separate programs work together. Covers webhooks, message queues, publish and subscribe, event-driven design and API gateways. It ends with the Stage 2 milestone, where you connect two services of your own with live updates in the browser.
+stage: stage-2
+order: 4

@@ -1,0 +1,375 @@
+---
+id: proxies
+title: "Proxies and reverse proxies: the middlemen"
+order: 6
+topic: networks-and-the-web
+minutes: 55
+summary: Programs that sit in the middle of a request. Covers the office proxy that breaks npm install, the reverse proxy in front of almost every real website, and how a request keeps track of who really sent it.
+connectivity: offline
+prerequisites:
+  - id: https
+    need: essential
+    why: Certificates and TLS come up when a proxy decrypts traffic.
+  - id: javascript-arrays
+    need: essential
+    why: The task loops over an array of objects in JavaScript.
+  - id: env-and-path
+    need: helpful
+    why: Proxy settings are environment variables.
+revision: 1
+teaches: [proxy, forward-proxy, reverse-proxy, service, tls-termination, x-forwarded-for, nginx, proxy-env-vars, tls-inspection, js-string-methods, js-logic-operators]
+uses: [http, http-header, request-response, server-program, port, localhost, https, tls, certificate, certificate-authority, verify-false, ip-address, private-public-ip, environment-variable, npm-install, pip, frontend, backend, js-function, const-let, for-of, js-object, js-dot-access, js-array, js-null-undefined, triple-equals, template-literal, run-and-check, express-intro]
+predict:
+  id: p1
+  type: mcq
+  prompt: A website runs three separate programs, for the pages, the API and the images, but visitors only ever see one address, https://shop.example. How?
+  options:
+    - The three programs are secretly one program
+    - A program in front receives every request and passes each one to the right program behind it
+    - DNS sends each visitor to a random program
+    - The browser runs all three
+  answer: 1
+  why: That program in front is a reverse proxy. Almost every real website has one, and it's also where HTTPS is usually handled.
+tasks:
+  - id: proxy-routing
+    type: javascript
+    title: Write a reverse proxy's routing rules
+    instructions: |
+      You'll use: a `for...of` loop over an array of objects (from *JavaScript: arrays, objects and arrow functions*), plus `.startsWith()` and `.slice()` from this lesson.
+
+      1. `route(path, routes)` returns the full address to send the request to, or `null` if no rule matches. Rules are checked **in order**, and the **first** one whose `prefix` the path starts with wins. If the rule has `strip: true`, remove the prefix from the path first (and if nothing is left, use `"/"`).
+      2. `forwardedFor(existing, clientIp)` returns the new value of the `X-Forwarded-For` header. If `existing` is empty or `undefined`, it's just `clientIp`. Otherwise add the client's IP to the end: `existing + ", " + clientIp`. In JavaScript, `!existing` is true when `existing` is empty or `undefined`: it's Python's `not`.
+    starter: |
+      const routes = [
+        { prefix: "/api", target: "http://localhost:4000", strip: true },
+        { prefix: "/images/", target: "http://localhost:5000", strip: false },
+        { prefix: "/", target: "http://localhost:3000", strip: false },
+      ];
+
+      function route(path, rules) {
+        // for (const rule of rules) { ... }
+        // if (path.startsWith(rule.prefix)) ...
+        // If rule.strip, the new path is path.slice(rule.prefix.length), or "/" if that's empty.
+        // return rule.target + newPath
+        return null;
+      }
+
+      function forwardedFor(existing, clientIp) {
+        return clientIp;
+      }
+
+      console.log(route("/api/orders", routes));
+      console.log(route("/images/logo.png", routes));
+      console.log(route("/about", routes));
+      console.log(forwardedFor(undefined, "203.0.113.7"));
+    tests:
+      - name: /api is sent to the API with the prefix removed
+        code: |
+          const got = route("/api/orders/102", routes);
+          assert(got === "http://localhost:4000/orders/102", "Expected http://localhost:4000/orders/102, got " + got);
+      - name: /api on its own becomes /
+        code: |
+          const got = route("/api", routes);
+          assert(got === "http://localhost:4000/", "Stripping /api from /api leaves nothing, so use /. Got " + got);
+      - name: images keep their full path
+        code: |
+          const got = route("/images/logo.png", routes);
+          assert(got === "http://localhost:5000/images/logo.png", "Expected http://localhost:5000/images/logo.png, got " + got);
+      - name: everything else goes to the website
+        code: |
+          const got = route("/about", routes);
+          assert(got === "http://localhost:3000/about", "Expected http://localhost:3000/about, got " + got);
+      - name: the first matching rule wins
+        code: |
+          const got = route("/api/x", [{ prefix: "/", target: "http://a", strip: false }, { prefix: "/api", target: "http://b", strip: true }]);
+          assert(got === "http://a/api/x", "Rules are checked in order, so / matches first. Got " + got);
+      - name: no matching rule gives null
+        code: |
+          const got = route("/admin", [{ prefix: "/api", target: "http://b", strip: true }]);
+          assert(got === null, "Nothing matches /admin, so return null. Got " + got);
+      - name: forwardedFor starts the header
+        code: |
+          assert(forwardedFor(undefined, "203.0.113.7") === "203.0.113.7", "With no header yet, it's just the client's IP.");
+          assert(forwardedFor("", "203.0.113.7") === "203.0.113.7", "An empty header counts as no header.");
+      - name: forwardedFor adds to an existing header
+        code: |
+          const got = forwardedFor("198.51.100.4", "10.0.0.2");
+          assert(got === "198.51.100.4, 10.0.0.2", "Add a comma, a space and the new IP. Got " + got);
+    solution: |
+      const routes = [
+        { prefix: "/api", target: "http://localhost:4000", strip: true },
+        { prefix: "/images/", target: "http://localhost:5000", strip: false },
+        { prefix: "/", target: "http://localhost:3000", strip: false },
+      ];
+
+      function route(path, rules) {
+        for (const rule of rules) {
+          if (path.startsWith(rule.prefix)) {
+            let newPath = path;
+            if (rule.strip) {
+              newPath = path.slice(rule.prefix.length);
+              if (newPath === "") {
+                newPath = "/";
+              }
+            }
+            return rule.target + newPath;
+          }
+        }
+        return null;
+      }
+
+      function forwardedFor(existing, clientIp) {
+        if (!existing) {
+          return clientIp;
+        }
+        return existing + ", " + clientIp;
+      }
+    wrong: |
+      const routes = [];
+
+      function route(path, rules) {
+        for (const rule of rules) {
+          if (path.startsWith(rule.prefix)) {
+            return rule.target + path;
+          }
+        }
+        return null;
+      }
+
+      function forwardedFor(existing, clientIp) {
+        return clientIp;
+      }
+  - id: office-proxy
+    type: case
+    title: "\"npm install only fails at the office\""
+    instructions: A classic. Work out what's going on, and choose a safe fix.
+    scenario: |
+      A client's new developer can run `npm install` at home, but at the office it fails every time with "unable to get local issuer certificate". Other staff browse the web normally. The company's IT team says all web traffic "goes through the company proxy, for security".
+    questions:
+      - prompt: What's the most likely cause?
+        choices:
+          - text: The company proxy decrypts and re-encrypts HTTPS traffic using the company's own certificate, which Node doesn't trust, while the office browsers were set up to trust it
+            score: 2
+            why: That's TLS inspection. Browsers on company laptops are configured to trust the company's certificate authority, but Node.js and Python keep their own lists of trusted authorities.
+          - text: npm is down
+            score: 0
+            why: It works from home at the same moment, so npm itself is fine.
+          - text: The developer's laptop is too slow
+            score: 0
+            why: Speed doesn't cause certificate errors.
+      - prompt: An AI assistant suggests `npm config set strict-ssl false`. What do you say?
+        choices:
+          - text: No. That turns off certificate checking, the same mistake as verify=False. Instead, tell Node to also trust the company's certificate
+            score: 2
+            why: Ask IT for the company's root certificate file and point Node at it, for example with the NODE_EXTRA_CA_CERTS environment variable. Checking stays on.
+          - text: Fine, it makes the error go away
+            score: 0
+            why: It also makes every fake certificate acceptable, everywhere, for every package. Silencing the check isn't fixing it.
+          - text: Fine, but only at the office
+            score: 0
+            why: Still unsafe, and these settings tend to stay switched off forever.
+      - prompt: npm still can't connect at all. IT says the proxy is at proxy.corp.example on port 8080. What's the usual next step?
+        choices:
+          - text: Set the HTTPS_PROXY environment variable to http://proxy.corp.example:8080, which npm, pip, curl and many other tools read
+            score: 2
+            why: Command-line tools don't always pick up Windows' proxy settings. HTTPS_PROXY (and HTTP_PROXY) is the standard way to tell them.
+          - text: Edit the hosts file
+            score: 0
+            why: That changes name lookups, not how traffic leaves the building.
+          - text: Ask IT to remove the proxy
+            score: 1
+            why: You can ask, but there's usually a security or legal reason for it. Working with it is the normal answer.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: What's the difference between a forward proxy and a reverse proxy?
+    options:
+      - A forward proxy acts for the users inside a network. A reverse proxy sits in front of servers and acts for them
+      - They're the same thing
+      - A forward proxy is faster
+      - A reverse proxy only works backwards in time
+    answer: 0
+    why: A forward proxy, like an office proxy, sends staff's requests out. A reverse proxy, like nginx in front of an app, receives the public's requests and passes them in.
+  - id: r2
+    type: short
+    prompt: Which request header does a proxy add so the app behind it can see the visitor's real IP address?
+    accept: ['x-forwarded-for', 'forwarded']
+    answerText: X-Forwarded-For
+  - id: r3
+    type: mcq
+    prompt: What does TLS termination at a reverse proxy mean?
+    options:
+      - The proxy handles HTTPS, decrypting requests, so the apps behind it don't need certificates
+      - The proxy turns HTTPS off for everyone
+      - The certificate has expired
+      - The connection is closed
+    answer: 0
+    why: Certificates and encryption are managed in one place. The network between the proxy and the apps should still be private and trusted.
+  - id: r4
+    type: self
+    prompt: Why can't an app behind a reverse proxy simply trust the X-Forwarded-For header on every request?
+    modelAnswer: Anyone can send that header themselves. If the app is reachable directly, or the proxy just passes along whatever the visitor sent, an attacker can fake their IP address. The app should only trust the part added by its own proxy, and the proxy should be the only way in.
+cards:
+  - id: two-kinds
+    front: Forward proxy vs. reverse proxy?
+    back: "Forward: in front of users, sending their requests out (office proxies, filters). Reverse: in front of servers, receiving requests and passing them to the right app (nginx, load balancers, CDNs)."
+  - id: reverse-jobs
+    front: Name four jobs a reverse proxy often does.
+    back: Handling HTTPS (TLS termination), routing paths to different apps, serving static files, and adding headers like X-Forwarded-For. It can also cache and limit traffic.
+  - id: proxy-env
+    front: How do you point npm, pip and curl at an office proxy?
+    back: Set the HTTPS_PROXY (and HTTP_PROXY) environment variable, like http://proxy.corp.example:8080.
+  - id: inspection
+    front: What causes "unable to get local issuer certificate" only on an office network?
+    back: A proxy doing TLS inspection with the company's own certificate, which the tool doesn't trust. Fix it by trusting the company's certificate, never by turning checks off.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Which is the most common reverse proxy software?
+    options: [nginx, Excel, Git, Python]
+    answer: 0
+    why: nginx (said "engine-x") sits in front of a huge share of the web. Caddy, HAProxy and cloud load balancers do the same job.
+  - id: t2
+    type: mcq
+    prompt: An app logs every visitor's IP as 10.0.0.5, the same each time. Why?
+    options:
+      - It's logging the reverse proxy's address. It should read X-Forwarded-For, set by its own proxy
+      - All visitors share one computer
+      - DNS is broken
+      - It's a CORS error
+    answer: 0
+    why: Behind a proxy, every connection comes from the proxy. The real visitor's address arrives in the header.
+docs:
+  - title: "MDN: Proxy servers and tunneling"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Proxy_servers_and_tunneling
+  - title: "MDN: X-Forwarded-For"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-For
+  - title: "nginx: Beginner's Guide"
+    url: https://nginx.org/en/docs/beginners_guide.html
+videos: []
+---
+
+## In this lesson
+
+So far, requests have gone straight from a browser to a server. In real life there's usually something **in the middle**. This lesson covers:
+
+- What a **proxy** is, and the two kinds: **forward** and **reverse**.
+- Why almost every real website sits behind a **reverse proxy**, and the jobs it does.
+- **X-Forwarded-For**: how the app behind still knows who the visitor was.
+- Office proxies, and why they break `npm install`.
+
+## A program in the middle
+
+A **proxy** is a program that receives a request, sends it on to someone else, and passes the answer back. Like a receptionist who takes your message, delivers it, and brings back the reply. The two ends each talk only to the proxy.
+
+Which side it works for decides what kind it is.
+
+## Forward proxies: in front of the users
+
+A **forward proxy** sits in front of a group of **users**, usually inside a company or school. Staff's web traffic goes out through it. Organizations use them to:
+
+- block certain websites,
+- scan downloads for viruses,
+- keep a record of traffic, sometimes for legal reasons.
+
+The websites see the proxy's address, not each employee's. You mostly notice forward proxies when they get in the way. More on that at the end.
+
+## Reverse proxies: in front of the servers
+
+A **reverse proxy** is the mirror image. It sits in front of a website's **servers** and receives requests from the public. Step through one:
+
+<Viz name="reverse-proxy" />
+
+Almost every serious website has one, often **nginx** (said "engine-x"), Caddy, or a cloud provider's equivalent. Its usual jobs:
+
+| Job | What it means |
+| --- | --- |
+| **One public address** | Visitors see `https://shop.example` and nothing else. Only the proxy is reachable from the internet |
+| **Routing** | `/api/...` goes to the API program, `/images/...` to static files, and everything else to the website program |
+| **TLS termination** | The proxy holds the certificate and handles HTTPS, so the programs behind it don't have to |
+| **Serving static files** | Images, styles and scripts are sent straight from disk, which is very fast |
+| **Protection** | Limits on request size and speed, and blocking obvious attacks |
+
+Each of those separate programs behind the proxy is often called a **service**: a program with one job that other programs talk to over the network. Shops, banks and streaming sites are made of many services working together. You'll see a lot more of them in the rest of Stage 2.
+
+<details>
+<summary>Quick check: in a reverse proxy setup, which part has the HTTPS certificate?</summary>
+
+Usually the reverse proxy. It decrypts incoming requests (TLS termination) and passes them to the services behind it.
+</details>
+
+## Routing in code
+
+A reverse proxy's routing is a list of rules checked in order. In nginx's own settings language it looks roughly like this:
+
+```text
+location /api/    { proxy_pass http://localhost:4000/; }
+location /images/ { root /var/www; }
+location /        { proxy_pass http://localhost:3000; }
+```
+
+You don't need to learn nginx's language. The idea is what matters: **match the start of the path, pick a destination, and maybe trim the path**. In the task you'll write the same logic in JavaScript, using two text methods you haven't used yet:
+
+```javascript
+"/api/orders".startsWith("/api")   // true: does the text begin with this?
+"/api/orders".slice(4)             // "/orders": everything from position 4 onwards
+```
+
+- **`.startsWith(text)`** is `true` if the text begins with the given text.
+- **`.slice(n)`** gives everything from position `n` to the end. Positions count from 0, as with lists. So `"/api".length` is 4, and slicing 4 characters off the front removes `/api`.
+
+You'll also need JavaScript's way of writing `not`, which is **`!`**: `!existing` is `true` when `existing` is empty or `undefined`. While we're here, `and` is written **`&&`** and `or` is **`||`**. You'll use those two in the next lessons.
+
+## Who really sent this? X-Forwarded-For
+
+There's a catch. Behind a proxy, every connection the app sees comes **from the proxy**. If the app logs visitors' IP addresses, or blocks an abusive one, they all look identical.
+
+So the proxy adds a request header with the original visitor's address:
+
+```text
+X-Forwarded-For: 203.0.113.7
+```
+
+If the request passes through several proxies, each one adds the address it received the request from, separated by commas: `203.0.113.7, 10.0.0.2`. The first entry is the original visitor, as far as anyone can tell.
+
+<Callout kind="warn" title="Anyone can send that header">
+A visitor can write their own `X-Forwarded-For: 1.2.3.4` header. An app should only trust the entry its **own** proxy added, and the app shouldn't be reachable except through that proxy. Otherwise anyone can pretend to be any IP address, and get round IP-based limits.
+</Callout>
+
+## Office proxies and npm install
+
+Back to forward proxies, because they cause one of the most common "works at home, fails at work" problems.
+
+**Problem 1: tools don't know the proxy exists.** Browsers pick up Windows' proxy settings. Command-line tools like npm, pip and curl often don't. The standard fix is environment variables they all read:
+
+```powershell
+$env:HTTPS_PROXY = "http://proxy.corp.example:8080"
+$env:HTTP_PROXY  = "http://proxy.corp.example:8080"
+```
+
+**Problem 2: certificate errors.** Some company proxies do **TLS inspection**: they decrypt HTTPS traffic to scan it, then re-encrypt it with the **company's own certificate**. Company laptops are set up so browsers trust that certificate. But Node.js and Python keep their **own** lists of trusted certificate authorities, so they see a certificate signed by an authority they've never heard of, and refuse: "unable to get local issuer certificate".
+
+<Callout kind="warn" title="Don't turn the check off">
+AI assistants often suggest `npm config set strict-ssl false` or `verify=False`. That's the mistake from the HTTPS lesson: it accepts **any** certificate, including an attacker's. The right fix is to get the company's root certificate from IT and tell the tool to trust it too. For Node, set the `NODE_EXTRA_CA_CERTS` environment variable to that file's path.
+</Callout>
+
+<ConsultantNote>
+Reverse proxies show up in almost every architecture diagram you'll review, and they're where many problems hide: an expired certificate, a missing route, or an app trusting X-Forwarded-For from anyone. Office proxies matter when you work on-site: knowing about HTTPS_PROXY and TLS inspection turns a lost morning into a five-minute fix, and stops a client's team from switching security checks off "temporarily".
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Proxy** | A program in the middle that passes requests on and brings answers back |
+| **Forward proxy** | A proxy in front of users, sending their requests out |
+| **Reverse proxy** | A proxy in front of servers, receiving requests and routing them in |
+| **Service** | A program with one job that other programs talk to over the network |
+| **TLS termination** | Handling HTTPS at the proxy, so the services behind don't have to |
+| **X-Forwarded-For** | A header carrying the original visitor's IP address |
+| **nginx** | The most widely used reverse proxy |
+| **HTTPS_PROXY** | The environment variable that tells command-line tools about a proxy |
+| **TLS inspection** | A company proxy decrypting HTTPS with its own certificate |
+| **`.startsWith()` / `.slice()`** | Does the text begin with this? / The text from a position onwards |
+| **`!`, `&&`, `\|\|`** | JavaScript's not, and, or |

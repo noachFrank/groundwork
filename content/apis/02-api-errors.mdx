@@ -1,0 +1,375 @@
+---
+id: api-errors
+title: "When APIs say no: errors in practice"
+order: 2
+topic: software-talking
+minutes: 55
+summary: What each common error status really means, and what your code should do about each one. Covers fixing the request, logging in again, waiting and retrying, or giving up and telling someone, plus timeouts and connections that never happen.
+connectivity: offline
+prerequisites:
+  - id: rest-design
+    need: essential
+    why: Builds on calling the practice API from Python.
+  - id: errors-and-tracebacks
+    need: essential
+    why: Uses try and except for specific errors.
+  - id: http
+    need: helpful
+    why: The status families come back here in detail.
+revision: 1
+teaches: [client-vs-server-errors, status-401-403, status-409-422, status-5xx, error-body, retryable-errors, request-timeout, requests-exceptions, raise-for-status]
+uses: [status-code, status-families, http, api, json, response-body, requests-get, status-code-attr, response-json-py, keyword-arguments, connection-refused, connection-timeout, reverse-proxy, load-balancer, idempotent, try-except, specific-except, error-exposure, silent-bug, function, return-statement, dictionary, if-statement, elif-else, and-or-not, comparison-operators, in-operator, list, run-and-check]
+predict:
+  id: p1
+  type: mcq
+  prompt: Your code calls an API and gets `503 Service Unavailable`. A minute later, the same request works. What did the 503 mean?
+  options:
+    - Your request was wrong
+    - The server was temporarily overloaded or down, so trying again later was the right thing to do
+    - You weren't logged in
+    - The address doesn't exist
+  answer: 1
+  why: 5xx codes mean the problem was on the server's side, and 503 in particular means "temporarily". It's worth retrying after a pause. A 4xx means your request needs to change, and sending the same thing again will fail the same way.
+tasks:
+  - id: careful-client
+    type: python
+    title: Write a careful API call
+    instructions: |
+      You'll use: `try` and `except` (from *Reading errors and tracebacks*), `in` with a list, `timeout=` and the requests exceptions from this lesson.
+
+      The practice API has `/status/CODE`, which answers with any common status code, and `/slow?seconds=N`, which takes N seconds to answer.
+
+      1. `should_retry(status)` returns `True` for statuses where trying again later might work (429, 500, 502, 503 and 504) and `False` for everything else.
+      2. `get_json(url)` calls the URL with `timeout=2` and returns a dictionary:
+         - On a 2xx answer: `{"ok": True, "data": <the .json() body>}`
+         - On any other status: `{"ok": False, "status": <the code>, "retry": should_retry(<the code>)}`
+         - If it couldn't connect or timed out (`requests.ConnectionError` or `requests.Timeout`): `{"ok": False, "status": None, "retry": True}`
+    starter: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def should_retry(status):
+          # True only for 429, 500, 502, 503 and 504.
+          pass
+
+
+      def get_json(url):
+          # try:
+          #     response = requests.get(url, timeout=2)
+          # except (requests.ConnectionError, requests.Timeout):
+          #     ...
+          # Then check response.status_code: 200 to 299 is ok.
+          pass
+
+
+      print(get_json(BASE + "/orders/102"))
+      print(get_json(BASE + "/status/404"))
+      print(get_json(BASE + "/status/503"))
+      print(get_json("http://localhost:4399/nothing-here"))
+    tests:
+      - name: should_retry says yes to temporary problems
+        code: |
+          for code in [429, 500, 502, 503, 504]:
+              assert should_retry(code) is True, f"{code} can work later, so should_retry({code}) should be True."
+      - name: should_retry says no to problems with the request
+        code: |
+          for code in [400, 401, 403, 404, 409, 422]:
+              assert should_retry(code) is False, f"{code} will fail the same way next time, so should_retry({code}) should be False."
+      - name: success gives the data
+        code: |
+          got = get_json(BASE + "/orders/102")
+          assert got.get("ok") is True and got["data"]["item"] == "Monitor", f"Order 102 is a Monitor. Got {got}."
+      - name: a 404 is not retried
+        code: |
+          got = get_json(BASE + "/status/404")
+          assert got == {"ok": False, "status": 404, "retry": False}, f"Got {got}."
+      - name: a 503 is retried
+        code: |
+          got = get_json(BASE + "/status/503")
+          assert got == {"ok": False, "status": 503, "retry": True}, f"Got {got}."
+      - name: no connection at all is handled, not a crash
+        code: |
+          got = get_json("http://localhost:4399/nothing-here")
+          assert got == {"ok": False, "status": None, "retry": True}, f"Nothing listens on 4399, so catch requests.ConnectionError. Got {got}."
+      - name: a slow server times out after 2 seconds
+        code: |
+          got = get_json(BASE + "/slow?seconds=4")
+          assert got == {"ok": False, "status": None, "retry": True}, f"Pass timeout=2 and catch requests.Timeout. Got {got}."
+    solution: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def should_retry(status):
+          return status in [429, 500, 502, 503, 504]
+
+
+      def get_json(url):
+          try:
+              response = requests.get(url, timeout=2)
+          except (requests.ConnectionError, requests.Timeout):
+              return {"ok": False, "status": None, "retry": True}
+          if response.status_code >= 200 and response.status_code < 300:
+              return {"ok": True, "data": response.json()}
+          return {"ok": False, "status": response.status_code, "retry": should_retry(response.status_code)}
+    wrong: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def should_retry(status):
+          return status >= 400
+
+
+      def get_json(url):
+          response = requests.get(url)
+          if response.status_code == 200:
+              return {"ok": True, "data": response.json()}
+          return {"ok": False, "status": response.status_code, "retry": True}
+  - id: night-sync
+    type: case
+    title: Read a failing job's error log
+    instructions: A client's nightly job copies orders from their shop into their accounting system's API. Here's what it logged. Decide what each error means.
+    scenario: |
+      Every night at 2am, a script sends each new order to the accounting system's API. Last night's log has three kinds of failure:
+
+      - 02:00 to 02:05: every request answered `401 Unauthorized`.
+      - The next night, 02:14: a burst of `503 Service Unavailable` with `Retry-After: 120`, then the requests worked again.
+      - 02:31: one order answered `422 Unprocessable Content`, with `{"error": "tax_code 'ZX' is not valid"}`.
+    questions:
+      - prompt: Every request gets 401. What's the likely cause, and should the script keep retrying?
+        choices:
+          - text: The API key or token has expired or been changed. Retrying won't help. Alert a person to update it
+            score: 2
+            why: 401 means the server doesn't accept who you say you are. Sending the same key again fails the same way, and hammering an API with bad credentials can get you blocked.
+          - text: The server is overloaded, so retry every second
+            score: 0
+            why: That's what 503 means. 401 is about the credentials.
+          - text: Ignore it, it'll fix itself
+            score: 0
+            why: Expired credentials never fix themselves, and every night's orders would silently go missing.
+      - prompt: A burst of 503 with Retry-After 120. What should the script do?
+        choices:
+          - text: Wait about 120 seconds, as the server asked, then retry those requests
+            score: 2
+            why: 503 is temporary, and Retry-After says exactly how long to wait. Waiting politely is how you get your requests through.
+          - text: Retry immediately, as fast as possible
+            score: 0
+            why: Hammering an overloaded server makes it worse, for you and everyone else.
+          - text: Skip those orders forever
+            score: 0
+            why: They'd never reach the accounting system. Temporary errors deserve a retry.
+      - prompt: One order gets 422 with "tax_code 'ZX' is not valid". What's best?
+        choices:
+          - text: Don't retry it. Record it with the error message, carry on with the other orders, and flag it for a person to fix the tax code
+            score: 2
+            why: The request itself is wrong, so it will fail every time until the data changes. One bad record shouldn't stop the whole job, and the error body says exactly what to fix.
+          - text: Retry it every night until it works
+            score: 0
+            why: It will never work until someone fixes the data. It just adds noise.
+          - text: Stop the whole job
+            score: 1
+            why: Safe, but it holds up every good order because of one bad one.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: What's the difference between 401 and 403?
+    options:
+      - 401 means "we don't know who you are". 403 means "we know who you are, and you're not allowed"
+      - They're the same
+      - 401 is a server error, 403 is a client error
+      - 403 means the page moved
+    answer: 0
+    why: 401 says log in (or fix your key). 403 says logging in again won't help, because you need more permission.
+  - id: r2
+    type: mcq
+    prompt: Which of these is worth retrying after a short wait?
+    options: [503 Service Unavailable, 400 Bad Request, 404 Not Found, 422 Unprocessable Content]
+    answer: 0
+    why: 5xx (and 429) are about the server's state right now. The 4xx ones are about your request, which will fail the same way again.
+  - id: r3
+    type: short
+    prompt: In Python requests, which keyword argument stops a call from waiting forever for a slow server?
+    accept: ['timeout']
+    answerText: timeout (for example timeout=5)
+  - id: r4
+    type: self
+    prompt: What's the difference between 502 and 504?
+    modelAnswer: Both come from a server in the middle, like a reverse proxy or load balancer. 502 Bad Gateway means the server behind it gave a broken answer or refused the connection, often because the app crashed. 504 Gateway Timeout means the server behind it didn't answer in time, often because it's overloaded or stuck.
+cards:
+  - id: families
+    front: "4xx vs. 5xx: whose problem, and should you retry?"
+    back: "4xx: your request's problem. Fix it, don't retry as-is (except 429). 5xx: the server's problem. Wait and retry, carefully."
+  - id: codes
+    front: What do 409 and 422 mean?
+    back: "409 Conflict: it clashes with the current state, like a duplicate. 422 Unprocessable Content: the request was understood, but the data in it isn't valid."
+  - id: gateway
+    front: What do 502, 503 and 504 usually mean?
+    back: "502: the server in the middle got a bad answer from the app behind it. 503: overloaded or in maintenance, try later. 504: the app behind it didn't answer in time."
+  - id: timeout
+    front: Why should every API call have a timeout?
+    back: Without one, a stuck server can make your code wait forever, freezing a page or a whole job. With one, you get an error you can handle.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: What does `response.raise_for_status()` do in Python's requests?
+    options:
+      - Raises an HTTPError if the status is 4xx or 5xx, and does nothing otherwise
+      - Changes the status code
+      - Retries the request
+      - Prints the status
+    answer: 0
+    why: It's a quick way to turn an error status into an exception, so it can't be ignored by accident.
+  - id: t2
+    type: mcq
+    prompt: 'An API answers `200 OK` with `{"error": "card declined"}` in the body. What''s the issue?'
+    options:
+      - The status code says success while the body says failure, so code that checks only the status will think it worked
+      - Nothing
+      - The JSON is invalid
+      - 200 means card declined
+    answer: 0
+    why: A good API uses a 4xx status for a failed request. When an API doesn't, your code has to check the body too.
+docs:
+  - title: "MDN: HTTP response status codes"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status
+  - title: "Requests: Errors and exceptions"
+    url: https://requests.readthedocs.io/en/latest/user/quickstart/#errors-and-exceptions
+  - title: "Requests: Timeouts"
+    url: https://requests.readthedocs.io/en/latest/user/quickstart/#timeouts
+videos: []
+---
+
+## In this lesson
+
+When an API call fails, your code has to decide what to do about it. The status code is the API telling you which kind of failure it was. This lesson is about reading those codes and responding sensibly:
+
+- **Client errors and server errors**, and why the difference decides whether to retry.
+- The codes you'll meet most, beyond 404: **401 and 403**, **409 and 422**, and the **5xx** family.
+- **Error bodies**: the details that come with an error.
+- **Timeouts**, and requests that never get an answer at all.
+- Python's **requests exceptions** and **`raise_for_status()`**.
+
+## Whose problem is it?
+
+You met the status families in *HTTP*. Here's what they mean for **your code**:
+
+| Family | Whose problem | What to do |
+| --- | --- | --- |
+| **2xx** | Nobody's. It worked | Use the answer |
+| **4xx** | **Yours**: something about the request | Fix the request. Sending the same thing again will fail the same way |
+| **5xx** | **The server's**, at least for now | Wait a bit and try again, carefully |
+
+That's the main idea. **Client errors** (4xx) need a change from you. **Server errors** (5xx) might go away on their own. One exception: **429 Too Many Requests** is a 4xx, but it means "slow down", so waiting and retrying is right. It gets its own lesson, *Pagination and rate limits*.
+
+## The 4xx codes you'll meet
+
+| Code | Means | Your code should… |
+| --- | --- | --- |
+| **400 Bad Request** | The request is malformed: broken JSON, a missing field | Fix the request |
+| **401 Unauthorized** | "I don't know who you are." No credentials, or bad ones | Log in again, or fix the key. Alert someone if it's a script |
+| **403 Forbidden** | "I know who you are, and you're not allowed" | Don't retry. You need more permission |
+| **404 Not Found** | Nothing at that address | Check the id or address, or treat it as "doesn't exist" |
+| **405 Method Not Allowed** | The address exists, but not for that method | Check the docs: maybe it's PATCH, not PUT |
+| **409 Conflict** | Clashes with the current state, like a duplicate or an edit to an old version | Fetch the latest and decide |
+| **415 Unsupported Media Type** | The body's format isn't accepted, often a missing `Content-Type: application/json` | Fix the header |
+| **422 Unprocessable Content** | Understood, but the data isn't valid, like an unknown status | Fix the data |
+
+The 401 versus 403 difference trips people up. 401 is about **who you are** (authentication), and 403 is about **what you may do** (authorization). You'll go deeper into both in the next lesson.
+
+<details>
+<summary>Quick check: you're logged in, but get 403 when trying to delete another user's order. Will logging in again help?</summary>
+
+No. 403 means the server knows who you are and has decided you're not allowed. You'd need different permissions.
+</details>
+
+## The 5xx codes, and the server in the middle
+
+| Code | Means |
+| --- | --- |
+| **500 Internal Server Error** | Something crashed inside the app. Often a bug |
+| **502 Bad Gateway** | A server in the middle (a reverse proxy or load balancer) got a broken answer from the app behind it, or couldn't connect. Often the app has crashed or is restarting |
+| **503 Service Unavailable** | Overloaded, or down for maintenance. Often comes with a **Retry-After** header saying how many seconds to wait |
+| **504 Gateway Timeout** | The server in the middle gave up waiting for the app behind it |
+
+502 and 504 come from the proxies and load balancers in the previous module. When you see them, the app behind is in trouble, not the proxy.
+
+## Read the error body
+
+A good API sends a JSON **error body** with details, for example:
+
+```json
+{"error": {"code": 422, "message": "\"lost\" isn't a status this API knows. Use one of: processing, shipped, delivered, cancelled"}}
+```
+
+The shape differs between APIs, so check their documentation. But always **log the body** along with the status. "422" on its own sends someone digging, while the message often says exactly what to fix.
+
+<Callout kind="warn" title="200 with an error inside">
+Some badly designed APIs answer `200 OK` with `{"error": "card declined"}`. Code that only checks the status thinks it worked. If you're stuck with such an API, check the body too, and mention it in your review.
+</Callout>
+
+## When there's no answer at all
+
+Sometimes there's no status code, because no answer ever arrives:
+
+- **Couldn't connect**: the server isn't running (connection refused), the name doesn't resolve, or a firewall is in the way.
+- **Too slow**: the server accepted the connection but is taking forever.
+
+By default, `requests` will wait **forever** for a slow server, and a stuck API can freeze your whole program. Always set a **timeout**, in seconds:
+
+```python
+response = requests.get(url, timeout=5)
+```
+
+## Catching these in Python
+
+`requests` raises **exceptions** for the no-answer cases, and you catch them with `try` and `except`, as in *Reading errors and tracebacks*:
+
+```python
+try:
+    response = requests.get(url, timeout=5)
+except requests.Timeout:
+    ...  # no answer within 5 seconds
+except requests.ConnectionError:
+    ...  # couldn't connect at all
+```
+
+- **`requests.Timeout`**: the timeout ran out.
+- **`requests.ConnectionError`**: couldn't connect.
+- To catch either with one `except`, list them in brackets: `except (requests.ConnectionError, requests.Timeout):`
+
+Note that an error **status** like 404 is **not** an exception. The request worked, and the server answered "no". If you'd like error statuses to become exceptions too, call **`response.raise_for_status()`**. It raises `requests.HTTPError` for any 4xx or 5xx, and does nothing otherwise. Use it when any error should stop the code. When different errors need different handling, as in the task, check `.status_code` yourself.
+
+## Retrying sensibly
+
+For retryable errors (429, 500, 502, 503, 504, and no answer), the usual approach is:
+
+1. **Wait** before trying again. If there's a `Retry-After` header, wait that long.
+2. **Wait longer** after each failure, so a struggling server gets breathing room.
+3. **Give up** after a few tries, and report it.
+4. Be careful retrying a **POST**. It isn't idempotent, so if the first attempt actually worked, a retry could create a duplicate.
+
+You'll write the waiting part in *Pagination and rate limits*. Stage 4 covers the rest properly.
+
+<ConsultantNote>
+"How does it handle errors?" is one of the most revealing questions about any integration. Scripts that ignore status codes, wait forever with no timeout, or retry everything (including 401s, all night) are extremely common, and they fail silently: orders quietly stop syncing and nobody notices for a week. Good error handling, plus an alert when it gives up, is often the difference between a minor blip and a lost month of data.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Client vs. server errors** | 4xx: fix your request. 5xx: the server's problem, maybe temporary |
+| **401 vs. 403** | Who are you? / You're not allowed |
+| **409 / 422** | Clashes with the current state / the data isn't valid |
+| **502 / 503 / 504** | Bad answer from behind the proxy / overloaded / no answer in time |
+| **Error body** | The JSON details that come with an error status |
+| **Retryable errors** | 429 and 5xx, and no answer at all |
+| **Timeout** | The longest to wait for an answer. Always set one |
+| **requests.Timeout / ConnectionError** | No answer in time / couldn't connect |
+| **raise_for_status()** | Turns a 4xx or 5xx status into an exception |

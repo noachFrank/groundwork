@@ -8,6 +8,7 @@ import type { LabGoal, LabName, LabState } from '../../shared/types.ts';
 import { hostGuard } from '../guard.ts';
 import { PracticeDns } from './dns.ts';
 import { corsLabPage, siteHomePage } from './pages.ts';
+import { PracticeApi } from './practice-api.ts';
 
 const logLimit = 25;
 
@@ -24,6 +25,7 @@ export class Labs {
   readonly appOrigins: string[];
   private servers: Server[] = [];
   private dns: PracticeDns;
+  readonly practice = new PracticeApi();
   private ticker: NodeJS.Timeout | null = null;
   private wss: WebSocketServer | null = null;
   unavailable: string[] = [];
@@ -133,9 +135,12 @@ export class Labs {
       const origin = c.req.header('origin');
       if (origin && this.appOrigins.includes(origin)) {
         c.header('Access-Control-Allow-Origin', origin);
-        c.header('Access-Control-Allow-Headers', 'Content-Type, X-API-Key');
-        c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        c.header('Access-Control-Expose-Headers', 'Content-Type, X-Lab');
+        c.header('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, Authorization, X-Client-Id, If-None-Match');
+        c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+        c.header(
+          'Access-Control-Expose-Headers',
+          'Content-Type, X-Lab, Location, ETag, Cache-Control, Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Deprecation, Sunset, Link, WWW-Authenticate',
+        );
       }
       if (c.req.method === 'OPTIONS') return c.body(null, 204);
       await next();
@@ -146,11 +151,30 @@ export class Labs {
       if (c.res.status === 401) this.http_.saw401 = true;
       if (c.res.status === 201) this.http_.saw201 = true;
     });
+    // Orders 101 to 103 are read-only, so lessons that change orders can't break the
+    // lessons that read them. Learners change the orders they created themselves.
     const orders = [
       { id: 101, customer: 'Ada', item: 'Keyboard', total: 49, status: 'shipped' },
       { id: 102, customer: 'Grace', item: 'Monitor', total: 189, status: 'processing' },
       { id: 103, customer: 'Ada', item: 'USB cable', total: 9, status: 'delivered' },
     ];
+    const STATUSES = ['processing', 'shipped', 'delivered', 'cancelled'];
+    const all = () => [...orders, ...this.http_.created];
+    const create = (o: { customer: string; item: string; total: number }) => {
+      const created = { id: this.http_.nextOrder++, customer: o.customer, item: o.item, total: o.total, status: 'processing' };
+      this.http_.created.push(created);
+      if (this.http_.created.length > 50) this.http_.created.shift();
+      return created;
+    };
+    const needKey = (c: any) =>
+      c.req.header('x-api-key') !== 'practice-key' ? c.json({ error: 'Missing or wrong API key. Send the header X-API-Key: practice-key' }, 401) : null;
+    const readJson = async (c: any): Promise<any> => {
+      try {
+        return await c.req.json();
+      } catch {
+        return undefined;
+      }
+    };
     app.get('/hello', (c) => c.text('Hello from the Groundwork lab server!\n'));
     app.get('/whoami', (c) => {
       this.ports_.http = true;
@@ -159,27 +183,65 @@ export class Labs {
     });
     app.get('/orders', (c) => {
       const customer = c.req.query('customer');
-      const all = [...orders, ...this.http_.created];
-      return c.json(customer ? all.filter((o) => o.customer.toLowerCase() === customer.toLowerCase()) : all);
+      const status = c.req.query('status');
+      return c.json(
+        all().filter(
+          (o) => (!customer || o.customer.toLowerCase() === customer.toLowerCase()) && (!status || o.status === status.toLowerCase()),
+        ),
+      );
     });
     app.get('/orders/:id', (c) => {
-      const order = [...orders, ...this.http_.created].find((o) => String(o.id) === c.req.param('id'));
+      const order = all().find((o) => String(o.id) === c.req.param('id'));
       return order ? c.json(order) : c.json({ error: 'No order with that id' }, 404);
     });
     app.post('/orders', async (c) => {
-      if (c.req.header('x-api-key') !== 'practice-key') return c.json({ error: 'Missing or wrong API key. Send the header X-API-Key: practice-key' }, 401);
-      let body: any;
-      try {
-        body = await c.req.json();
-      } catch {
-        return c.json({ error: 'The body must be valid JSON' }, 400);
-      }
+      const denied = needKey(c);
+      if (denied) return denied;
+      const body = await readJson(c);
+      if (body === undefined) return c.json({ error: 'The body must be valid JSON' }, 400);
       if (!body?.customer || !body?.item) return c.json({ error: 'Both "customer" and "item" are required' }, 400);
-      const created = { id: this.http_.nextOrder++, customer: String(body.customer), item: String(body.item), total: Number(body.total) || 0, status: 'processing' };
-      this.http_.created.push(created);
-      this.http_.created.length = Math.min(this.http_.created.length, 50);
+      const created = create({ customer: String(body.customer), item: String(body.item), total: Number(body.total) || 0 });
+      c.header('Location', `/orders/${created.id}`);
       return c.json(created, 201);
     });
+    // Find an order the learner may change, or the response explaining why not.
+    const changeable = (c: any) => {
+      const id = c.req.param('id');
+      if (orders.some((o) => String(o.id) === id)) {
+        return { stop: c.json({ error: 'Orders 101 to 103 are read-only in the practice API, so other lessons keep working. Create your own order with POST /orders, then change that one.' }, 403) };
+      }
+      const order = this.http_.created.find((o) => String(o.id) === id);
+      return order ? { order } : { stop: c.json({ error: 'No order with that id' }, 404) };
+    };
+    const update = async (c: any, full: boolean) => {
+      const denied = needKey(c);
+      if (denied) return denied;
+      const found = changeable(c);
+      if (found.stop) return found.stop;
+      const body = await readJson(c);
+      if (body === undefined || typeof body !== 'object' || body === null) return c.json({ error: 'The body must be a JSON object' }, 400);
+      if (full && !(body.customer && body.item && body.total !== undefined && body.status)) {
+        return c.json({ error: 'PUT replaces the whole order, so send all four fields: customer, item, total and status. To change just one field, use PATCH.' }, 400);
+      }
+      if (body.status !== undefined && !STATUSES.includes(body.status)) {
+        return c.json({ error: `"${body.status}" isn't a status this API knows. Use one of: ${STATUSES.join(', ')}` }, 422);
+      }
+      if (body.total !== undefined && typeof body.total !== 'number') return c.json({ error: '"total" must be a number, with no quotes' }, 422);
+      const order = found.order!;
+      for (const k of ['customer', 'item', 'total', 'status'] as const) if (body[k] !== undefined) (order as any)[k] = k === 'total' ? body[k] : String(body[k]);
+      return c.json(order);
+    };
+    app.patch('/orders/:id', (c) => update(c, false));
+    app.put('/orders/:id', (c) => update(c, true));
+    app.delete('/orders/:id', (c) => {
+      const denied = needKey(c);
+      if (denied) return denied;
+      const found = changeable(c);
+      if (found.stop) return found.stop;
+      this.http_.created = this.http_.created.filter((o) => o !== found.order);
+      return c.body(null, 204);
+    });
+    this.practice.register(app, all, create, [this.ports.app, DEV_PORT]);
     app.notFound((c) => c.json({ error: 'Nothing at this address' }, 404));
     return app;
   }
@@ -392,7 +454,10 @@ export class Labs {
       this.dnsState = { queried: false, changed: false, requeried: false, nxdomain: false, log: [] };
     }
     if (lab === 'ports') this.ports_ = { site: false, http: false, log: [] };
-    if (lab === 'http') this.http_ = { saw200: false, saw404: false, saw401: false, saw201: false, log: [], nextOrder: 104, created: [] };
+    if (lab === 'http') {
+      this.http_ = { saw200: false, saw404: false, saw401: false, saw201: false, log: [], nextOrder: 104, created: [] };
+      this.practice.reset();
+    }
     if (lab === 'live') this.live = { ...this.live, connected: false, sent: false, pushes: 0, polls: 0, wastedPolls: 0, log: [] };
     if (lab === 'real-dns') this.realDns = { looked: false, answer: null, name: '', log: [] };
   }

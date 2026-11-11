@@ -1,0 +1,349 @@
+---
+id: milestone-live-app
+title: "Milestone: connect two services with live updates"
+order: 5
+topic: software-talking
+minutes: 75
+summary: The Stage 2 milestone. Run two small services of your own, an orders service and a live order board, finish the code that connects them, and watch new orders appear in your browser by themselves. Then explain how it all fits together.
+connectivity: offline
+prerequisites:
+  - id: webhooks
+    need: essential
+    why: The orders service sends the board a webhook-style event, and you'll run Node servers the same way.
+  - id: live-updates
+    need: essential
+    why: The board pushes updates to the browser with server-sent events.
+  - id: javascript-in-node
+    need: essential
+    why: The code you'll finish uses fetch and await.
+  - id: api-gateways
+    need: helpful
+    why: Finishes the module, and comes up in the explanation task.
+revision: 1
+teaches: [two-service-app, fetch-options, js-try-catch, url-search-params, event-source, sse-format, end-to-end-check]
+uses: [service, node-http-server, webhook, event-payload, respond-fast, server-sent-events, websocket, polling, open-connections-cost, http-method, http-header, content-type, status-201-204, json, json-object, port, localhost, listen-address, nodejs, node-require, fs-module, fetch-fn, async-function, await-keyword, promise, console-log, arrow-function, js-function, const-let, js-object, template-literal, curl, curl-output-file, terminal, powershell, practice-folder, path-variable, notepad-from-terminal, text-editor, ctrl-c, message-queue, pub-sub, api-gateway, architecture-diagram, readme, reviewing-ai-code, tutor-not-ghostwriter]
+predict:
+  id: p1
+  type: mcq
+  prompt: You'll run an orders service and a board service as two separate programs. When someone places an order, how does the board find out?
+  options:
+    - They share the same variables, because they're on the same computer
+    - The orders service sends the board an HTTP request saying "an order was created"
+    - The board reads the orders service's memory
+    - It doesn't. Someone refreshes the board by hand
+  answer: 1
+  why: Separate programs (processes) can't see each other's variables, even on one computer. They talk over the network, here with an HTTP POST, just like webhooks between companies. Then the board pushes the news on to the browser.
+tasks:
+  - id: build-it
+    type: terminal
+    title: Build and run the live order board
+    instructions: |
+      You'll get two starter files, finish one function in the orders service, run both services, and place orders. You'll need **three** PowerShell windows and a browser.
+
+      Try writing `notifyBoard` yourself first, using the Learn section. If you get stuck, ask your AI tutor for a hint, not the answer. The finished version is in the Learn section too.
+
+      Groundwork must be running, because the starter files come from its practice API. Nothing here needs the internet.
+    steps:
+      - text: "**Window 1.** Go to your practice folder and make a folder for the milestone."
+        command: cd $HOME\Groundwork-Practice; mkdir milestone; cd milestone
+      - text: Put Groundwork's Node on PATH for this window.
+        command: $env:PATH = "{{nodeDir}};" + $env:PATH
+      - text: Download the two starter files, then list the folder to check they're there.
+        command: curl.exe -s -o orders.js http://localhost:4314/starter/orders.js; curl.exe -s -o board.js http://localhost:4314/starter/board.js; Get-ChildItem
+      - text: Open the orders service in Notepad. Find the TODO in `notifyBoard`, write the code, then **save and close** Notepad.
+        command: notepad orders.js
+      - text: Start the board service. It says "Board service on http://localhost:4397" and stays busy.
+        command: node board.js
+      - text: "**Window 2.** Go to the same folder, put Node on PATH, and start the orders service."
+        command: cd $HOME\Groundwork-Practice\milestone; $env:PATH = "{{nodeDir}};" + $env:PATH; node orders.js
+      - text: "**Window 3.** Open the board in your browser. It should say \"Live\"."
+        command: Start-Process http://localhost:4397
+      - text: Still in window 3, place an order, and watch the browser. The order appears by itself, with no refreshing.
+        command: cd $HOME\Groundwork-Practice\milestone; curl.exe -s -o order-1.txt -d "item=Desk lamp&customer=Ada" http://localhost:4396/orders; Get-Content order-1.txt
+      - text: Place another one.
+        command: curl.exe -s -o order-2.txt -d "item=Notebook&customer=Grace" http://localhost:4396/orders; Get-Content order-2.txt
+      - text: When you're done, press **Ctrl+C** in windows 1 and 2 to stop both services.
+    checks:
+      - path: milestone/order-1.txt
+        contains: Desk lamp
+        hint: Is the orders service running in window 2? Then run the first curl step in window 3.
+      - path: milestone/stream-log.txt
+        contains: browser connected
+        hint: The board writes this when a browser connects. Open http://localhost:4397 while board.js is running.
+      - path: milestone/board-log.txt
+        contains: order.created
+        hint: The board writes this when it receives an event. If order-1.txt exists but this doesn't, notifyBoard isn't sending yet. Check its fetch call, save, then restart node orders.js.
+      - path: milestone/board-log.txt
+        contains: Grace
+        hint: Place the second order, for Grace, while both services are running.
+  - id: explain-design
+    type: explain
+    title: Explain what you built
+    instructions: |
+      Imagine handing this project to a colleague. Write the short explanation you'd put in its README. Explaining your own design clearly is the skill this whole stage has been building.
+    prompt: |
+      In plain words, explain how the live order board works: what each of the two services does, how an order gets from the curl command to the browser, and one thing you'd change before using it for real.
+    rubric:
+      - Says what the orders service does and what the board service does
+      - Describes the path of an order, from the POST to the orders service, through the event sent to the board, to the browser
+      - Mentions how the browser gets updates without refreshing (server-sent events, or a stream the server keeps open)
+      - Names a sensible improvement, such as saving orders in a database, checking a signature on events, retrying or queueing events when the board is down, or using HTTPS
+    minScore: 3
+    modelAnswer: |
+      The orders service takes new orders: a POST to /orders with an item and a customer. It gives each order an id and answers 201 Created. Straight after, it tells the board service by sending its own POST to the board's /events address, with an "order.created" event as JSON.
+
+      The board service does two things. It serves a web page, and that page opens a server-sent events stream to /stream, a request the server keeps open. When an event arrives at /events, the board writes it to every open stream, so each browser adds the order to its list instantly, with no refreshing.
+
+      Before using it for real, I'd keep orders in a database, because right now they vanish when the service restarts. I'd also put the events on a queue, so orders aren't lost on the board when it's down, and add a signature check on /events so nobody else can post fake orders.
+    gradingPrompt: |
+      I'm learning to be a software consultant. I built two small Node services: an orders service, which sends an event to a board service whenever an order is created, and the board, which pushes events to browsers with server-sent events. Here's the explanation I'd put in the README. Please check it's accurate and clear to a new colleague, and suggest one improvement to the explanation or the design.
+
+      My explanation:
+      {{ANSWER}}
+recall:
+  - id: r1
+    type: mcq
+    prompt: In your app, which part pushes new orders to the browser?
+    options:
+      - The board service, writing to each browser's open server-sent events stream
+      - The orders service, directly
+      - The browser, by refreshing every second
+      - curl
+    answer: 0
+    why: The orders service only talks to the board. The board holds the browsers' streams open and writes each event to them.
+  - id: r2
+    type: mcq
+    prompt: You stop board.js and place an order. What happens, given notifyBoard catches errors?
+    options:
+      - The order is still created (201), and the orders service logs that it couldn't reach the board. The board never hears about that order
+      - The orders service crashes
+      - The order is queued and delivered later
+      - curl gets a 500
+    answer: 0
+    why: Catching the error keeps orders working, but the event is lost. A queue between the services, from *Message queues*, would fix that.
+  - id: r3
+    type: short
+    prompt: Which browser object opens a server-sent events stream?
+    accept: ['eventsource']
+    answerText: EventSource
+  - id: r4
+    type: self
+    prompt: Why did we choose server-sent events, rather than WebSockets or polling, for the board?
+    modelAnswer: Updates only go one way, from the server to the browser, and they should appear instantly. SSE is the simplest fit for that. It's plain HTTP, and the browser reconnects automatically. WebSockets would add two-way messaging we don't need, and polling would add delay and wasted requests.
+cards:
+  - id: shape
+    front: Describe the milestone app in two sentences.
+    back: The orders service accepts POST /orders and sends an "order.created" event to the board service. The board pushes each event to every connected browser over server-sent events.
+  - id: fetch-post
+    front: How do you send a JSON POST with fetch?
+    back: 'fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })'
+  - id: try-catch
+    front: What does try/catch do in JavaScript?
+    back: Runs the code in try, and if anything in it throws an error, runs catch instead of crashing. It's like Python's try/except.
+  - id: sse
+    front: What does one server-sent event look like on the wire?
+    back: 'A line starting "data: " with the message, then a blank line. The browser''s EventSource calls onmessage with that data.'
+testOut:
+  - id: t1
+    type: mcq
+    prompt: In Node, what does `new URLSearchParams("item=Desk lamp&customer=Ada").get("customer")` return?
+    options: ['"Ada"', '"customer"', '"item=Desk lamp"', An error]
+    answer: 0
+    why: URLSearchParams reads form-style text, the kind curl -d sends, and get() picks out one field.
+  - id: t2
+    type: mcq
+    prompt: Two programs on the same computer need to share news. What's the usual way?
+    options:
+      - Over the network, for example HTTP requests to localhost, or a queue
+      - Sharing variables
+      - Reading each other's memory
+      - Restarting each other
+    answer: 0
+    why: Separate processes can't see each other's variables. They talk through the network, files, or a service like a queue.
+docs:
+  - title: "MDN: Using server-sent events"
+    url: https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
+  - title: "MDN: Using the Fetch API"
+    url: https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
+  - title: "MDN: try...catch"
+    url: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch
+videos: []
+---
+
+## In this lesson
+
+This is the **Stage 2 milestone**: connect two services in a small app with live updates. Everything you need, you've already met. Here it all comes together:
+
+- **Two services**: an orders service and a live order board, each a small Node program.
+- The orders service tells the board about each new order with an **HTTP POST**, webhook-style. You'll write that part.
+- The board pushes each order to the browser with **server-sent events**, so it appears without refreshing.
+- Then you'll **explain** the design, as you would for a client or a colleague.
+
+## What you're building
+
+```text
+ curl (a customer)            orders service             board service              browser
+       │   POST /orders          (port 4396)               (port 4397)
+       │ ───────────────────▶   saves an id     POST /events      │
+       │                        notifyBoard()  ───────────────▶   writes to every   ───▶  the order
+       │   ◀── 201 + order                                         open /stream            appears
+```
+
+1. A "customer" (you, with curl) sends `POST /orders` to the **orders service**.
+2. The orders service gives the order an id and calls **`notifyBoard`**, which sends `POST /events` to the **board service** with an `order.created` event. **This is the function you'll finish.**
+3. The board writes the event to a log file, and to every browser that has the board page open, through a **server-sent events** stream.
+4. The page's JavaScript adds the order to the list.
+
+Two separate programs, on two ports, talking over HTTP: a miniature version of the systems you've been learning about all stage.
+
+## The starter files
+
+Real projects rarely start from an empty folder. You'll download two starter files from Groundwork's practice API, the way a team would hand you a repository: `orders.js` and `board.js`. Read them before running them, because reading code you didn't write is half the job. Here are the parts that are new.
+
+### Reading a form in the orders service
+
+```javascript
+const form = new URLSearchParams(body);   // body is "item=Desk lamp&customer=Ada"
+form.get("item")                          // "Desk lamp"
+```
+
+`curl -d "item=…&customer=…"` sends form fields, as in the cookies lesson. **`URLSearchParams`** is built into Node and browsers. It reads that `name=value&name=value` text, and `.get()` picks out one field.
+
+### The board's stream
+
+```javascript
+res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" });
+res.write(": connected\n\n");
+watchers.push(res);
+```
+
+This is a **server-sent events** endpoint, which you met in *Live updates*. It answers with the special content type `text/event-stream`, and then **never calls `res.end()`**: the response stays open. The board keeps each open response in the `watchers` array. When an event arrives, it writes to each one:
+
+```javascript
+watcher.write("data: " + body + "\n\n");
+```
+
+That's the whole SSE format: a line starting `data: `, then a **blank line** to mark the end of the message. (A line starting with a colon, like `: connected`, is a comment the browser ignores.)
+
+### The board's page
+
+```javascript
+const events = new EventSource("/stream");
+events.onmessage = (message) => {
+  const order = JSON.parse(message.data).order;
+  // … add it to the list …
+};
+```
+
+In the browser, **`EventSource`** opens the stream and calls `onmessage` for every event, with the text after `data:` in `message.data`. If the connection drops, it reconnects by itself.
+
+<details>
+<summary>Quick check: why does the board never call res.end() on a /stream request?</summary>
+
+Because the response has to stay open, so the board can keep writing new events to it. Ending it would close the stream.
+</details>
+
+## Your part: notifyBoard
+
+In `orders.js`, this function is empty:
+
+```javascript
+async function notifyBoard(order) {
+  // TODO: send a POST request to BOARD_EVENTS with fetch().
+}
+```
+
+You've used `fetch` to **get** things, in *JavaScript outside the browser*. It can also send a POST, by giving it a second argument, an object of **options**:
+
+```javascript
+await fetch(url, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(data),
+});
+```
+
+- **`method`**: which HTTP method. Without it, fetch sends GET.
+- **`headers`**: an object of request headers. Here, saying the body is JSON.
+- **`body`**: what to send, as text. `JSON.stringify` turns a JavaScript object into JSON text.
+
+### When the board is down: try and catch
+
+What if the board isn't running? `fetch` can't connect and **throws an error**. Unhandled, that would crash the orders service, and no one could place an order because a display screen was off. That's the wrong way round.
+
+JavaScript's **`try`** and **`catch`** work like Python's `try` and `except`:
+
+```javascript
+try {
+  // code that might fail
+} catch (error) {
+  console.log("Couldn't reach the board:", error.message);
+}
+```
+
+If anything inside `try` throws, the code jumps to `catch`, with the error in `error`, instead of crashing.
+
+So the finished function is:
+
+```javascript
+async function notifyBoard(order) {
+  try {
+    await fetch(BOARD_EVENTS, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "order.created", order: order }),
+    });
+  } catch (error) {
+    console.log("Couldn't reach the board:", error.message);
+  }
+}
+```
+
+<Callout title="Try it yourself first">
+Have a go at writing it before you look closely at the finished version. If you get stuck, ask your AI tutor something like: *"Here's my notifyBoard function and the error I get. What should I look at? Don't write it for me."* That's the routine from the very first lesson, and this is exactly the kind of moment it's for.
+</Callout>
+
+## Running it
+
+You'll use three PowerShell windows:
+
+| Window | Runs | Why |
+| --- | --- | --- |
+| 1 | `node board.js` | The board service, on port 4397 |
+| 2 | `node orders.js` | The orders service, on port 4396 |
+| 3 | curl commands | Plays the customer placing orders |
+
+Plus a browser tab on `http://localhost:4397`, the board page. Arrange them so you can see the browser while you run curl, because that moment, when an order appears on its own, is the point of the exercise.
+
+If something doesn't work, use the troubleshooting habits from this stage:
+
+- **"Connection refused"** from curl: is the service on that port running, in its window?
+- **The order is created (`order-1.txt` exists) but nothing appears**: look at window 2. Does it say "Couldn't reach the board"? Then check `notifyBoard` and the board's window. Did you save `orders.js`, and restart `node orders.js` after changing it?
+- **The page says "Connecting..."**: is the board running? Refresh the page.
+
+## Stepping back
+
+You've built, in miniature, the shape of a lot of real software:
+
+- **Two services** with one job each, talking over **HTTP**.
+- A **webhook-style event** from one service to another.
+- **Server-sent events** for live updates in the browser.
+- **Error handling**, so one part failing doesn't take down another.
+
+And you can already see what a real version would need, from the rest of this stage: orders saved in a **database**, a **queue** between the services so events aren't lost while the board is down, a **signature** on events, **HTTPS**, and perhaps an **API gateway** in front if it grew. Being able to look at a working system and name its next weaknesses is exactly what a consultant does.
+
+<ConsultantNote>
+Stage 2's goal was to understand how software connects, well enough to explain it. You've now run, broken and fixed a two-service system with live updates, and you can describe it in plain words. That's the fast lane done: you can follow an architecture conversation, ask the right questions about integrations, and spot the common mistakes. Stage 3 is about building and shipping real apps, with databases, tests and deployment.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Two-service app** | Separate programs, each with one job, talking over HTTP |
+| **fetch options** | `{ method, headers, body }`, the second argument to fetch, for POSTs and more |
+| **try / catch** | JavaScript's try / except: handle an error instead of crashing |
+| **URLSearchParams** | Reads `name=value&name=value` text, like form data |
+| **EventSource** | The browser object that opens a server-sent events stream |
+| **SSE format** | `data: …` then a blank line, for each message |
+| **End-to-end check** | Testing the whole path, from the first request to what the user sees |

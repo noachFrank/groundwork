@@ -1,0 +1,450 @@
+---
+id: graphql
+title: "GraphQL: ask for exactly what you need"
+order: 7
+topic: software-talking
+minutes: 55
+summary: A different style of API, with one address and a query that names exactly the fields you want, across related data, in one request. Covers how to write queries, variables and mutations, why errors come back with 200, and when GraphQL is worth it.
+connectivity: offline
+prerequisites:
+  - id: versions-and-docs
+    need: essential
+    why: Compares GraphQL's schema with an OpenAPI description.
+  - id: rest-design
+    need: essential
+    why: GraphQL is easiest to understand next to REST.
+  - id: python-dicts-data
+    need: essential
+    why: Answers are nested dictionaries and lists.
+revision: 1
+teaches: [graphql, over-under-fetching, graphql-query, graphql-schema, graphql-variables, graphql-mutation, graphql-errors, graphql-tradeoffs]
+uses: [api, rest, resource, round-trip, latency, http-method, status-code, json, json-object, nesting, openapi, http2, cache-control, cdn, injection-intro, requests-intro, response-json-py, keyword-arguments, triple-quoted-string, function, return-statement, dictionary, dict-key-access, nested-data, list, for-loop, append, in-operator, if-statement, none-value, run-and-check]
+predict:
+  id: p1
+  type: mcq
+  prompt: A phone app's order screen needs each order's item and the customer's city. With a REST API, it calls GET /orders, then GET /customers/1, GET /customers/2 and so on, one per order. What's the problem?
+  options:
+    - Nothing, that's normal
+    - Lots of round trips, each fetching whole records when only one or two fields are needed
+    - REST can't return cities
+    - The app needs a bigger screen
+  answer: 1
+  why: Many requests, and each one sends more data than the screen uses. On a phone network, those round trips add up fast. GraphQL's answer is a single request that names exactly the fields wanted, across related data.
+tasks:
+  - id: graphql-queries
+    type: python
+    title: Ask the practice API in GraphQL
+    instructions: |
+      You'll use: triple-quoted strings (from *Python: dictionaries and real data*), `requests.post` with `json=`, and GraphQL queries and variables from this lesson.
+
+      The practice API's GraphQL endpoint is `BASE + "/graphql"`. `gql(query, variables)` is done for you: it sends one query and returns the JSON answer, which has `"data"` and sometimes `"errors"`.
+
+      1. `items_for(customer)` returns a list of the `item` of every order for that customer name. Use the query `orders(customer: $customer) { item }` with a **variable**. Don't paste the name into the query text.
+      2. `order_summary(order_id)` returns `{"item": …, "city": …}` for one order: the order's item and its **customer's city**, in **one** query.
+      3. `has_errors(answer)` returns `True` if a GraphQL answer contains `"errors"`.
+    starter: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def gql(query, variables):
+          response = requests.post(BASE + "/graphql", json={"query": query, "variables": variables})
+          return response.json()
+
+
+      def items_for(customer):
+          query = """
+          query ($customer: String) {
+            orders(customer: $customer) { item }
+          }
+          """
+          answer = gql(query, {"customer": customer})
+          # answer["data"]["orders"] is a list like [{"item": "Keyboard"}, ...]
+          pass
+
+
+      def order_summary(order_id):
+          # Write a query for order(id: $id) that asks for item, and customer { city }.
+          pass
+
+
+      def has_errors(answer):
+          pass
+
+
+      print(items_for("Ada"))
+      print(order_summary(102))
+      print(gql("{ orders { price } }", {}))
+    tests:
+      - name: items_for asks for one customer's orders
+        code: |
+          got = items_for("Ada")
+          assert "Keyboard" in got and "USB cable" in got, f"Ada ordered a Keyboard and a USB cable. Got {got!r}."
+          assert "Monitor" not in got, f"The Monitor is Grace's. Got {got!r}."
+      - name: items_for works for someone else
+        code: |
+          got = items_for("Grace")
+          assert "Monitor" in got and "Keyboard" not in got, f"Got {got!r}."
+      - name: order_summary follows the order to its customer
+        code: |
+          got = order_summary(102)
+          assert got == {"item": "Monitor", "city": "New York"}, f"Order 102 is Grace's Monitor, and Grace is in New York. Got {got!r}."
+      - name: order_summary uses a different order too
+        code: |
+          got = order_summary(103)
+          assert got == {"item": "USB cable", "city": "London"}, f"Got {got!r}."
+      - name: has_errors spots an error answer
+        code: |
+          answer = gql("{ orders { price } }", {})
+          assert has_errors(answer) is True, f"Orders have no price field, so the answer has errors: {answer}"
+          assert has_errors(gql("{ orders { id } }", {})) is False, "A good query has no errors."
+    solution: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def gql(query, variables):
+          response = requests.post(BASE + "/graphql", json={"query": query, "variables": variables})
+          return response.json()
+
+
+      def items_for(customer):
+          query = """
+          query ($customer: String) {
+            orders(customer: $customer) { item }
+          }
+          """
+          answer = gql(query, {"customer": customer})
+          items = []
+          for order in answer["data"]["orders"]:
+              items.append(order["item"])
+          return items
+
+
+      def order_summary(order_id):
+          query = """
+          query ($id: Int!) {
+            order(id: $id) {
+              item
+              customer { city }
+            }
+          }
+          """
+          order = gql(query, {"id": order_id})["data"]["order"]
+          return {"item": order["item"], "city": order["customer"]["city"]}
+
+
+      def has_errors(answer):
+          return "errors" in answer
+    wrong: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def gql(query, variables):
+          response = requests.post(BASE + "/graphql", json={"query": query, "variables": variables})
+          return response.json()
+
+
+      def items_for(customer):
+          items = []
+          for order in gql("{ orders { item } }", {})["data"]["orders"]:
+              items.append(order["item"])
+          return items
+
+
+      def order_summary(order_id):
+          order = gql("{ order(id: 102) { item } }", {})["data"]["order"]
+          return {"item": order["item"], "city": None}
+
+
+      def has_errors(answer):
+          return answer["data"] is None and False
+  - id: graphql-or-rest
+    type: case
+    title: GraphQL or REST?
+    instructions: Two clients are both considering GraphQL. Advise each.
+    scenario: |
+      Client A is a small accounting firm. Their only API is used by their own internal dashboard, which shows a list of invoices. They have one developer, and their pages are cached by a CDN.
+
+      Client B is a travel company with a web app, an iPhone app, an Android app and partner integrations. Each screen needs a different mix of trips, hotels, prices and reviews, and the mobile teams complain they need 6 to 10 requests per screen.
+    questions:
+      - prompt: Should Client A switch to GraphQL?
+        choices:
+          - text: Probably not. Their needs are simple, REST works with their CDN caching, and GraphQL adds a schema, a server library and new security work for one developer
+            score: 2
+            why: GraphQL solves a problem they don't have. Keeping things simple is the better advice.
+          - text: Yes, GraphQL is more modern
+            score: 0
+            why: Newer isn't the same as better for this client. It adds cost and complexity for no clear gain.
+          - text: Yes, because REST is being retired
+            score: 0
+            why: It isn't. REST remains the most common API style by far.
+      - prompt: Should Client B consider GraphQL?
+        choices:
+          - text: Yes. Many different screens needing different combinations of related data, with costly mobile round trips, is exactly the problem GraphQL was made for
+            score: 2
+            why: Each app asks for exactly what its screen needs, in one request, and the backend teams stop building a custom endpoint for every screen.
+          - text: No, never use GraphQL
+            score: 0
+            why: For this situation it's a strong fit.
+          - text: Only if they also switch to gRPC
+            score: 0
+            why: Unrelated. gRPC is mostly for communication between internal services.
+      - prompt: Client B goes ahead. Which risk should you raise first?
+        choices:
+          - text: Clients can write huge, deeply nested queries that overload the servers, so set limits on query depth and cost
+            score: 2
+            why: Because the client chooses the query, one request can ask for an enormous amount of work. Limits are essential.
+          - text: GraphQL can't use HTTPS
+            score: 0
+            why: It runs over normal HTTPS.
+          - text: GraphQL doesn't support mobile apps
+            score: 0
+            why: Mobile apps are one of its main users.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: How many addresses does a typical GraphQL API have?
+    options:
+      - One, like /graphql, and the query says what you want
+      - One per resource, like REST
+      - None
+      - One per field
+    answer: 0
+    why: Every query goes to the same endpoint, usually as a POST with the query in a JSON body.
+  - id: r2
+    type: mcq
+    prompt: A GraphQL query asks for a field that doesn't exist. What usually comes back?
+    options:
+      - 200 OK, with an "errors" list in the JSON body
+      - 404 Not Found
+      - "500 Internal Server Error"
+      - Nothing
+    answer: 0
+    why: GraphQL usually reports problems inside the body, even with a 200 status. Code must check for "errors", not just the status code.
+  - id: r3
+    type: short
+    prompt: In GraphQL, what's an operation that changes data called?
+    accept: ['mutation']
+    answerText: A mutation
+  - id: r4
+    type: self
+    prompt: Why use GraphQL variables instead of pasting values into the query text?
+    modelAnswer: Pasting text into a query is the same mistake as building SQL by gluing text together. Odd characters like quotes break the query, and an attacker could inject extra parts. Variables send the values separately, with their types checked. It also keeps the query text the same every time, which is easier to read and to cache.
+cards:
+  - id: what
+    front: GraphQL in one sentence?
+    back: One endpoint where the client sends a query naming exactly which fields it wants, across related data, and gets back JSON in exactly that shape.
+  - id: fetching
+    front: Over-fetching vs. under-fetching?
+    back: "Over-fetching: getting whole records when you need two fields. Under-fetching: needing several requests to collect related data. GraphQL avoids both."
+  - id: errors
+    front: How do GraphQL errors differ from REST errors?
+    back: GraphQL usually answers 200 OK even when something failed, with an "errors" list in the body. Always check the body.
+  - id: tradeoffs
+    front: GraphQL's main costs?
+    back: Harder HTTP caching (everything is a POST to one address), expensive queries that need depth and cost limits, and a schema and server library to build and maintain.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: 'What does this return: `{ customer(id: 1) { name orders { item } } }`?'
+    options:
+      - Customer 1's name and the item of each of their orders, in that nested shape
+      - Every customer
+      - Only the orders
+      - An error, because you can't nest
+    answer: 0
+    why: The answer mirrors the query's shape. Nesting follows related data in one request.
+  - id: t2
+    type: mcq
+    prompt: What describes every type and field a GraphQL API offers?
+    options: [Its schema, Its cookies, Its DNS records, Its rate limit]
+    answer: 0
+    why: The schema is GraphQL's built-in description, similar in purpose to an OpenAPI file, and tools can read it to offer autocomplete.
+docs:
+  - title: "GraphQL: Introduction"
+    url: https://graphql.org/learn/
+  - title: "GraphQL: Queries"
+    url: https://graphql.org/learn/queries/
+  - title: "GraphQL: Serving over HTTP"
+    url: https://graphql.org/learn/serving-over-http/
+videos: []
+---
+
+## In this lesson
+
+Most APIs you'll meet are REST. The second most common style for public and app APIs is **GraphQL**, created at Facebook for exactly the problem in the Predict question. This lesson covers:
+
+- The two problems it solves: **over-fetching** and **under-fetching**.
+- Writing a **query**, with nesting and arguments.
+- The **schema**, **variables** and **mutations**.
+- Why errors arrive with **200 OK**.
+- The **trade-offs**: when GraphQL is worth it, and when it isn't.
+
+## The problem with lots of little requests
+
+Picture a phone app's order screen showing each order's item and the customer's city. With the REST API from earlier lessons:
+
+1. `GET /orders` returns every order, with every field, when the screen needs one.
+2. Then `GET /customers/1`, `GET /customers/2`… once per customer, each returning the whole customer, to read one field.
+
+Two problems:
+
+- **Over-fetching**: getting far more data than you need.
+- **Under-fetching**: one request doesn't get everything, so you need several, and each costs a round trip. On a phone network, that's the slow part.
+
+REST teams often respond by building special endpoints for each screen, like `/order-screen-data`. That works, until there are fifty screens across three apps.
+
+## One endpoint, one query
+
+GraphQL has **one** address, usually `/graphql`, and you POST a **query** that describes the exact shape of data you want:
+
+```graphql
+{
+  orders(customer: "Ada") {
+    item
+    customer {
+      city
+    }
+  }
+}
+```
+
+The answer has **exactly that shape**, wrapped in `data`:
+
+```json
+{
+  "data": {
+    "orders": [
+      {"item": "Keyboard", "customer": {"city": "London"}},
+      {"item": "USB cable", "customer": {"city": "London"}}
+    ]
+  }
+}
+```
+
+Read the query from the outside in:
+
+- `orders` is a **field** the API offers at the top level. `(customer: "Ada")` is an **argument**, like a filter.
+- Inside the braces, you list the fields you want from each order: `item`.
+- `customer` is a field whose value is another object, so it gets its own braces, listing the fields wanted from it: `city`. That nesting follows related data, in the **same** request.
+
+One round trip, and nothing extra. That's the whole appeal.
+
+<details>
+<summary>Quick check: how would you change the query to also get each order's total?</summary>
+
+Add `total` inside the order's braces, next to `item`. You only get the fields you list.
+</details>
+
+## The schema
+
+How do you know which fields exist? Every GraphQL API has a **schema**: a typed list of everything it offers. The practice API's, roughly:
+
+```graphql
+type Query {
+  orders(customer: String, status: String): [Order]
+  order(id: Int!): Order
+  customers: [Customer]
+}
+
+type Order {
+  id: Int
+  item: String
+  total: Float
+  status: String
+  customer: Customer
+}
+
+type Customer {
+  id: Int
+  name: String
+  city: String
+  orders: [Order]
+}
+```
+
+`[Order]` means a list of orders, `Int!` means a whole number that must be given, and `Float` is a number with decimals. The schema does the same job as an OpenAPI file, but it's built into GraphQL itself, so tools can read it from the API and offer autocomplete as you type a query.
+
+## Variables
+
+In the task, the customer's name changes on every call. You **could** paste it into the query text, but don't. That's the same mistake as gluing text into SQL, which you met as **injection** in the debugging lesson: a name with a quote in it breaks the query, and an attacker could add extra parts. Use **variables** instead:
+
+```graphql
+query ($customer: String) {
+  orders(customer: $customer) { item }
+}
+```
+
+and send the values separately, alongside the query:
+
+```python
+requests.post(BASE + "/graphql", json={
+    "query": query,
+    "variables": {"customer": "Ada"},
+})
+```
+
+`$customer` is a placeholder, declared at the top with its type. The server fills it in safely.
+
+<Callout title="Braces and f-strings don't mix">
+GraphQL is full of `{` and `}`, and so are Python f-strings. Writing a query inside an f-string means doubling every brace (`{{`), which is easy to get wrong. One more reason to use plain triple-quoted strings and variables.
+</Callout>
+
+## Mutations
+
+Reading is a **query**. Changing data is a **mutation**, written the same way, and naming the fields you want back from the result:
+
+```graphql
+mutation {
+  createOrder(customer: "Sam", item: "Pen", total: 3) {
+    id
+    status
+  }
+}
+```
+
+## Errors come back with 200
+
+This catches everyone out. Ask the practice API for a field that doesn't exist:
+
+```json
+{"data": null, "errors": [{"message": "Cannot query field \"price\" on type \"Order\". ..."}]}
+```
+
+The status code is **200 OK**. GraphQL usually reports problems **inside the body**, in an `errors` list, partly because one query can partly succeed. So GraphQL code must check for `errors`, not just the status code. The task's `has_errors` does exactly that.
+
+## The trade-offs
+
+GraphQL isn't simply better than REST. It moves work around:
+
+| Benefit | Cost |
+| --- | --- |
+| One request per screen, with exactly the data needed | Every request is a POST to one address, so ordinary HTTP caching (and CDNs) help much less |
+| Frontend teams don't wait for new endpoints | The client chooses the query, so one huge, deeply nested query can overload the server. You need limits on depth and cost |
+| A typed schema, with great tools | A schema, a server library and resolvers to build and maintain |
+| Many different apps share one API | Errors and monitoring work differently from REST, so teams have to learn new habits |
+
+A useful rule: GraphQL shines when **many different clients** (web, iPhone, Android, partners) need **different combinations of related data**. For one website talking to its own simple backend, REST is usually simpler and cheaper.
+
+<ConsultantNote>
+Clients sometimes ask for GraphQL because it sounds modern. Ask who the API's clients are and how different their needs are. If the answer is "our one website", REST is almost always the cheaper choice. If it's "four apps and partners, and the mobile team is drowning in requests", GraphQL can genuinely pay for itself. Either way, insist on query limits before it goes live.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **GraphQL** | An API style with one endpoint, where the client's query names exactly what it wants |
+| **Over-fetching / under-fetching** | Getting more than you need / needing several requests |
+| **Query** | A GraphQL request for data, shaped like the answer you want |
+| **Schema** | The typed list of every field and type the API offers |
+| **Variables** | Values sent separately from the query, filling `$placeholders` safely |
+| **Mutation** | A GraphQL operation that changes data |
+| **errors (with 200)** | GraphQL usually reports problems in the body, with a 200 status |
+| **GraphQL trade-offs** | Harder caching, query limits needed, and more to build |

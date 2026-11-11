@@ -1,0 +1,350 @@
+---
+id: api-gateways
+title: "API gateways: one front door for many services"
+order: 4
+topic: software-talking
+minutes: 55
+summary: Why systems made of many services put one gateway in front of them. Covers what it handles once for everyone (keys, rate limits, routing, logging), how it differs from a reverse proxy, and the trap of piling too much into it.
+connectivity: offline
+prerequisites:
+  - id: pub-sub-and-events
+    need: essential
+    why: Finishes the tour of how services connect behind the scenes.
+  - id: proxies
+    need: essential
+    why: A gateway is a reverse proxy with extra jobs.
+  - id: paging-and-rate-limits
+    need: essential
+    why: Rate limits and 429 are one of a gateway's main jobs.
+revision: 1
+teaches: [api-gateway, gateway-jobs, backend-for-frontend, gateway-vs-proxy, managed-gateway, gateway-overreach]
+uses: [service, reverse-proxy, load-balancer, tls-termination, api-key, api-key-header, access-token, authentication-vs-authorization, rate-limit, status-429, status-401-403, cors, api-versioning, graphql, single-point-of-failure, architecture-diagram, js-function, const-let, js-object, js-dot-access, js-array, for-of, js-string-methods, nullish-coalescing, triple-equals, js-logic-operators, js-null-undefined, run-and-check]
+predict:
+  id: p1
+  type: mcq
+  prompt: A company has 12 separate services behind its mobile app. Every one of them checks API keys, counts requests for rate limits and writes access logs, each in its own slightly different way. What would help most?
+  options:
+    - Hire 12 more developers
+    - Put one front door in front of all of them that does those jobs once, the same way, for every request
+    - Remove the API keys
+    - Merge the 12 services into one
+  answer: 1
+  why: That front door is an API gateway. Shared jobs are done once, consistently, and each service can concentrate on its own work.
+tasks:
+  - id: gateway-code
+    type: javascript
+    title: Write the heart of an API gateway
+    instructions: |
+      You'll use: objects, a `for...of` loop, `.startsWith()` (from *Proxies*) and `??` (from *JavaScript: arrays, objects and arrow functions*).
+
+      `gateway(request, keys, counts, limit, routes)` handles one request like `{ path: "/orders/7", apiKey: "key-mobile" }`. It returns an object saying what to do, checking in this order:
+
+      1. If `request.apiKey` isn't one of the keys in `keys` (an object from key to client name), return `{ status: 401 }`.
+      2. Add one to that client's count in `counts` (an object from client name to number, starting at 0). If the new count is more than `limit`, return `{ status: 429 }`.
+      3. Find the first route whose `prefix` the path starts with, and return `{ status: "forward", to: route.target + request.path, client: <client name> }`.
+      4. If no route matches, return `{ status: 404 }`.
+    starter: |
+      const keys = { "key-mobile": "mobile-app", "key-partner": "partner-co" };
+      const routes = [
+        { prefix: "/orders", target: "http://orders-service" },
+        { prefix: "/accounts", target: "http://accounts-service" },
+      ];
+
+      function gateway(request, keys, counts, limit, routes) {
+        // 1. const client = keys[request.apiKey];  no client? return { status: 401 }
+        // 2. counts[client] = (counts[client] ?? 0) + 1;  over the limit? return { status: 429 }
+        // 3. find a matching route, and forward
+        // 4. otherwise 404
+        return { status: "forward" };
+      }
+
+      const counts = {};
+      console.log(gateway({ path: "/orders/7", apiKey: "key-mobile" }, keys, counts, 3, routes));
+      console.log(gateway({ path: "/orders/7", apiKey: "stolen" }, keys, counts, 3, routes));
+    tests:
+      - name: a good request is forwarded to the right service
+        code: |
+          const got = gateway({ path: "/orders/7", apiKey: "key-mobile" }, keys, {}, 3, routes);
+          assert(got.status === "forward" && got.to === "http://orders-service/orders/7" && got.client === "mobile-app", "Got " + JSON.stringify(got));
+      - name: an unknown key gets 401
+        code: |
+          const got = gateway({ path: "/orders/7", apiKey: "stolen" }, keys, {}, 3, routes);
+          assert(got.status === 401, "Got " + JSON.stringify(got));
+      - name: going over the limit gets 429
+        code: |
+          const counts = {};
+          const r = { path: "/accounts/1", apiKey: "key-partner" };
+          const results = [gateway(r, keys, counts, 2, routes), gateway(r, keys, counts, 2, routes), gateway(r, keys, counts, 2, routes)];
+          assert(results[0].status === "forward" && results[1].status === "forward", "The first two are within the limit of 2.");
+          assert(results[2].status === 429, "The third is over the limit. Got " + JSON.stringify(results[2]));
+      - name: each client has its own count
+        code: |
+          const counts = {};
+          gateway({ path: "/orders/1", apiKey: "key-mobile" }, keys, counts, 1, routes);
+          const other = gateway({ path: "/orders/1", apiKey: "key-partner" }, keys, counts, 1, routes);
+          assert(other.status === "forward", "partner-co hasn't used its limit yet, even though mobile-app has.");
+          assert(counts["mobile-app"] === 1 && counts["partner-co"] === 1, "counts should be per client: " + JSON.stringify(counts));
+      - name: a bad key isn't counted
+        code: |
+          const counts = {};
+          gateway({ path: "/orders/1", apiKey: "nope" }, keys, counts, 1, routes);
+          assert(Object.keys(counts).length === 0, "Refuse unknown keys before counting anything.");
+      - name: no matching route gets 404
+        code: |
+          const got = gateway({ path: "/admin", apiKey: "key-mobile" }, keys, {}, 3, routes);
+          assert(got.status === 404, "Got " + JSON.stringify(got));
+    solution: |
+      const keys = { "key-mobile": "mobile-app", "key-partner": "partner-co" };
+      const routes = [
+        { prefix: "/orders", target: "http://orders-service" },
+        { prefix: "/accounts", target: "http://accounts-service" },
+      ];
+
+      function gateway(request, keys, counts, limit, routes) {
+        const client = keys[request.apiKey];
+        if (!client) {
+          return { status: 401 };
+        }
+        counts[client] = (counts[client] ?? 0) + 1;
+        if (counts[client] > limit) {
+          return { status: 429 };
+        }
+        for (const route of routes) {
+          if (request.path.startsWith(route.prefix)) {
+            return { status: "forward", to: route.target + request.path, client: client };
+          }
+        }
+        return { status: 404 };
+      }
+    wrong: |
+      const keys = { "key-mobile": "mobile-app", "key-partner": "partner-co" };
+      const routes = [
+        { prefix: "/orders", target: "http://orders-service" },
+        { prefix: "/accounts", target: "http://accounts-service" },
+      ];
+
+      function gateway(request, keys, counts, limit, routes) {
+        counts.all = (counts.all ?? 0) + 1;
+        if (counts.all > limit) {
+          return { status: 429 };
+        }
+        for (const route of routes) {
+          if (request.path.startsWith(route.prefix)) {
+            return { status: "forward", to: route.target + request.path, client: keys[request.apiKey] };
+          }
+        }
+        return { status: 404 };
+      }
+  - id: gateway-case
+    type: case
+    title: "\"Should we get an API gateway?\""
+    instructions: Two clients ask the same question. Advise each.
+    scenario: |
+      Client A runs one web app with one backend, behind a load balancer. A vendor is pitching them an expensive API gateway product.
+
+      Client B has grown to 15 services behind a mobile app and a partner API. Each service handles API keys, rate limits and logging in its own way, a security review found two services that forgot to check keys at all, and partners complain that every service's errors look different.
+    questions:
+      - prompt: Does Client A need an API gateway?
+        choices:
+          - text: Probably not. With one backend, its own code (or the load balancer) can check keys and limits. A gateway adds cost and another moving part
+            score: 2
+            why: Gateways pay off when there are many services sharing the same concerns. One backend doesn't have that problem.
+          - text: Yes, every system needs one
+            score: 0
+            why: That's the vendor's pitch, not the client's need.
+          - text: Yes, to replace their database
+            score: 0
+            why: A gateway doesn't store data.
+      - prompt: Does Client B need one?
+        choices:
+          - text: Yes. Checking keys, rate limiting, logging and consistent errors in one place would fix exactly the problems they have, including the two services with no key check
+            score: 2
+            why: This is the textbook case. One door, one set of rules, applied to every request.
+          - text: No, each team should just be more careful
+            score: 0
+            why: They've already shown that 15 separate implementations drift apart. Doing it once is more reliable.
+          - text: They should merge everything into one service first
+            score: 1
+            why: Sometimes reasonable, but it's a much bigger change, and it doesn't address the partner API's needs on its own.
+      - prompt: A year later, Client B's gateway has grown order-validation rules, discount calculations and data reshaping for each app. What do you say?
+        choices:
+          - text: That business logic belongs in the services. A gateway should stay thin, handling cross-cutting jobs like auth, limits, routing and logging
+            score: 2
+            why: An overloaded gateway becomes a bottleneck every team must change and redeploy, and a single point where many things can break.
+          - text: Great, put everything in the gateway
+            score: 0
+            why: That recreates one giant system, in the worst possible place.
+          - text: Replace the gateway with GraphQL
+            score: 0
+            why: GraphQL is an API style, not a fix for misplaced business logic.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: Which of these is a typical job for an API gateway?
+    options:
+      - Checking API keys or tokens, rate limiting, routing and logging, for every service behind it
+      - Calculating discounts for orders
+      - Storing customer records
+      - Running database migrations
+    answer: 0
+    why: Gateways handle cross-cutting concerns, the jobs every service needs. Business rules stay in the services.
+  - id: r2
+    type: mcq
+    prompt: How is an API gateway different from a plain reverse proxy?
+    options:
+      - A gateway adds API-specific jobs like keys, rate limits per client, request transformation and API analytics
+      - They're completely unrelated
+      - A gateway can't route requests
+      - A reverse proxy is always more expensive
+    answer: 0
+    why: Both sit in front and route. A gateway knows about API clients and their rules.
+  - id: r3
+    type: short
+    prompt: What's the name for a small backend made especially for one kind of client, like the mobile app, sitting behind the gateway?
+    accept: ['backend.?for.?frontend', 'bff']
+    answerText: Backend for frontend (BFF)
+  - id: r4
+    type: self
+    prompt: Why should an API gateway stay "thin"?
+    modelAnswer: Every request passes through it, and every team depends on it. Business logic in the gateway means every change needs the gateway changed and redeployed, it becomes a bottleneck and a single point of failure, and logic ends up split between the gateway and the services. Keep it to shared jobs like auth, limits, routing and logging.
+cards:
+  - id: gateway
+    front: What is an API gateway?
+    back: One entry point in front of many services, which handles shared jobs (auth, rate limits, routing, logging, CORS) once, for every request.
+  - id: compare
+    front: Load balancer vs. reverse proxy vs. API gateway?
+    back: "Load balancer: shares requests between identical copies. Reverse proxy: one public front, routing to different apps. API gateway: a reverse proxy that also knows API clients, applying keys, limits and analytics."
+  - id: bff
+    front: What's a backend for frontend?
+    back: A small backend tailored to one kind of client (mobile, web), gathering data from several services into exactly what that client needs.
+  - id: products
+    front: Name some managed API gateways.
+    back: Amazon API Gateway, Azure API Management, Google Apigee, and Kong (which you can also run yourself).
+testOut:
+  - id: t1
+    type: mcq
+    prompt: A gateway returns 429 to a partner. What happened?
+    options:
+      - The partner went over their rate limit, so the gateway refused before any service was involved
+      - A service crashed
+      - The partner's key is invalid
+      - DNS failed
+    answer: 0
+    why: Refusing at the door protects the services behind it.
+  - id: t2
+    type: mcq
+    prompt: What's the main risk of an API gateway?
+    options:
+      - It's a single point everything depends on, so it needs to be redundant, and kept free of business logic
+      - It makes APIs public
+      - It removes the need for HTTPS
+      - It can only route GET requests
+    answer: 0
+    why: Run more than one copy, and keep it thin.
+docs:
+  - title: "Microsoft Learn: API gateways"
+    url: https://learn.microsoft.com/en-us/azure/architecture/microservices/design/gateway
+  - title: "AWS: What is an API gateway?"
+    url: https://aws.amazon.com/what-is/api-gateway/
+  - title: "Microsoft Learn: Backends for Frontends pattern"
+    url: https://learn.microsoft.com/en-us/azure/architecture/patterns/backends-for-frontends
+videos: []
+---
+
+## In this lesson
+
+The last few lessons have been about services talking to each other behind the scenes. This one is about the front door, where outside requests come in:
+
+- What an **API gateway** is, and the **jobs** it does once for everyone.
+- How it differs from a **reverse proxy** and a **load balancer**.
+- **Backends for frontends**.
+- **Managed gateways** from cloud providers.
+- **Gateway overreach**: the trap of putting too much in it.
+
+## Many services, one door
+
+As systems grow, they're often split into several **services**: orders, accounts, search, payments, each owned by a different team. Without anything in front, every outside client has to know where each service lives, and every service has to do the same chores itself:
+
+- check the caller's API key or token,
+- count requests and enforce rate limits,
+- write access logs,
+- set CORS headers,
+- produce errors in a consistent format.
+
+Twelve services means twelve versions of each chore, slowly drifting apart. One will eventually forget to check keys at all. A real security review found exactly that, which is Client B's story in the task.
+
+An **API gateway** is a single entry point in front of all the services that does those shared jobs **once**, the same way, for every request. Step through it:
+
+<Viz name="api-gateway" />
+
+## What a gateway does
+
+| Job | Example |
+| --- | --- |
+| **Authentication** | Check the API key or token. A bad one gets 401 at the door |
+| **Rate limiting** | Count each client's requests. Over the limit gets 429, and no service is bothered |
+| **Routing** | `/orders/...` to the orders service, `/accounts/...` to the accounts service |
+| **Logging and analytics** | One place to see every request, per client |
+| **TLS termination and CORS** | Handled once, at the edge |
+| **Versioning** | Send `/v1/` and `/v2/` traffic to different versions of a service |
+| **Shaping requests** | Add or remove headers, or adapt formats for older clients |
+
+These are called **cross-cutting** jobs: every service needs them, and none of them is any service's real purpose. In the task you'll write the core of a gateway: check the key, count, route.
+
+<details>
+<summary>Quick check: a request has a stolen, invalid key. Which part should refuse it: the gateway or the orders service?</summary>
+
+The gateway, with a 401, before the request reaches any service. That's one of its main jobs.
+</details>
+
+## Gateway, reverse proxy, load balancer
+
+These overlap, and products often do all three, but the ideas differ:
+
+| | Main job |
+| --- | --- |
+| **Load balancer** | Share requests between identical copies of one service |
+| **Reverse proxy** | One public front that routes to different apps, and handles HTTPS |
+| **API gateway** | A reverse proxy that also understands **API clients**: their keys, limits, usage and versions |
+
+A real system might have all three: a gateway at the edge, routing to services, each of which runs several copies behind a load balancer.
+
+## Backends for frontends
+
+Sometimes the mobile app and the website need quite different data from the same services. One popular pattern puts a small, separate backend behind the gateway for each kind of client, a **backend for frontend** (BFF). The mobile BFF gathers exactly what each mobile screen needs from several services and returns it in one answer. It solves the same "too many requests per screen" problem as GraphQL, in a different way. Some teams use GraphQL as their BFF.
+
+## Managed gateways
+
+You rarely build a gateway from scratch. Common choices:
+
+- **Amazon API Gateway** and **Azure API Management**, managed by the cloud providers,
+- **Google Apigee**, popular with large enterprises,
+- **Kong**, open source and also sold as a managed service.
+
+They come with dashboards for keys, plans and usage, and often a developer portal where partners can sign up and read the docs. These are useful if the client sells API access.
+
+## The trap: gateway overreach
+
+Because every request passes through the gateway, it's tempting to put more and more into it: "while we're here, let's validate orders, calculate discounts, reshape this data for the iPhone app…". Resist that. A gateway full of business logic becomes:
+
+- a **bottleneck** for change: every team must edit and redeploy the shared gateway,
+- a **single point of failure** for everything, as from *Load balancers*,
+- the place where logic is split confusingly between gateway and services.
+
+Keep the gateway **thin**: cross-cutting jobs only. Business rules belong in the services. And run more than one copy, because if the front door is down, everything is.
+
+<ConsultantNote>
+Gateway products are often sold hard, and many small clients don't need one: a single backend can check its own keys. The signal that a client does need one is many services with duplicated, inconsistent auth, limits and logging. When you recommend one, also recommend the rule that keeps it healthy: "the gateway does auth, limits, routing and logging, and nothing else". Write it down, because that rule erodes quietly over time.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **API gateway** | One entry point in front of many services, doing shared jobs once |
+| **Gateway jobs** | Auth, rate limits, routing, logging, TLS, CORS and versioning: cross-cutting concerns |
+| **Backend for frontend (BFF)** | A small backend tailored to one kind of client |
+| **Gateway vs. proxy vs. load balancer** | Knows API clients / routes to apps / shares load between copies |
+| **Managed gateway** | A cloud provider's gateway service, like Amazon API Gateway or Azure API Management |
+| **Gateway overreach** | Business logic creeping into the gateway. Keep it thin |

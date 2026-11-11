@@ -1,0 +1,405 @@
+---
+id: versions-and-docs
+title: "API versions, and reading API documentation"
+order: 6
+topic: software-talking
+minutes: 55
+summary: How APIs change without breaking the programs that use them. Covers which changes break things, how versions and deprecation warnings work, how to read an OpenAPI description, and a checklist for reading any API's docs.
+connectivity: offline
+prerequisites:
+  - id: rest-design
+    need: essential
+    why: Resources, methods and query strings.
+  - id: config-files
+    need: essential
+    why: OpenAPI descriptions are written in YAML or JSON.
+  - id: paging-and-rate-limits
+    need: helpful
+    why: Limits and paging are on the docs checklist.
+revision: 1
+teaches: [breaking-change, api-versioning, deprecation-sunset, changelog, openapi, swagger-ui, sdk, api-docs-checklist]
+uses: [api, api-docs, api-promise, rest, json, yaml, nesting, http-header, status-code, query-string, rate-limit, pagination, authorization-header, api-key-header, postman, requests-intro, requests-get, status-code-attr, response-json-py, function, return-statement, dictionary, dict-key-access, nested-data, if-statement, in-operator, f-string, none-value, run-and-check, package, semver]
+predict:
+  id: p1
+  type: mcq
+  prompt: An API's customer records have one `name` field. The API team wants to split it into `first_name` and `last_name`. What's the safest way to do it?
+  options:
+    - Just change it. Callers will notice and fix their code
+    - Release the new shape as a new version, keep the old one working for a while, and warn callers well before it's switched off
+    - Never change anything, ever
+    - Change it at night when nobody's using it
+  answer: 1
+  why: Removing or renaming a field breaks every program that reads it, often silently. Versioning lets old callers keep working while they move over, with a clear deadline.
+tasks:
+  - id: migrate-v2
+    type: python
+    title: Move a script from v1 to v2
+    instructions: |
+      You'll use: `requests.get`, nested dictionaries and `in` (from earlier lessons).
+
+      The practice API has two versions of its customers endpoint:
+
+      - **v1**, being retired: `GET /v1/customers/1` → `{"id": 1, "name": "Ada Lovelace", "city": "London"}`
+      - **v2**: `GET /v2/customers/1` → `{"data": {"id": 1, "first_name": "Ada", "last_name": "Lovelace", "email": "ada.lovelace@example.com", "address": {"city": "London"}}}`
+
+      Write these using **v2**:
+
+      1. `contact_line(customer_id)` returns text like `"Ada Lovelace <ada.lovelace@example.com>"`, or `None` if the customer doesn't exist (404).
+      2. `city(customer_id)` returns the customer's city, from inside `address`.
+      3. `is_deprecated(url)` GETs any address and returns `True` if the response has a `Deprecation` header, otherwise `False`.
+    starter: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def contact_line(customer_id):
+          # GET BASE + "/v2/customers/" + str(customer_id)
+          # On 404, return None. Otherwise everything is inside ["data"].
+          pass
+
+
+      def city(customer_id):
+          pass
+
+
+      def is_deprecated(url):
+          # Is "Deprecation" in response.headers?
+          pass
+
+
+      print(contact_line(1))
+      print(city(2))
+      print(is_deprecated(BASE + "/v1/customers/1"), is_deprecated(BASE + "/v2/customers/1"))
+    tests:
+      - name: contact_line uses v2's fields
+        code: |
+          got = contact_line(1)
+          assert got == "Ada Lovelace <ada.lovelace@example.com>", f"Got {got!r}. The email is only in v2, inside 'data'."
+      - name: contact_line works for another customer
+        code: |
+          got = contact_line(3)
+          assert got == "Lin Chen <lin.chen@example.com>", f"Got {got!r}."
+      - name: a missing customer gives None
+        code: |
+          assert contact_line(99) is None, "There's no customer 99, so v2 answers 404. Return None."
+      - name: city reads the nested address
+        code: |
+          got = city(2)
+          assert got == "New York", f"Expected New York, got {got!r}. It's in data, then address, then city."
+      - name: v1 is flagged as deprecated
+        code: |
+          assert is_deprecated(BASE + "/v1/customers/1") is True, "v1 sends a Deprecation header."
+      - name: v2 is not
+        code: |
+          assert is_deprecated(BASE + "/v2/customers/1") is False, "v2 has no Deprecation header."
+    solution: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def get_customer(customer_id):
+          response = requests.get(BASE + "/v2/customers/" + str(customer_id))
+          if response.status_code == 404:
+              return None
+          return response.json()["data"]
+
+
+      def contact_line(customer_id):
+          customer = get_customer(customer_id)
+          if customer is None:
+              return None
+          return f"{customer['first_name']} {customer['last_name']} <{customer['email']}>"
+
+
+      def city(customer_id):
+          return get_customer(customer_id)["address"]["city"]
+
+
+      def is_deprecated(url):
+          return "Deprecation" in requests.get(url).headers
+    wrong: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def contact_line(customer_id):
+          customer = requests.get(BASE + "/v1/customers/" + str(customer_id)).json()
+          return f"{customer['name']} <{customer.get('email')}>"
+
+
+      def city(customer_id):
+          return requests.get(BASE + "/v1/customers/" + str(customer_id)).json()["city"]
+
+
+      def is_deprecated(url):
+          return "v1" in url
+  - id: read-openapi
+    type: case
+    title: Read an OpenAPI description
+    instructions: A client's invoicing provider sent this extract from their OpenAPI file. Answer from what it says.
+    scenario: |
+      ```yaml
+      openapi: 3.0.3
+      info:
+        title: Invoicely API
+        version: 2.4.0
+      servers:
+        - url: https://api.invoicely.example/v2
+      paths:
+        /invoices:
+          get:
+            summary: List invoices
+            parameters:
+              - name: status
+                in: query
+                schema: { type: string, enum: [draft, sent, paid, overdue] }
+              - name: cursor
+                in: query
+                schema: { type: string }
+            responses:
+              "200": { description: A page of invoices, with next_cursor }
+              "401": { description: Missing or invalid API key }
+          post:
+            summary: Create an invoice
+            responses:
+              "201": { description: Created }
+              "409": { description: An invoice with this number already exists }
+      components:
+        securitySchemes:
+          apiKey: { type: apiKey, in: header, name: X-Invoicely-Key }
+      security:
+        - apiKey: []
+      ```
+    questions:
+      - prompt: How do you list only overdue invoices?
+        choices:
+          - text: GET https://api.invoicely.example/v2/invoices?status=overdue
+            score: 2
+            why: The server URL plus the path, with status as a query parameter, and overdue is one of the allowed values.
+          - text: POST /invoices with {"status":"overdue"}
+            score: 0
+            why: POST creates an invoice. Listing is GET.
+          - text: GET /invoices/overdue
+            score: 0
+            why: There's no such path in the description. status is a query parameter.
+      - prompt: How does every request prove who's calling?
+        choices:
+          - text: An API key in a header called X-Invoicely-Key
+            score: 2
+            why: securitySchemes says type apiKey, in header, with that name, and security applies it to everything.
+          - text: "A bearer token in Authorization"
+            score: 0
+            why: The description says apiKey in a header named X-Invoicely-Key.
+          - text: No authentication needed
+            score: 0
+            why: The security section applies the API key to every request, and 401 is listed for a missing key.
+      - prompt: Your script creates an invoice and gets 409. What happened, and what should it do?
+        choices:
+          - text: An invoice with that number already exists, perhaps from an earlier attempt. Don't create it again, but look it up instead
+            score: 2
+            why: The description says exactly what 409 means here. Retrying the same POST would keep failing, and creating a new number could make a duplicate bill.
+          - text: The server is down, so retry
+            score: 0
+            why: 409 is a conflict with the current state, not a server problem.
+          - text: The API key is wrong
+            score: 0
+            why: That would be 401.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: Which of these changes breaks existing callers?
+    options:
+      - Renaming a field in the response
+      - Adding a new, optional field to the response
+      - Adding a new endpoint
+      - Making the API faster
+    answer: 0
+    why: Programs reading the old name stop finding it. Adding things is usually safe, because well-written callers ignore fields they don't know.
+  - id: r2
+    type: short
+    prompt: What's the standard, machine-readable format for describing a REST API's endpoints, parameters and responses?
+    accept: ['openapi', 'swagger']
+    answerText: OpenAPI (formerly called Swagger)
+  - id: r3
+    type: mcq
+    prompt: 'A response includes `Deprecation: true` and `Sunset: Thu, 31 Dec 2026 23:59:59 GMT`. What should you do?'
+    options:
+      - Plan to move to the newer version before that date, because this one will stop working then
+      - Nothing, it's just information
+      - Panic
+      - Retry the request
+    answer: 0
+    why: Deprecation means "still works, but on its way out". Sunset is the date it goes. A Link header often points at the replacement.
+  - id: r4
+    type: self
+    prompt: List the things you'd look for first when reading a new API's documentation.
+    modelAnswer: The base URL and versions, how to authenticate, the endpoints I need with their parameters and responses, the error format and status codes, rate limits and quotas, how pagination works, whether there's a sandbox or test mode, and the changelog or deprecation policy.
+cards:
+  - id: breaking
+    front: Breaking vs. non-breaking changes?
+    back: "Breaking: removing or renaming fields or endpoints, changing types or meanings, adding required inputs. Non-breaking: adding optional fields, new endpoints, new optional parameters."
+  - id: versions
+    front: Three common ways APIs show their version?
+    back: In the address (/v2/customers), in a header (like Stripe-Version), or by date (2024-06-01). The address style is the most common.
+  - id: openapi
+    front: What is an OpenAPI file, and what's it good for?
+    back: A YAML or JSON description of every endpoint, parameter, response and security rule. Tools turn it into interactive docs (Swagger UI), client code, tests and Postman collections.
+  - id: checklist
+    front: The API docs checklist?
+    back: Base URL and version, authentication, the endpoints you need, errors, rate limits, pagination, a sandbox, and the changelog or deprecation policy.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: What's an SDK, for an API?
+    options:
+      - A ready-made library, in your language, that wraps the API's requests in normal functions
+      - A kind of database
+      - A security certificate
+      - A rate limit
+    answer: 0
+    why: For example, stripe.Customer.create(...) instead of building the POST yourself. Convenient, but it's one more dependency to keep updated.
+  - id: t2
+    type: mcq
+    prompt: Where do you find out what changed between API versions?
+    options: [The changelog, The status code, The DNS records, The cookie]
+    answer: 0
+    why: A good API keeps a dated changelog, with breaking changes clearly marked.
+docs:
+  - title: "OpenAPI Specification"
+    url: https://spec.openapis.org/oas/latest.html
+  - title: "Swagger: What is OpenAPI?"
+    url: https://swagger.io/docs/specification/v3_0/about/
+  - title: "MDN: Deprecation header"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Deprecation
+videos: []
+---
+
+## In this lesson
+
+An API is a promise: "send this, and I'll answer like that". This lesson is about what happens when that promise has to change, and how to read the promise in the first place:
+
+- **Breaking** and **non-breaking** changes.
+- **Versioning**, and the **Deprecation** and **Sunset** warnings.
+- **Changelogs**.
+- **OpenAPI**, the standard way to describe an API, and **Swagger UI**.
+- **SDKs**, and a **checklist** for reading any API's docs.
+
+## When a change breaks things
+
+Hundreds of programs might be calling an API, written by people the API's team has never met. Any change to what those programs depend on can break them.
+
+**Breaking changes** include:
+
+- Removing or renaming a field, like `name` becoming `first_name` and `last_name`.
+- Changing a field's type or meaning, like a price changing from pounds to pennies.
+- Removing an endpoint, or changing its address or method.
+- Requiring a new input that callers don't send.
+
+**Non-breaking changes** are usually additions: a new optional field, a new endpoint, a new optional query parameter. Well-written code ignores fields it doesn't recognize, so adding things rarely hurts.
+
+## Versions
+
+When a breaking change is needed, a good API releases it as a **new version**, and keeps the old one working while callers move across. Three common styles:
+
+| Style | Looks like | Used by |
+| --- | --- | --- |
+| In the address | `/v1/customers`, `/v2/customers` | Most APIs |
+| In a header | `Accept-Version: 2` | Some |
+| By date | `Stripe-Version: 2024-06-20` | Stripe and others |
+
+The practice API has both `/v1/customers/1` and `/v2/customers/1`. Compare them:
+
+```json
+{"id": 1, "name": "Ada Lovelace", "city": "London"}
+```
+
+```json
+{"data": {"id": 1, "first_name": "Ada", "last_name": "Lovelace",
+          "email": "ada.lovelace@example.com", "address": {"city": "London"}}}
+```
+
+v2 splits the name, adds an email, moves the city inside `address`, and wraps everything in `data`. Any one of those changes would have broken a v1 caller.
+
+<details>
+<summary>Quick check: an API adds a new optional field, `phone`, to its customer answers. Breaking or not?</summary>
+
+Not breaking. Existing callers just ignore the new field.
+</details>
+
+## Deprecation and sunset
+
+An old version can't live forever. The polite way to retire it:
+
+1. **Deprecate** it: announce that it's on its way out, while it keeps working. Many APIs add a header to every old-version response: `Deprecation: true`.
+2. Set a **sunset** date, after which it stops working: `Sunset: Thu, 31 Dec 2026 23:59:59 GMT`.
+3. Point to the replacement, often with a `Link` header: `Link: </v2/customers/1>; rel="successor-version"`.
+
+Request `/v1/customers/1` with `curl.exe -i` and you'll see all three from the practice API. Checking for that `Deprecation` header in your own scripts is a cheap early warning, and you'll do exactly that in the task.
+
+## Changelogs
+
+A **changelog** is a dated list of what changed in each release, with breaking changes clearly marked. It's the first thing to read when an integration suddenly fails, and the thing to check regularly for any API a client depends on. Versions often follow the **semantic versioning** you met with packages: a bump in the first number (2.x to 3.0) means breaking changes.
+
+## OpenAPI: a description computers can read
+
+API documentation used to be hand-written web pages, often out of date. Most modern REST APIs are also described in an **OpenAPI** file (it used to be called **Swagger**): a YAML or JSON file listing every endpoint, its parameters, its possible responses and how to authenticate. A small piece:
+
+```yaml
+paths:
+  /invoices:
+    get:
+      summary: List invoices
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [draft, sent, paid, overdue] }
+      responses:
+        "200": { description: A page of invoices }
+        "401": { description: Missing or invalid API key }
+```
+
+Read it top-down, like any YAML from *Settings files*: under `paths`, the address `/invoices`, then the method `get`, then its `parameters` (`status`, in the query string, one of four values) and its `responses`, keyed by status code. `enum` means "one of these values".
+
+Because it's machine-readable, tools can do a lot with it:
+
+- **Swagger UI** turns it into interactive documentation, where you can read each endpoint and send test requests from the page.
+- Postman can import it as a ready-made collection of requests.
+- Code generators can produce an **SDK**: a library in your language that wraps each request in an ordinary function, like `client.invoices.list(status="overdue")`.
+
+You'll read a real-looking extract in the second task.
+
+## Reading any API's docs: a checklist
+
+Whether it's an OpenAPI file or a set of web pages, look for these, in roughly this order:
+
+1. **Base URL and version.** Where requests go, and which version you're on.
+2. **Authentication.** Keys, tokens or OAuth? Which header? How are credentials obtained and rotated?
+3. **The endpoints you need**, with their parameters, request bodies and responses.
+4. **Errors.** The error body's format, and what each status means for this API.
+5. **Rate limits and quotas.** Per minute, per day, and on which plan.
+6. **Pagination.** Pages or cursors?
+7. **A sandbox or test mode**, so you can try things without real money or real customers.
+8. **The changelog and deprecation policy.** How much warning do they give before breaking changes?
+
+If a vendor can't answer most of these, that's important information for your client.
+
+<ConsultantNote>
+"How long will the integration take?" depends heavily on the docs. Ten minutes with this checklist before you estimate tells you whether it's a two-day job or a two-week job. Missing rate-limit details, no sandbox or no deprecation policy are all risks to write into your estimate, and to raise with the client before they sign with that vendor.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Breaking change** | A change that makes existing callers fail, like renaming a field |
+| **API versioning** | Releasing breaking changes as a new version, while the old one keeps working |
+| **Deprecation / Sunset** | "On its way out" / the date it stops working |
+| **Changelog** | A dated list of changes, with breaking ones marked |
+| **OpenAPI** | A machine-readable YAML or JSON description of a REST API |
+| **Swagger UI** | Interactive docs generated from an OpenAPI file |
+| **SDK** | A ready-made library wrapping an API's requests in functions |
+| **API docs checklist** | Base URL, auth, endpoints, errors, limits, paging, sandbox, changelog |

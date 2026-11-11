@@ -1,0 +1,322 @@
+---
+id: your-network
+title: "Just enough IT: your own network"
+order: 1
+topic: networks-and-the-web
+minutes: 55
+summary: What the boxes in your home or office actually do, how your computer gets its address, and a step-by-step way to find out why "the internet is down", using the same commands IT people use.
+connectivity: offline
+prerequisites:
+  - id: addresses-and-ports
+    need: essential
+    why: IP addresses, private addresses, routers and ports are used throughout.
+  - id: dns
+    need: essential
+    why: Troubleshooting checks whether DNS is the problem.
+  - id: the-trip
+    need: helpful
+    why: The troubleshooting steps follow the stages of a request's trip.
+revision: 1
+teaches: [modem, wifi-vs-ethernet, dhcp, default-gateway, dns-server-setting, ipconfig, ping, tracert, test-netconnection, network-troubleshooting]
+uses: [ip-address, ipv4-ipv6, private-public-ip, router-nat, packet, dns, dot-access, ctrl-c, resolver, nslookup, connection-refused, connection-timeout, firewall, port, localhost, ip-127, terminal, powershell, command, redirect, practice-folder, five-stages, request-trip]
+predict:
+  id: p1
+  type: mcq
+  prompt: A small office says "the internet is down". One laptop can open 1.1.1.1 by its IP address, but not google.com. What's most likely broken?
+  options:
+    - The internet connection itself
+    - DNS, the system that turns names into addresses
+    - The laptop's screen
+    - Google's servers
+  answer: 1
+  why: Reaching an IP address proves the connection to the internet works. Failing only on names points at DNS. Splitting a problem like this, one step at a time, is the core of troubleshooting.
+tasks:
+  - id: inspect-network
+    type: terminal
+    title: Inspect your own network
+    instructions: |
+      You'll use the commands from this lesson: `ipconfig`, `ping` and `Test-NetConnection`. Each result is saved to a file with `>` (from *The terminal*), so "Check my work" can see it.
+
+      Groundwork must be running, because one step checks a port that Groundwork's practice API listens on. None of this needs the internet.
+    steps:
+      - text: Open PowerShell, go to your practice folder, and make a folder for this lesson.
+        command: cd $HOME\Groundwork-Practice; mkdir network-lesson; cd network-lesson
+      - text: See your computer's network settings, and save them. Look for the IPv4 address, subnet mask and default gateway in the output.
+        command: ipconfig > ipconfig.txt; Get-Content ipconfig.txt
+      - text: Ping your own computer. Every reply line ends with a time and a TTL.
+        command: ping -n 3 127.0.0.1 > ping.txt; Get-Content ping.txt
+      - text: Ask whether anything is listening on port 4314 (Groundwork's practice API). This prints True or False.
+        command: (Test-NetConnection 127.0.0.1 -Port 4314 -WarningAction SilentlyContinue).TcpTestSucceeded > port-open.txt; Get-Content port-open.txt
+      - text: Now a port where nothing is listening. It takes a few seconds and prints False. That's "connection refused".
+        command: (Test-NetConnection 127.0.0.1 -Port 4399 -WarningAction SilentlyContinue).TcpTestSucceeded > port-closed.txt; Get-Content port-closed.txt
+      - text: "Optional, only if you're online: run `tracert -d 1.1.1.1` to see every router your packets pass through on the way to a real server. Press Ctrl+C to stop it early. There's nothing to check for this step."
+    checks:
+      - path: network-lesson/ipconfig.txt
+        contains: IPv4
+        hint: Run `ipconfig > ipconfig.txt` inside the network-lesson folder.
+      - path: network-lesson/ping.txt
+        contains: TTL=
+        hint: Run `ping -n 3 127.0.0.1 > ping.txt`. Every reply line contains TTL=.
+      - path: network-lesson/port-open.txt
+        contains: "True"
+        hint: Is Groundwork running? Its practice API listens on port 4314. Then run the Test-NetConnection step for port 4314 again.
+      - path: network-lesson/port-closed.txt
+        contains: "False"
+        hint: Run the Test-NetConnection step for port 4399. Nothing listens there, so it should save False.
+  - id: internet-down
+    type: case
+    title: "Client call: \"the internet is down\""
+    instructions: Work through it in order, the way you would on a real call.
+    scenario: |
+      A dental practice with six staff calls you. "The internet is down. Nobody can get to our booking system." The booking system is a website at bookings.smiledental.example. You're on a video call with the receptionist, who can type commands on her laptop for you.
+    questions:
+      - prompt: What do you ask her to check first?
+        choices:
+          - text: Whether other websites work, and whether everyone in the office has the problem
+            score: 2
+            why: This splits the problem in half straight away. If other sites work, the internet is fine and the problem is the booking system. If one laptop has it, the problem is that laptop.
+          - text: Restart the booking system's server
+            score: 0
+            why: You don't know the booking system is the problem yet, and restarting a server in the middle of the working day can cause new problems.
+          - text: Buy a new router
+            score: 0
+            why: There's no evidence the router is the problem, and it costs money and time.
+      - prompt: No website works on any computer in the office. `ipconfig` shows the laptop has the address 192.168.1.23 and default gateway 192.168.1.1. What next?
+        choices:
+          - text: "`ping 192.168.1.1`, to see if the laptop can reach the router"
+            score: 2
+            why: Work from the inside out. If the router answers, the office network is fine and the problem is beyond it, at the router's connection or the internet provider.
+          - text: "`nslookup bookings.smiledental.example`"
+            score: 1
+            why: Reasonable later, but first make sure the laptop can reach its own router. DNS can't work if nothing gets out of the building.
+          - text: Reinstall Windows on the laptop
+            score: 0
+            why: Every computer has the problem, so it's not this laptop.
+      - prompt: The router answers, but `ping 1.1.1.1` (a public server on the internet) gets no replies. The router has a red light marked "Internet". What do you recommend?
+        choices:
+          - text: Turn the modem and router off and on again, and if that fails, call the internet provider with what you found
+            score: 2
+            why: The fault is the connection to the provider. A restart fixes many such problems, and if it doesn't, you now have clear evidence for the provider's support line.
+          - text: Change the DNS settings on every laptop
+            score: 0
+            why: DNS isn't the problem. Even raw IP addresses don't get through.
+          - text: Tell them the booking system is down
+            score: 0
+            why: You've just shown the problem is their internet connection, not the booking system.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: What does DHCP do on a home network?
+    options:
+      - Encrypts Wi-Fi
+      - Hands each device an IP address, plus the router's address and which DNS servers to use, when it joins
+      - Translates names into IP addresses
+      - Blocks viruses
+    answer: 1
+    why: DHCP is why you never have to type in an address when you join a Wi-Fi network. The router hands one out automatically.
+  - id: r2
+    type: short
+    prompt: Which Windows command shows your computer's IP address and default gateway?
+    accept: ['ipconfig']
+    answerText: ipconfig
+  - id: r3
+    type: mcq
+    prompt: You can ping your router but not 1.1.1.1. Where is the problem most likely?
+    options:
+      - Your laptop's Wi-Fi
+      - Between your router and the internet, such as the modem or the provider
+      - DNS
+      - The website you wanted
+    answer: 1
+    why: Reaching the router proves the local network works. Not reaching a public IP address means nothing is getting out of the building.
+  - id: r4
+    type: self
+    prompt: Describe the troubleshooting ladder, from the inside out, in a few short steps.
+    modelAnswer: Is it one device or everyone? Does the device have a sensible address (ipconfig)? Can it reach the router (ping the default gateway)? Can it reach the internet by IP address (ping 1.1.1.1)? Do names work (nslookup)? Does the specific site or port answer (Test-NetConnection, or the browser)? The first step that fails is where the problem is.
+cards:
+  - id: boxes
+    front: Modem vs. router, in one line each.
+    back: "The modem connects your building to the internet provider's line. The router runs your local network: it hands out addresses (DHCP) and shares one public address (NAT). Often they're one box."
+  - id: gateway
+    front: What is the default gateway?
+    back: The router's address on your network. Anything not for a local address is sent to it, to go out to the internet.
+  - id: ladder
+    front: The troubleshooting ladder, in five commands?
+    back: "`ipconfig` (do I have an address?) → `ping <gateway>` (can I reach the router?) → `ping 1.1.1.1` (can I reach the internet?) → `nslookup site` (do names work?) → `Test-NetConnection site -Port 443` (does the service answer?)"
+  - id: ping-limits
+    front: A server doesn't answer ping. Is it down?
+    back: Not necessarily. Many servers and firewalls ignore ping on purpose. Test the actual service, like port 443, before deciding it's down.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Which command shows every router your packets pass through on the way to a server?
+    options: [tracert, ipconfig, nslookup, Get-Content]
+    answer: 0
+    why: tracert (traceroute on Mac and Linux) lists each hop along the way.
+  - id: t2
+    type: mcq
+    prompt: A laptop shows an IP address starting 169.254. What does that tell you?
+    options:
+      - It's connected to the internet normally
+      - It didn't get an address from the router's DHCP, so it gave itself a placeholder one
+      - It's using a VPN
+      - It's a public address
+    answer: 1
+    why: Windows uses 169.254.x.x when no DHCP server answered. Check the Wi-Fi or cable, or restart the router.
+docs:
+  - title: "Microsoft Learn: ipconfig"
+    url: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/ipconfig
+  - title: "Microsoft Learn: ping"
+    url: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/ping
+  - title: "Microsoft Learn: Test-NetConnection"
+    url: https://learn.microsoft.com/en-us/powershell/module/nettcpip/test-netconnection
+videos: []
+---
+
+## In this lesson
+
+Consultants get pulled into "the internet is down" more often than you'd think, even when it's not their job. This lesson is the **just enough IT** you need to handle it calmly:
+
+- What the boxes in a home or office actually do: the **modem** and the **router**.
+- How your computer gets its address automatically (**DHCP**), and what a **default gateway** is.
+- Four commands: **`ipconfig`**, **`ping`**, **`tracert`** and **`Test-NetConnection`**.
+- A step-by-step **troubleshooting ladder** that finds where a network problem is.
+
+## The boxes on the shelf
+
+Most homes and small offices have one or two boxes with blinking lights. They do two different jobs, even when they're built into one box:
+
+- The **modem** connects your building to your **internet provider** (the company you pay for internet) over a phone line, cable or fiber. It's the door to the outside world.
+- The **router** runs your **local network**: all the devices inside the building. In *Addresses and ports* you saw that it shares one public IP address between all your devices (NAT). It also hands out addresses, which you'll see in a moment.
+
+Most routers also provide Wi-Fi. Devices connect either by **Wi-Fi** (radio, convenient but slower and less reliable through walls) or by **Ethernet** (a network cable, faster and steadier). When a video call keeps freezing, "can you plug in a cable?" is a classic first step.
+
+## How your laptop gets an address
+
+When your laptop joins a network, it doesn't know its own IP address yet. So it shouts to the whole network: "I'm new, can someone give me an address?" The router answers with:
+
+- an **IP address** for the laptop to use, like `192.168.1.23`, a private address,
+- the **default gateway**: the router's own address, like `192.168.1.1`. Anything the laptop wants to send outside the local network goes there first,
+- which **DNS servers** to use for looking up names. Usually the router itself or the provider's, and sometimes a public one like `1.1.1.1`.
+
+This automatic hand-out is called **DHCP** (Dynamic Host Configuration Protocol). It's why you never type an address when you join a Wi-Fi network.
+
+<Callout kind="warn" title="The 169.254 warning sign">
+If a Windows computer shows an address starting `169.254`, no DHCP server answered, so Windows made up a placeholder address. It can't reach anything. Check the Wi-Fi connection or the cable, or restart the router.
+</Callout>
+
+<details>
+<summary>Quick check: what is the default gateway?</summary>
+
+The router's address on your local network. Anything going outside the network is sent there first.
+</details>
+
+## ipconfig: what does my computer think?
+
+`ipconfig` shows your computer's network settings. A trimmed example:
+
+```text
+Wireless LAN adapter Wi-Fi:
+
+   IPv4 Address. . . . . . . . . . . : 192.168.1.23
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+   Default Gateway . . . . . . . . . : 192.168.1.1
+```
+
+- **Adapter**: the piece of hardware, here the Wi-Fi. You may also see Ethernet, and some virtual ones you can ignore.
+- **IPv4 Address**: this computer's address on the local network.
+- **Subnet Mask**: which addresses count as "local". `255.255.255.0` means any address starting `192.168.1.` is in the same network and can be reached directly. You rarely need more than that.
+- **Default Gateway**: the router.
+
+Two handy variations: `ipconfig /all` also shows the DNS servers, and `ipconfig /flushdns` throws away the DNS answers your computer has saved, which helps after a website has moved.
+
+## ping: are you there?
+
+`ping` sends a tiny "are you there?" message and times the answer:
+
+```text
+> ping -n 3 192.168.1.1
+
+Reply from 192.168.1.1: bytes=32 time=2ms TTL=64
+Reply from 192.168.1.1: bytes=32 time=1ms TTL=64
+Reply from 192.168.1.1: bytes=32 time=3ms TTL=64
+```
+
+- `-n 3` means "send three". (On Mac and Linux it's `-c 3`, and without it ping keeps going until you press Ctrl+C.)
+- **time** is the round trip in milliseconds. A few ms is nearby. Across an ocean, 100ms or more is normal.
+- **TTL** ("time to live") counts down by one at every router a packet passes, so a lost packet can't circle forever. You can ignore the number.
+
+"Request timed out" means no answer came back.
+
+<Callout kind="warn" title="No ping reply doesn't mean it's down">
+Many servers and firewalls ignore ping on purpose. If a website doesn't answer ping, test the service itself before you conclude anything, as you'll see in a moment.
+</Callout>
+
+## tracert: which way did it go?
+
+`tracert` lists every router your packets pass through on the way to a destination, one per line:
+
+```text
+> tracert -d 1.1.1.1
+
+  1     2 ms     1 ms     2 ms  192.168.1.1
+  2    11 ms     9 ms    10 ms  100.64.0.1
+  3    14 ms    12 ms    13 ms  203.0.113.9
+  ...
+  8    15 ms    14 ms    15 ms  1.1.1.1
+```
+
+Line 1 is your own router. The next few are your provider. `-d` skips looking up names for each step, which makes it much faster. If the list stops at a certain point and only shows `*` after it, that's roughly where things break. (Like ping, some routers don't answer, so a few `*` lines in the middle are normal.)
+
+## Test-NetConnection: is the service answering?
+
+A web server can be perfectly healthy while ignoring ping. What you really want to know is: **is something listening on the port?** PowerShell's `Test-NetConnection` tries to open a connection to a port:
+
+```powershell
+Test-NetConnection shop.example -Port 443
+```
+
+The line to look for is `TcpTestSucceeded : True`. If it's `False`, you saw this in *Addresses and ports*: either the connection was **refused** (the computer answered, but nothing listens on that port) or it **timed out** (nothing answered, often a firewall).
+
+In the task you'll write `(Test-NetConnection 127.0.0.1 -Port 4314).TcpTestSucceeded`. The round brackets run the command first, and `.TcpTestSucceeded` picks out just the True or False from its answer, the same dot you used to read values in *Settings files*.
+
+<details>
+<summary>Quick check: a server ignores ping, but Test-NetConnection to port 443 says True. Is the website up?</summary>
+
+The web server is at least listening and accepting connections, so very probably yes. The ping result just means ping is blocked.
+</details>
+
+## The troubleshooting ladder
+
+When something "doesn't work", don't guess. Climb this ladder from the inside out. **The first step that fails is where the problem is.**
+
+| Step | Ask | Command | If it fails |
+| --- | --- | --- | --- |
+| 1 | Is it everyone, or one device? | Ask around | One device: focus on that device |
+| 2 | Does this device have an address? | `ipconfig` | No address, or 169.254: Wi-Fi, cable or DHCP problem |
+| 3 | Can it reach the router? | `ping 192.168.1.1` (the gateway) | Local network problem: Wi-Fi, cable or router |
+| 4 | Can it reach the internet by IP address? | `ping 1.1.1.1` | Router, modem or internet provider problem |
+| 5 | Do names work? | `nslookup example.com` | DNS problem. Try `ipconfig /flushdns`, or check the DNS settings |
+| 6 | Does the service answer? | `Test-NetConnection site -Port 443`, or the browser | That service is down, or a firewall blocks it |
+
+This is the same idea as the **five stages** from *The trip a web request takes*, seen from the network's side. Once you know which step fails, you know who to call: the office's IT person, the internet provider, the DNS host, or whoever runs the website.
+
+<ConsultantNote>
+You'll often be the most technical person a small client knows, so "is the internet down?" lands on you even when you were hired for something else. Answering with "let's find out which step fails" rather than guessing makes you look calm and competent. It also produces evidence, like "the router answers but nothing beyond it does", that makes a call to the internet provider short and productive.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Modem** | The box connecting your building to the internet provider |
+| **Wi-Fi vs. Ethernet** | Connecting by radio, or by cable. Cable is faster and steadier |
+| **DHCP** | The router automatically handing each device an address, gateway and DNS servers |
+| **Default gateway** | The router's address. Traffic for outside the network goes there |
+| **DNS server setting** | Which DNS servers a device asks, usually handed out by DHCP |
+| **ipconfig** | Shows your computer's addresses. `/all` for more, `/flushdns` to clear saved DNS answers |
+| **ping** | Sends "are you there?" and times the reply. Often blocked on purpose |
+| **tracert** | Lists each router on the way to a destination |
+| **Test-NetConnection** | Checks whether a specific port answers |
+| **Troubleshooting ladder** | Checking from the inside out. The first step that fails is where the problem is |

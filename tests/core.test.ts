@@ -413,6 +413,160 @@ describe('API and labs', () => {
     const res = await app.buildHttp().request('/orders', { headers: { host: 'evil.example' } });
     expect(res.status).toBe(403);
   });
+
+  describe('the Stage 2 practice API', () => {
+    const http = (path: string, init?: RequestInit) => fetch(url(TEST_PORTS.http, path), init);
+    const form = (fields: Record<string, string>) => ({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(fields).toString(),
+    });
+    const KEY = { 'X-API-Key': 'practice-key', 'Content-Type': 'application/json' };
+
+    it('logs in with a session cookie, and logs out on the server', async () => {
+      expect((await http('/me')).status).toBe(401);
+      expect((await http('/login', form({ username: 'ada', password: 'wrong' }))).status).toBe(401);
+      const login = await http('/login', form({ username: 'ada', password: 'practice-password' }));
+      const cookie = login.headers.get('set-cookie')!;
+      expect(cookie).toMatch(/^session=\w+;.*HttpOnly/);
+      const session = cookie.split(';')[0];
+      expect((await (await http('/me', { headers: { cookie: session } })).json()).user).toBe('ada');
+      await http('/logout', { method: 'POST', headers: { cookie: session } });
+      expect((await http('/me', { headers: { cookie: session } })).status).toBe(401);
+    });
+
+    it('answers 304 when the ETag still matches', async () => {
+      const first = await http('/catalog');
+      expect(first.headers.get('etag')).toBe('"catalog-v1"');
+      expect(first.headers.get('cache-control')).toContain('max-age=60');
+      expect((await http('/catalog', { headers: { 'If-None-Match': '"catalog-v1"' } })).status).toBe(304);
+      expect((await http('/catalog', { headers: { 'If-None-Match': 'catalog-v1' } })).status).toBe(304);
+      expect((await http('/catalog', { headers: { 'If-None-Match': '"old"' } })).status).toBe(200);
+    });
+
+    it('creates, patches and deletes only the learner\'s own orders', async () => {
+      const created = await http('/orders', { method: 'POST', headers: KEY, body: JSON.stringify({ customer: 'Sam', item: 'Pen', total: 3 }) });
+      expect(created.status).toBe(201);
+      const order = await created.json();
+      expect(created.headers.get('location')).toBe(`/orders/${order.id}`);
+      expect((await http(`/orders/${order.id}`, { method: 'PATCH', headers: KEY, body: JSON.stringify({ status: 'shipped' }) })).status).toBe(200);
+      expect((await http(`/orders/${order.id}`, { method: 'PATCH', headers: KEY, body: JSON.stringify({ status: 'lost' }) })).status).toBe(422);
+      expect((await http(`/orders/${order.id}`, { method: 'PUT', headers: KEY, body: JSON.stringify({ status: 'shipped' }) })).status).toBe(400);
+      expect(await (await http('/orders?customer=sam&status=shipped')).json()).toHaveLength(1);
+      expect((await http('/orders/101', { method: 'DELETE', headers: KEY })).status).toBe(403);
+      expect((await http(`/orders/${order.id}`, { method: 'DELETE' })).status).toBe(401);
+      expect((await http(`/orders/${order.id}`, { method: 'DELETE', headers: KEY })).status).toBe(204);
+      expect((await http(`/orders/${order.id}`)).status).toBe(404);
+    });
+
+    it('hands out scoped tokens, and checks them', async () => {
+      const token = async (scope: string) =>
+        (await (await http('/oauth/token', form({ grant_type: 'client_credentials', client_id: 'reports-app', client_secret: 'practice-secret', scope }))).json()).access_token;
+      expect((await http('/reports/sales')).status).toBe(401);
+      expect((await http('/reports/sales', { headers: { Authorization: `Bearer ${await token('orders:read')}` } })).status).toBe(403);
+      expect((await http('/reports/sales', { headers: { Authorization: `Bearer ${await token('reports:read')}` } })).status).toBe(200);
+      expect((await http('/oauth/token', form({ grant_type: 'client_credentials', client_id: 'reports-app', client_secret: 'nope' }))).status).toBe(401);
+      const tokens = await (await http('/oauth/token', form({ grant_type: 'authorization_code', code: 'practice-auth-code', redirect_uri: 'http://localhost:4399/callback', client_id: 'reports-app', client_secret: 'practice-secret' }))).json();
+      expect(tokens.refresh_token).toMatch(/^rt_/);
+      const refreshed = await (await http('/oauth/token', form({ grant_type: 'refresh_token', refresh_token: tokens.refresh_token }))).json();
+      expect(refreshed.access_token).toMatch(/^at_/);
+      expect((await http('/reports/sales', { headers: { Authorization: 'Bearer practice-expired-token' } })).headers.get('www-authenticate')).toContain('invalid_token');
+    });
+
+    it('rate limits each client separately, with Retry-After', async () => {
+      const statuses: number[] = [];
+      let last: Response | null = null;
+      for (let i = 0; i < 6; i++) {
+        last = await http('/limited', { headers: { 'X-Client-Id': 'test-a' } });
+        statuses.push(last.status);
+      }
+      expect(statuses).toEqual([200, 200, 200, 200, 200, 429]);
+      expect(Number(last!.headers.get('retry-after'))).toBeGreaterThan(0);
+      expect((await http('/limited', { headers: { 'X-Client-Id': 'test-b' } })).status).toBe(200);
+    });
+
+    it('pages products with next links', async () => {
+      const names: string[] = [];
+      let next: string | null = '/products?per_page=10';
+      while (next) {
+        const page: { items: { name: string }[]; next: string | null } = await (await http(next)).json();
+        names.push(...page.items.map((p) => p.name));
+        next = page.next;
+      }
+      expect(names).toHaveLength(23);
+    });
+
+    it('marks v1 as deprecated and serves v2', async () => {
+      const v1 = await http('/v1/customers/1');
+      expect(v1.headers.get('deprecation')).toBe('true');
+      expect(v1.headers.get('sunset')).toBeTruthy();
+      const v2 = await (await http('/v2/customers/1')).json();
+      expect(v2.data).toMatchObject({ first_name: 'Ada', email: 'ada.lovelace@example.com', address: { city: 'London' } });
+    });
+
+    it('answers GraphQL queries, with variables and errors', async () => {
+      const gql = async (query: string, variables = {}) =>
+        (await http('/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, variables }) })).json();
+      const answer = await gql('query ($id: Int!) { order(id: $id) { item customer { city } } }', { id: 102 });
+      expect(answer).toEqual({ data: { order: { item: 'Monitor', customer: { city: 'New York' } } } });
+      const ada = await gql('{ orders(customer: "Ada") { item } }');
+      expect(ada.data.orders.map((o: { item: string }) => o.item)).toEqual(['Keyboard', 'USB cable']);
+      expect((await gql('{ orders { price } }')).errors[0].message).toContain('price');
+      const broken = await http('/graphql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: '{ orders { id' }) });
+      expect(broken.status).toBe(400);
+    });
+
+    it('sends signed webhooks to a local receiver, and only to localhost', async () => {
+      const { createServer } = await import('node:http');
+      const { createHmac } = await import('node:crypto');
+      const received: { body: string; signature: string }[] = [];
+      const receiver = createServer((req, res) => {
+        let body = '';
+        req.on('data', (c) => (body += c));
+        req.on('end', () => {
+          received.push({ body, signature: String(req.headers['x-groundwork-signature']) });
+          res.end('ok');
+        });
+      });
+      await new Promise<void>((r) => receiver.listen(14398, '127.0.0.1', () => r()));
+      try {
+        const sent = await (await http('/webhooks/test', form({ url: 'http://localhost:14398/hook', repeat: '2' }))).json();
+        expect(sent.sent).toBe(2);
+        expect(received).toHaveLength(2);
+        expect(received[0].body).toBe(received[1].body);
+        const expected = `sha256=${createHmac('sha256', 'whsec_practice').update(received[0].body).digest('hex')}`;
+        expect(received[0].signature).toBe(expected);
+        expect((await http('/webhooks/test', form({ url: 'http://example.com/hook' }))).status).toBe(400);
+        expect((await http('/webhooks/test', form({ url: `http://localhost:${TEST_PORTS.app}/api` }))).status).toBe(400);
+      } finally {
+        receiver.close();
+      }
+    });
+
+    it('runs a queue with acknowledgements and a dead-letter queue', async () => {
+      const q = '/queues/test-jobs';
+      for (const body of [{ n: 1 }, { n: 2 }]) {
+        expect((await http(`${q}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).status).toBe(201);
+      }
+      const first = await (await http(`${q}/messages/next`)).json();
+      expect(first.body).toEqual({ n: 1 });
+      expect((await http(`${q}/messages/${first.id}/ack`, { method: 'POST' })).status).toBe(204);
+      for (let i = 0; i < 3; i++) {
+        const m = await (await http(`${q}/messages/next`)).json();
+        await http(`${q}/messages/${m.id}/release`, { method: 'POST' });
+      }
+      expect((await http(`${q}/messages/next`)).status).toBe(204);
+      expect(await (await http(q)).json()).toEqual({ waiting: 0, in_flight: 0, done: 1, dead_letter: 1 });
+    });
+
+    it('hands out the milestone starter files', async () => {
+      const orders = await http('/starter/orders.js');
+      expect(orders.headers.get('content-type')).toContain('javascript');
+      expect(await orders.text()).toContain('async function notifyBoard(order)');
+      expect(await (await http('/starter/board.js')).text()).toContain('text/event-stream');
+      expect((await http('/starter/secrets.txt')).status).toBe(404);
+    });
+  });
 });
 
 
@@ -421,7 +575,7 @@ describe('Stage 1 additions', () => {
     const stages = content.modules.map((m) => m.stage);
     expect(stages.indexOf('stage-2')).toBeGreaterThan(stages.lastIndexOf('stage-1'));
     expect(content.lessons[0].module).toBe('learning-with-ai');
-    expect(content.lessons.at(-1)!.module).toBe('web-request');
+    expect(content.lessons.at(-1)!.module).toBe('connecting-services');
   });
 
   it('can require that a file does NOT contain something, like leftover conflict markers', () => {

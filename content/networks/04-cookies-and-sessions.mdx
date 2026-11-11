@@ -1,0 +1,285 @@
+---
+id: cookies-and-sessions
+title: "Cookies and sessions: how websites remember you"
+order: 4
+topic: networks-and-the-web
+minutes: 60
+summary: HTTP forgets you after every request, so how do you stay logged in? Sessions, session cookies, the settings that keep them safe, third-party cookies, and what happens when a cookie is stolen.
+connectivity: offline
+prerequisites:
+  - id: http
+    need: essential
+    why: Introduces headers, statelessness and cookies.
+  - id: cors
+    need: helpful
+    why: Mentions sending cookies to other origins.
+  - id: reading-unfamiliar-code
+    need: essential
+    why: The flaw task is a small Express route, read the way that lesson teaches.
+revision: 1
+teaches: [set-cookie-header, session, session-id, cookie-jar, httponly, secure-cookie, samesite, cookie-expiry, third-party-cookie, session-hijacking]
+uses: [http, http-header, stateless, cookie, request-response, server-program, database, https, encryption, browser, browser-runs-js, curl, curl-output-file, terminal, powershell, practice-folder, web-origin, cors-credentials, network-tab, express-intro, server-route, req-res, request-body, trust-the-server, reviewing-ai-code, json]
+predict:
+  id: p1
+  type: mcq
+  prompt: Every HTTP request stands alone, and the server doesn't remember the last one. So how does a website know it's still you on the next page after you log in?
+  options:
+    - It remembers your IP address
+    - Your browser sends a cookie with every request, holding a random ID the server gave you when you logged in
+    - Your password is sent with every page
+    - It doesn't. You log in again on every page
+  answer: 1
+  why: After you log in, the server creates a session and hands your browser a cookie with its random ID. The browser sends that cookie back with every request, and the server looks it up. IP addresses are shared and change, so they can't identify you.
+tasks:
+  - id: cookie-login
+    type: terminal
+    title: Log in with curl and watch the cookie
+    instructions: |
+      You'll use curl from this lesson's "Doing it with curl" section. Groundwork's practice API has a real login, a session cookie, and a "who am I?" page. curl's cookie jar plays the browser's part.
+
+      Groundwork must be running. Nothing here needs the internet.
+    steps:
+      - text: Open PowerShell, go to your practice folder, and make a folder for this lesson.
+        command: cd $HOME\Groundwork-Practice; mkdir cookie-lesson; cd cookie-lesson
+      - text: Ask "who am I?" without logging in. The server doesn't know you.
+        command: curl.exe -s -o me-before.txt http://localhost:4314/me; Get-Content me-before.txt
+      - text: Log in. `-d` sends the username and password as a POST. `-i` keeps the response headers in the file, so you can see the Set-Cookie header. `-c cookies.txt` tells curl to store any cookies in a cookie jar file.
+        command: curl.exe -s -i -c cookies.txt -o login.txt -d "username=ada&password=practice-password" http://localhost:4314/login; Get-Content login.txt
+      - text: Look inside the cookie jar, and keep a copy of it. You'll see the session cookie, its random value, and that it's HttpOnly.
+        command: Copy-Item cookies.txt jar-while-logged-in.txt; Get-Content cookies.txt
+      - text: Ask again, this time sending the cookie back with `-b cookies.txt`, as a browser would. Now the server knows who you are.
+        command: curl.exe -s -b cookies.txt -o me-after.txt http://localhost:4314/me; Get-Content me-after.txt
+      - text: Log out. `-X POST` makes it a POST request. The server deletes the session, and its Set-Cookie clears the cookie in the jar.
+        command: curl.exe -s -X POST -b cookies.txt -c cookies.txt -o logout.txt http://localhost:4314/logout; Get-Content logout.txt
+      - text: Ask one last time. You're a stranger again. Look in the jar too, and the session cookie has gone.
+        command: curl.exe -s -b cookies.txt -o me-final.txt http://localhost:4314/me; Get-Content me-final.txt; Get-Content cookies.txt
+    checks:
+      - path: cookie-lesson/me-before.txt
+        contains: Not logged in
+        hint: Run the first curl step, for /me, without any cookie.
+      - path: cookie-lesson/login.txt
+        contains: "set-cookie: session="
+        hint: Run the login step, with `-i` so the headers are saved, and check the username and password are exactly as shown.
+      - path: cookie-lesson/jar-while-logged-in.txt
+        contains: session
+        hint: The login step needs `-c cookies.txt` to save the cookie jar. Then run the Copy-Item step before logging out.
+      - path: cookie-lesson/me-after.txt
+        contains: Hello ada
+        hint: Send the cookie back with `-b cookies.txt`. If it says not logged in, run the login step again first.
+      - path: cookie-lesson/me-final.txt
+        contains: Not logged in
+        hint: Run the logout step, then the last /me step.
+  - id: cookie-flaw
+    type: flaw
+    title: Spot the cookie mistake
+    language: javascript
+    instructions: |
+      An AI assistant wrote this login route for a client's Express app. It works: users log in and stay logged in. One line makes it possible for any user to make themselves an administrator. Which one?
+    code: |
+      app.post("/login", async (req, res) => {
+        const user = await findUserByEmail(req.body.email);
+        if (!user || !(await passwordMatches(user, req.body.password))) {
+          return res.status(401).json({ error: "Wrong email or password" });
+        }
+        res.cookie("user", JSON.stringify({ id: user.id, isAdmin: user.isAdmin }));
+        res.json({ ok: true, name: user.name });
+      });
+    flawLines: [6]
+    lineNotes:
+      "1": A POST route for logging in is the normal design. Passwords should never go in a GET address.
+      "2": Looking the user up by the email they typed is fine.
+      "3": Checking the password, and treating "no such user" the same as "wrong password", is good practice. It doesn't reveal which emails have accounts.
+      "4": 401 with a vague message is the right answer for a failed login.
+      "7": Sending back a small confirmation is fine.
+    explanation: |
+      The cookie holds the user's **id and admin flag as plain text**. A cookie lives in the user's browser, and the user can change it: in the browser's developer tools, they can edit `isAdmin` to `true`, or change the id to someone else's. If the server then trusts the cookie, anyone can become an administrator or any other user.
+
+      The fix is a **session**: store `{ id, isAdmin }` on the server, keyed by a long random session ID, and put **only that random ID** in the cookie, with `httpOnly`, `secure` and `sameSite` set. A random ID can't be guessed or edited into someone else's. Never trust anything the browser sends, including cookies, unless it's a random ID you can look up or it's been cryptographically signed.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What does a server send to put a cookie in your browser?
+    options: [A Set-Cookie response header, An email, A DNS record, A Cookie request header]
+    answer: 0
+    why: The server sends Set-Cookie. From then on, the browser sends it back in a Cookie header with every request to that site.
+  - id: r2
+    type: mcq
+    prompt: Which cookie setting stops JavaScript on the page from reading the cookie?
+    options: [HttpOnly, Secure, Max-Age, Path]
+    answer: 0
+    why: HttpOnly keeps the cookie out of reach of scripts, so a malicious script injected into the page can't steal the session.
+  - id: r3
+    type: short
+    prompt: What's it called when an attacker steals someone's session cookie and uses it to act as them?
+    accept: ['hijack', 'session.?(theft|steal)', 'cookie.?(theft|steal)']
+    answerText: Session hijacking
+  - id: r4
+    type: self
+    prompt: Why should a cookie hold a random session ID, rather than the user's id or details?
+    modelAnswer: The cookie lives in the user's browser, so they can read and change it. If it held their user id or an admin flag, they could edit it to become someone else. A long random ID means nothing on its own, can't be guessed, and the real details stay on the server, where the session is looked up.
+cards:
+  - id: session
+    front: How does a login session work?
+    back: The server checks the password, stores a session (user, expiry) under a long random ID, and sends that ID in a Set-Cookie header. The browser sends it back with every request, and the server looks it up.
+  - id: flags
+    front: HttpOnly, Secure, SameSite. What does each do?
+    back: "HttpOnly: page scripts can't read it. Secure: only sent over HTTPS. SameSite: not sent with requests started by other websites, which blocks a whole family of attacks."
+  - id: third-party
+    front: What's a third-party cookie?
+    back: A cookie set by a different site from the one you're visiting, such as an ad network embedded on many sites, used to track you across them. Browsers increasingly block them.
+  - id: logout
+    front: What should logging out do on the server?
+    back: Delete the session, so the ID stops working even if someone copied the cookie. Clearing the cookie in the browser alone isn't enough.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: A session cookie is copied from someone's laptop. What can the thief do?
+    options:
+      - Act as that user until the session expires or is ended on the server
+      - Nothing, because cookies are encrypted
+      - Only see which sites they visit
+      - Read their password from it
+    answer: 0
+    why: The session ID is the key to the account. That's why cookies need HttpOnly and Secure, sessions should expire, and logging out must end the session on the server.
+  - id: t2
+    type: mcq
+    prompt: Why does a site's cookie banner ask about "analytics" and "advertising" cookies, but not about the login cookie?
+    options:
+      - Cookies that are strictly necessary for the site to work, like staying logged in, generally don't need consent under privacy laws such as GDPR
+      - Login cookies aren't really cookies
+      - It's a bug
+      - Advertising cookies are faster
+    answer: 0
+    why: Privacy rules mostly target tracking. Cookies the service can't work without are treated differently.
+docs:
+  - title: "MDN: Using HTTP cookies"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies
+  - title: "MDN: Set-Cookie"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie
+  - title: "OWASP: Session Management Cheat Sheet"
+    url: https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
+videos: []
+---
+
+## In this lesson
+
+In the HTTP lesson you learned two things that seem to contradict each other: HTTP is **stateless** (every request stands alone), and yet websites keep you logged in. This lesson explains how:
+
+- How a server puts a cookie in your browser with **Set-Cookie**.
+- **Sessions**: the server's memory of who's logged in, found by a random **session ID**.
+- The cookie settings that keep a session safe: **HttpOnly**, **Secure**, **SameSite** and expiry.
+- **Third-party cookies** and tracking.
+- **Session hijacking**: what a stolen cookie means, and how to limit the damage.
+
+## The problem
+
+Picture a shop with a terrible memory. You walk up to the counter and say "I'm Ada, here's my password." The assistant checks, nods, and you ask for your order history. They stare at you blankly: "Who are you?" Every request is a stranger.
+
+That's HTTP. The server answers each request and forgets it. To stay logged in, every request after the first has to carry **proof of who you are**. Sending your password every time would be risky and clumsy. Instead, the server gives you something like a cloakroom ticket.
+
+## Set-Cookie: the server hands you a ticket
+
+When you log in successfully, the server's response includes a **Set-Cookie** header:
+
+```text
+HTTP/1.1 200 OK
+Set-Cookie: session=7f3a9c41e0b2d8a6; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600
+```
+
+The browser stores that cookie. From then on, every request it sends to that site carries it back, automatically, in a **Cookie** request header:
+
+```text
+GET /account HTTP/1.1
+Host: shop.example
+Cookie: session=7f3a9c41e0b2d8a6
+```
+
+The browser's store of cookies is often called its **cookie jar**. You can see a site's cookies in the developer tools (F12), under **Application** (Chrome and Edge) or **Storage** (Firefox).
+
+## Sessions: the server's memory
+
+The cookie's value, `7f3a9c41e0b2d8a6`, means nothing by itself. It's a **session ID**: a long random value, like a cloakroom ticket number. On the server, a **session** is stored under that ID: which user it is, when they logged in, when it expires. It's often kept in a database or a fast in-memory store.
+
+So every request goes like this:
+
+1. The browser sends `Cookie: session=7f3a…`.
+2. The server looks up session `7f3a…` and finds "this is Ada, logged in until 15:30".
+3. It answers as Ada.
+
+The ID has to be long and random, so nobody can guess someone else's. And the real details stay on the server, where users can't change them. The flaw task shows what goes wrong when they don't.
+
+<details>
+<summary>Quick check: where is the information that says "this is Ada" actually stored?</summary>
+
+On the server, in the session. The browser only holds the random session ID that points to it.
+</details>
+
+## Doing it with curl
+
+curl doesn't keep cookies unless you ask it to. Two options turn it into a tiny browser:
+
+| Option | Meaning |
+| --- | --- |
+| `-c cookies.txt` | After the request, save any cookies the server set into this file (the cookie jar) |
+| `-b cookies.txt` | Send the cookies from this file with the request |
+| `-d "a=1&b=2"` | Send this data as a POST request, the way an HTML form would |
+| `-i` | Include the response headers in the output, so you can see Set-Cookie |
+| `-X POST` | Use the POST method, even with no data to send |
+
+In the task you'll ask "who am I?", log in, look inside the jar, ask again with the cookie, then log out and watch the server forget you.
+
+## The settings that keep cookies safe
+
+The extra parts after the value in Set-Cookie aren't decoration. Each one closes a door attackers use:
+
+| Setting | What it does | Why it matters |
+| --- | --- | --- |
+| **HttpOnly** | JavaScript on the page can't read the cookie | If an attacker manages to sneak a script onto the page, it still can't steal the session |
+| **Secure** | Only sent over HTTPS | The cookie never travels unencrypted, where someone on the café Wi-Fi could read it |
+| **SameSite=Lax** (or Strict) | Not sent when another website starts the request | Stops other sites from making your browser do things on a site you're logged into |
+| **Max-Age** / **Expires** | When the browser should delete it | Without one, the cookie lasts until the browser closes. Sessions should also expire on the server |
+
+A login cookie should have **all of them**. In the CORS lesson you saw that letting another origin send cookies is a big decision. SameSite is the browser's own protection on the same theme.
+
+<Callout kind="warn" title="Logging out has to happen on the server">
+Clearing the cookie in the browser isn't enough. If someone copied the session ID earlier, it still works until the **server** deletes the session. A proper logout deletes the session on the server. That's what the practice API's /logout does in the task.
+</Callout>
+
+## Session hijacking
+
+The session ID is effectively a key to the account. Anyone who gets a copy can send it and **be** that user, with no password needed, until the session ends. This is **session hijacking**.
+
+How cookies get stolen, and the defense against each:
+
+- **Read off an unencrypted connection** → Secure, and HTTPS everywhere.
+- **Read by a malicious script on the page** → HttpOnly.
+- **Copied from a shared or stolen computer** → sessions that expire, and a "log out everywhere" button that deletes all of a user's sessions.
+
+## Third-party cookies and tracking
+
+A cookie belongs to the site that set it. A **first-party cookie** is set by the site in your address bar. A **third-party cookie** is set by a different site whose content is embedded in the page, typically an advertising network whose code appears on thousands of sites. Because your browser sends that network's cookie on every one of those sites, the network can follow you around the web.
+
+Browsers have been cutting this off, and privacy laws like the EU's GDPR require consent for tracking cookies. That's what those cookie banners are about. Cookies a site needs just to work, like the login session, are generally treated differently from tracking.
+
+## Cookies or tokens?
+
+You'll also see logins that don't use a session cookie. Instead, the server hands back a **token**, and JavaScript sends it in a header with each request. That's common for mobile apps and for APIs, and you'll meet tokens properly in *Proving who's calling*. For ordinary websites, a session cookie with all the settings above is still the simplest safe choice.
+
+<ConsultantNote>
+"How do logins work in your app?" is one of the first questions in any security review. Look at the session cookie in the browser's developer tools: is it HttpOnly, Secure and SameSite? Does it expire? Does logging out actually end the session on the server? Those checks take five minutes, and they're among the most common findings in real audits.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Set-Cookie** | The response header that stores a cookie in the browser |
+| **Session** | The server's record of a logged-in user, found by its ID |
+| **Session ID** | A long random value in a cookie, pointing at a session on the server |
+| **Cookie jar** | Where cookies are stored: the browser's store, or curl's file |
+| **HttpOnly** | Page scripts can't read the cookie |
+| **Secure** | The cookie is only sent over HTTPS |
+| **SameSite** | The cookie isn't sent when another site starts the request |
+| **Max-Age / Expires** | When the cookie should be deleted |
+| **Third-party cookie** | A cookie from a different site embedded in the page, often for tracking |
+| **Session hijacking** | Using a stolen session ID to act as someone |

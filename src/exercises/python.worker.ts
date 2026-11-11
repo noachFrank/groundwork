@@ -8,10 +8,12 @@ import { HARNESS, REQUESTS_SHIM } from '../../shared/python-harness.ts';
 declare const self: DedicatedWorkerGlobalScope & { __gwHttp?: unknown };
 
 // Synchronous, because `requests.get()` in Python isn't async. Only possible in a worker.
-self.__gwHttp = (method: string, url: string, headersJson: string, body: string) => {
+self.__gwHttp = (method: string, url: string, headersJson: string, body: string, timeoutMs = 0) => {
+  const started = Date.now();
   try {
     const xhr = new XMLHttpRequest();
     xhr.open(method, url, false);
+    if (timeoutMs > 0) xhr.timeout = timeoutMs;
     for (const [k, v] of Object.entries(JSON.parse(headersJson) as Record<string, string>)) xhr.setRequestHeader(k, v);
     xhr.send(body || undefined);
     const headers: Record<string, string> = {};
@@ -20,7 +22,9 @@ self.__gwHttp = (method: string, url: string, headersJson: string, body: string)
       if (at > 0) headers[line.slice(0, at).trim().toLowerCase()] = line.slice(at + 1).trim();
     }
     return JSON.stringify({ status: xhr.status, body: xhr.responseText, headers });
-  } catch {
+  } catch (e) {
+    const timedOut = (e instanceof DOMException && e.name === 'TimeoutError') || (timeoutMs > 0 && Date.now() - started >= timeoutMs);
+    if (timedOut) return JSON.stringify({ timeout: true });
     return JSON.stringify({ error: `Could not connect to ${url}` });
   }
 };

@@ -1,0 +1,395 @@
+---
+id: paging-and-rate-limits
+title: "Big answers and speed limits: pagination and rate limits"
+order: 5
+topic: software-talking
+minutes: 55
+summary: Why APIs hand out long lists a page at a time and how to collect every page, plus what rate limits are, how to read the headers that tell you where you stand, and how to wait politely when you hit one.
+connectivity: offline
+prerequisites:
+  - id: api-errors
+    need: essential
+    why: Retryable errors and 429 are introduced there.
+  - id: rest-design
+    need: essential
+    why: Query strings and params= are used throughout.
+  - id: python-lists-loops
+    need: helpful
+    why: The new while loop is compared with for loops.
+revision: 1
+teaches: [pagination, page-vs-cursor, next-link, while-loop, infinite-loop, rate-limit, status-429, retry-after, ratelimit-headers, backoff-intro, quota]
+uses: [api, query-string, requests-params, requests-get, status-code-attr, response-json-py, http-header, retryable-errors, status-5xx, api-docs, for-loop, list, append, dictionary, dict-key-access, in-operator, none-value, if-statement, comparison-operators, arithmetic, type-conversion, function, return-statement, running-total, ctrl-c, run-and-check, api-key, secret]
+predict:
+  id: p1
+  type: mcq
+  prompt: An API answers `GET /products` with 20 products, but the shop has 2,000. What's most likely going on?
+  options:
+    - The other products were deleted
+    - The API sends the list a page at a time, and the answer says how to ask for the next page
+    - The API is broken
+    - Your internet cut off the rest
+  answer: 1
+  why: Sending 2,000 items at once would be slow and wasteful, so APIs page their answers. Code that reads only the first page and stops is one of the most common integration bugs. Everything looks fine until a list grows past one page.
+tasks:
+  - id: pages-and-limits
+    type: python
+    title: Collect every page, then find the speed limit
+    instructions: |
+      You'll use: the `while` loop from this lesson, plus `headers=` and `.headers` (from earlier lessons).
+
+      1. `all_product_names(per_page)` starts at `BASE + "/products?per_page=" + str(per_page)`. Each answer has `"items"` and `"next"`. `"next"` is the address of the next page (like `/products?page=2&per_page=5`, to be added to `BASE`), or `None` on the last page. Collect every item's `"name"` from every page and return them in one list.
+      2. `count_until_limited(client_id)` calls `BASE + "/limited"` with the header `X-Client-Id` set to `client_id`, again and again, until it gets a **429**. Return `{"allowed": <how many 200s came first>, "retry_after": <the Retry-After header, as a number>}`.
+      3. `wait_seconds(headers, attempt)`: if `"Retry-After"` is in the headers, return it as a number. Otherwise return `2 ** attempt` (1, 2, 4, 8…), but never more than 60.
+    starter: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def all_product_names(per_page):
+          names = []
+          url = BASE + "/products?per_page=" + str(per_page)
+          # while url is not None:
+          #     get the page, add each item's name, then set url to the next page (or None)
+          return names
+
+
+      def count_until_limited(client_id):
+          # Keep calling until the status is 429, counting the 200s.
+          pass
+
+
+      def wait_seconds(headers, attempt):
+          pass
+
+
+      print(len(all_product_names(5)), "products")
+      print(count_until_limited("my-script"))
+      print(wait_seconds({}, 3), wait_seconds({"Retry-After": "7"}, 3))
+    tests:
+      - name: every page is collected
+        code: |
+          names = all_product_names(5)
+          assert len(names) == 23, f"There are 23 products over 5 pages. Got {len(names)}. Do you follow 'next' until it's None?"
+          assert names[0] == "Desk lamp" and names[-1] == "Calculator", f"First should be Desk lamp and last Calculator. Got {names[0]!r} and {names[-1]!r}."
+      - name: page size doesn't change the answer
+        code: |
+          assert all_product_names(20) == all_product_names(3), "Whatever the page size, the full list should be the same."
+      - name: the rate limit is found
+        code: |
+          import random
+          got = count_until_limited("checker-" + str(random.randint(100000, 999999)))
+          assert got["allowed"] == 5, f"The limit is 5 per minute, so expected 5 allowed, got {got}."
+          assert isinstance(got["retry_after"], int) and 0 < got["retry_after"] <= 60, f"retry_after should be the Retry-After header as a number of seconds. Got {got}."
+      - name: Retry-After wins when it's there
+        code: |
+          assert wait_seconds({"Retry-After": "7"}, 3) == 7, "With a Retry-After of 7, wait 7 seconds."
+      - name: otherwise back off, doubling
+        code: |
+          got = [wait_seconds({}, a) for a in [0, 1, 2, 3]]
+          assert got == [1, 2, 4, 8], f"Expected [1, 2, 4, 8], got {got}."
+      - name: never wait more than a minute
+        code: |
+          assert wait_seconds({}, 10) == 60, f"2 ** 10 is 1024, so cap it at 60. Got {wait_seconds({}, 10)}."
+    solution: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def all_product_names(per_page):
+          names = []
+          url = BASE + "/products?per_page=" + str(per_page)
+          while url is not None:
+              page = requests.get(url).json()
+              for item in page["items"]:
+                  names.append(item["name"])
+              if page["next"] is None:
+                  url = None
+              else:
+                  url = BASE + page["next"]
+          return names
+
+
+      def count_until_limited(client_id):
+          headers = {"X-Client-Id": client_id}
+          allowed = 0
+          response = requests.get(BASE + "/limited", headers=headers)
+          while response.status_code == 200:
+              allowed += 1
+              response = requests.get(BASE + "/limited", headers=headers)
+          return {"allowed": allowed, "retry_after": int(response.headers["Retry-After"])}
+
+
+      def wait_seconds(headers, attempt):
+          if "Retry-After" in headers:
+              return int(headers["Retry-After"])
+          wait = 2 ** attempt
+          if wait > 60:
+              return 60
+          return wait
+    wrong: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def all_product_names(per_page):
+          names = []
+          page = requests.get(BASE + "/products?per_page=" + str(per_page)).json()
+          for item in page["items"]:
+              names.append(item["name"])
+          return names
+
+
+      def count_until_limited(client_id):
+          return {"allowed": 5, "retry_after": "60"}
+
+
+      def wait_seconds(headers, attempt):
+          return 2 ** attempt
+  - id: quota-case
+    type: case
+    title: "\"We keep getting 429s\""
+    instructions: A client's integration is hitting a partner's rate limit. Choose your recommendations.
+    scenario: |
+      A furniture shop syncs its 8,000 products to a marketplace's API every hour. The marketplace's docs say: 100 requests per minute per API key, and up to 100 products per request. The shop's script sends one request per product, as fast as it can, and retries any failure immediately. Since the catalog grew, every sync ends in hundreds of `429 Too Many Requests` errors, and some products never update.
+    questions:
+      - prompt: What's the biggest, easiest win?
+        choices:
+          - text: Send products in batches of 100 per request, as the docs allow. 8,000 products becomes 80 requests
+            score: 2
+            why: That fits comfortably under 100 requests a minute, and it's a small change. Reading the docs often finds this.
+          - text: Ask the marketplace to raise the limit
+            score: 1
+            why: Worth asking, but they may say no, and there's a free fix in the docs already.
+          - text: Use several API keys to get around the limit
+            score: 0
+            why: That usually breaks the terms of service and can get the account banned.
+      - prompt: How should the script react to a 429?
+        choices:
+          - text: Wait as long as the Retry-After header says (or back off, doubling each time), then retry
+            score: 2
+            why: Immediate retries are exactly what keeps it stuck over the limit. Waiting lets the window reset.
+          - text: Retry immediately, several times
+            score: 0
+            why: That's the current behavior, and it makes things worse.
+          - text: Skip the product
+            score: 0
+            why: Then the product silently never updates, which is the client's actual complaint.
+      - prompt: Only about 300 products change in a typical hour. What else could you suggest?
+        choices:
+          - text: Send only products that changed since the last sync
+            score: 2
+            why: Far fewer requests, faster syncs, and much less load on both systems.
+          - text: Sync every minute instead
+            score: 0
+            why: That's 60 times the requests. The opposite of what's needed.
+          - text: Keep syncing everything, but at night only
+            score: 1
+            why: It avoids busy times, but updates would be up to a day late.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: Your code reads `GET /customers` and gets 50 customers back. What should it check before assuming that's all of them?
+    options:
+      - Whether the answer has a next page (a next link, a cursor, or total pages)
+      - Nothing
+      - The status code only
+      - The API key
+    answer: 0
+    why: Most APIs page their lists. Follow the next link until there isn't one.
+  - id: r2
+    type: short
+    prompt: Which status code means "too many requests, slow down"?
+    accept: ['\b429\b']
+    answerText: "429"
+  - id: r3
+    type: mcq
+    prompt: 'What does a `Retry-After: 30` header mean?'
+    options:
+      - Wait 30 seconds before trying again
+      - Try 30 more times
+      - The request took 30 seconds
+      - You have 30 requests left
+    answer: 0
+    why: The server tells you exactly how long to wait. Respect it.
+  - id: r4
+    type: self
+    prompt: When does a while loop make more sense than a for loop? Give an example from this lesson.
+    modelAnswer: When you don't know in advance how many times it needs to run, only when to stop. Following pages until there's no next page is an example, and so is calling an API until it answers 429. A for loop is for going through something you already have, like a list.
+cards:
+  - id: paging
+    front: Page numbers vs. cursors?
+    back: "Page numbers: ?page=3&per_page=50. Simple, but items can shift between pages if the list changes. Cursors: ?after=abc123, meaning \"continue after this item\". Stable, and common in big APIs."
+  - id: while
+    front: How do you collect every page of an API answer?
+    back: Start with the first page's address. While there's an address, fetch it, keep its items, then set the address to the answer's next link (or None on the last page).
+  - id: headers
+    front: Which headers tell you about a rate limit?
+    back: "X-RateLimit-Limit (allowed per window), X-RateLimit-Remaining (left now), X-RateLimit-Reset (when it resets), and on a 429, Retry-After (how long to wait)."
+  - id: backoff
+    front: What's backoff?
+    back: After each failure, wait longer before retrying, often doubling (1, 2, 4, 8 seconds) up to a limit, so a struggling server gets breathing room.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Why do APIs have rate limits?
+    options:
+      - To protect the service from overload and abuse, and to share capacity fairly between customers
+      - To make developers pay more
+      - Because HTTP requires them
+      - To slow down the internet
+    answer: 0
+    why: One runaway script shouldn't be able to slow the service down for everyone. Paid plans often get higher limits.
+  - id: t2
+    type: mcq
+    prompt: A while loop keeps going forever. What stops it in the terminal?
+    options: [Ctrl+C, Closing the lid, Typing stop, It can't be stopped]
+    answer: 0
+    why: Ctrl+C stops the running program. In Groundwork's editor, long-running Python is stopped automatically.
+docs:
+  - title: "MDN: 429 Too Many Requests"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/429
+  - title: "MDN: Retry-After"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Retry-After
+  - title: "Python tutorial: while statements"
+    url: https://docs.python.org/3/reference/compound_stmts.html#the-while-statement
+videos: []
+---
+
+## In this lesson
+
+Two limits every real API has, and every integration has to handle:
+
+- **Pagination**: long lists come a page at a time. You'll learn page numbers, cursors and **next links**, and how to collect everything.
+- Python's **`while` loop**, which repeats until a condition becomes false.
+- **Rate limits**: how many requests you may send in a given time, the **429** status, the headers that report where you stand, and **Retry-After**.
+- **Backoff**: waiting longer after each failure.
+- **Quotas**: limits per day or month, often tied to what you pay.
+
+## Pagination: a page at a time
+
+A shop might have 2,000 products. Sending them all in one answer would be slow to build, slow to send and slow to read, and most callers only want the first few. So APIs **paginate**: they send one page and tell you how to get the next.
+
+Groundwork's practice API does it like this:
+
+```text
+GET /products?page=1&per_page=5
+```
+
+```json
+{
+  "items": [{"id": 1, "name": "Desk lamp", "price": 2}, "…four more…"],
+  "page": 1,
+  "per_page": 5,
+  "total": 23,
+  "total_pages": 5,
+  "next": "/products?page=2&per_page=5"
+}
+```
+
+- `items` holds this page's products.
+- `total` and `total_pages` say how many there are altogether.
+- **`next`** is the address of the next page, or `null` (Python's `None`) on the last one.
+
+A ready-made **next link** like that is the friendliest design: you just follow it, without working out page numbers yourself.
+
+### Page numbers or cursors
+
+There are two common styles:
+
+- **Page numbers** (`?page=3&per_page=50`) are simple, and you can jump to any page. But if items are added or removed while you're reading, things shift between pages, and you can miss or repeat one.
+- **Cursors** (`?after=prod_8f2a&limit=50`) mean "continue after this item". The answer gives you the cursor for the next call. They stay correct while the list changes, which is why big APIs like Stripe and Slack use them.
+
+Either way, the loop is the same: fetch, keep the items, move on, until there's nothing more.
+
+## The while loop
+
+A `for` loop goes through something you already have, like a list. Here you don't know how many pages there are until you've read them. For that, Python has **`while`**: it repeats its block **as long as a condition is true**, checking before each round:
+
+```python
+url = BASE + "/products?per_page=5"
+while url is not None:
+    page = requests.get(url).json()
+    # … keep this page's items …
+    if page["next"] is None:
+        url = None
+    else:
+        url = BASE + page["next"]
+```
+
+Read it as "while there's a page to fetch: fetch it, keep its items, then work out the next address". On the last page, `url` becomes `None`, the condition is false, and the loop ends.
+
+<Callout kind="warn" title="Make sure it can end">
+A `while` loop only stops when its condition becomes false. If nothing inside the loop ever changes that, it runs forever. This is an **infinite loop**. In the terminal, **Ctrl+C** stops it. In Groundwork's editor, Python that runs too long is stopped for you. Before running a `while` loop, ask: "what makes this condition false?"
+</Callout>
+
+<details>
+<summary>Quick check: in the loop above, what makes it stop?</summary>
+
+On the last page, `next` is `None`, so `url` is set to `None`, and `while url is not None` becomes false.
+</details>
+
+## Rate limits
+
+A **rate limit** caps how many requests one caller may send in a window of time, like "100 requests per minute per API key". It protects the service from overload and from one runaway script, and it shares capacity fairly. Exceed it, and you get:
+
+```text
+HTTP/1.1 429 Too Many Requests
+Retry-After: 42
+```
+
+**429 Too Many Requests** is the "slow down" status. **Retry-After** says how many seconds to wait.
+
+Most APIs also tell you where you stand on **every** response, before you hit the limit:
+
+| Header | Means |
+| --- | --- |
+| `X-RateLimit-Limit: 100` | Requests allowed per window |
+| `X-RateLimit-Remaining: 12` | Requests left in this window |
+| `X-RateLimit-Reset: 30` | Seconds until the window resets (some APIs give a clock time instead) |
+
+The exact names vary, so check the API's documentation. The practice API's `/limited` address allows 5 requests per minute per `X-Client-Id`. In the task you'll call it until it says 429, then read Retry-After from `response.headers`.
+
+## Waiting politely: backoff
+
+When you get a 429, or a temporary 5xx error, the worst thing to do is retry immediately. Lots of clients doing that at once keep the server overloaded. Instead:
+
+1. If there's a **Retry-After**, wait exactly that long.
+2. If not, **back off**: wait longer after each failed attempt. A common pattern doubles the wait: 1 second, then 2, 4, 8… up to a maximum, like a minute. In Python, `2 ** attempt` means 2 to the power of `attempt`: `2 ** 0` is 1, `2 ** 3` is 8.
+3. Give up after a few attempts, and report it.
+
+That's **backoff**. Stage 4 adds a twist: a little randomness, so a thousand clients don't all retry at the same instant.
+
+## Staying under the limit in the first place
+
+Waiting handles a 429, but good design avoids most of them:
+
+- **Batch**: many APIs accept many items per request. 100 products per call instead of 1 is 100 times fewer requests.
+- **Send only what changed**, rather than everything every time.
+- **Cache** answers that don't change often.
+- **Spread work out** instead of sending bursts.
+
+Separate from per-minute rate limits, many APIs also have a **quota**: a total per day or month, often tied to the plan you pay for. Going over can mean errors until the month resets, or a surprise bill. Paid AI APIs work this way, which matters in Stage 3.
+
+<ConsultantNote>
+Rate limits and quotas belong in every integration estimate. "How many requests will this need per day, and what does the API allow on the client's plan?" is a five-minute calculation that can change a design completely. It's far better to find out in a planning meeting than in production on launch day.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Pagination** | Sending a long list one page at a time |
+| **Page numbers vs. cursors** | ?page=3 / "continue after this item" |
+| **Next link** | The address of the next page, given in the answer |
+| **`while` loop** | Repeats its block for as long as a condition is true |
+| **Infinite loop** | A loop whose condition never becomes false. Ctrl+C stops it |
+| **Rate limit** | A cap on requests per window of time |
+| **429 Too Many Requests** | "Slow down" |
+| **Retry-After** | How many seconds to wait before retrying |
+| **X-RateLimit-… headers** | The limit, what's left, and when it resets |
+| **Backoff** | Waiting longer after each failure, often doubling, up to a limit |
+| **Quota** | A total allowance per day or month |

@@ -1,0 +1,394 @@
+---
+id: message-queues
+title: "Message queues: work that waits its turn"
+order: 2
+topic: software-talking
+minutes: 60
+summary: How systems hand slow or risky work to a queue instead of doing it while a user waits. Covers producers and workers, acknowledgements, what happens when a worker crashes, why a message can arrive twice, and where messages that keep failing end up.
+connectivity: offline
+prerequisites:
+  - id: webhooks
+    need: essential
+    why: Webhook handlers are the classic place to put work on a queue.
+  - id: paging-and-rate-limits
+    need: essential
+    why: The worker uses a while loop.
+  - id: load-balancers
+    need: helpful
+    why: Adding workers is horizontal scaling again.
+revision: 1
+teaches: [sync-vs-async-work, message-queue, producer-consumer, worker, acknowledgement, visibility-timeout, at-least-once, poison-message, dead-letter-queue, queue-products]
+uses: [webhook, respond-fast, dedupe-by-event-id, idempotent, service, horizontal-scaling, retryable-errors, rate-limit, api, json, http-method, status-201-204, requests-intro, requests-get, status-code-attr, response-json-py, keyword-arguments, while-loop, for-loop, list, append, in-operator, dictionary, dict-key-access, function, return-statement, if-statement, architecture-diagram, run-and-check]
+predict:
+  id: p1
+  type: mcq
+  prompt: When a customer places an order, the shop must save it, charge the card, email a receipt, and make a PDF invoice, which takes 8 seconds in total. What's the best design?
+  options:
+    - Do all of it before showing "Thank you", so the customer waits 8 seconds
+    - Save the order, show "Thank you" straight away, and hand the email and invoice to a background worker through a queue
+    - Skip the receipt
+    - Email the receipt next week
+  answer: 1
+  why: Only what the customer needs before seeing the result has to happen while they wait. Slower work goes on a queue and is done moments later, safely, even if the email service is having a bad minute.
+tasks:
+  - id: queue-worker
+    type: python
+    title: Write a queue worker
+    instructions: |
+      You'll use: `requests.post` with `json=`, `requests.get`, a `while` loop (from *Pagination and rate limits*) and the queue addresses from this lesson.
+
+      The practice API has a real message queue. Each queue has a name you choose, in its address: `BASE + "/queues/" + name`.
+
+      - `POST …/messages` with a JSON body adds a message, and answers 201 with its `id`.
+      - `GET …/messages/next` takes the next message, as `{"id", "body", "receive_count"}`, and hides it from other workers for 30 seconds. It answers **204** when nothing is waiting.
+      - `POST …/messages/<id>/ack` means done: delete it for good.
+      - `POST …/messages/<id>/release` means failed: put it back now. After 3 tries it moves to the dead-letter queue.
+
+      1. `send_jobs(queue, jobs)` adds each job in the list as a message, and returns the list of new ids.
+      2. `work(queue)` takes messages until the answer is 204. For each one, if the body's `"email"` contains `"@"`, "send" it by adding the email to a list, then **ack** it. Otherwise **release** it. Return the list of emails sent.
+    starter: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def send_jobs(queue, jobs):
+          ids = []
+          # For each job: requests.post(BASE + "/queues/" + queue + "/messages", json=job)
+          return ids
+
+
+      def work(queue):
+          sent = []
+          # response = requests.get(BASE + "/queues/" + queue + "/messages/next")
+          # while response.status_code == 200:
+          #     message = response.json()
+          #     ... ack or release it ...
+          #     response = requests.get(... the next one ...)
+          return sent
+
+
+      send_jobs("my-emails", [{"email": "ada@example.com"}, {"email": "not-an-email"}, {"email": "lin@example.com"}])
+      print(work("my-emails"))
+      print(requests.get(BASE + "/queues/my-emails").json())
+    tests:
+      - name: send_jobs adds every job
+        code: |
+          import random
+          q = "check-" + str(random.randint(100000, 999999))
+          ids = send_jobs(q, [{"email": "a@example.com"}, {"email": "b@example.com"}])
+          assert len(ids) == 2, f"Two jobs should give two ids, got {ids}."
+          assert requests.get(BASE + "/queues/" + q).json()["waiting"] == 2, "Both messages should be waiting in the queue."
+      - name: work sends the good ones
+        code: |
+          import random
+          q = "check-" + str(random.randint(100000, 999999))
+          send_jobs(q, [{"email": "a@example.com"}, {"email": "oops"}, {"email": "c@example.com"}])
+          got = work(q)
+          assert sorted(got) == ["a@example.com", "c@example.com"], f"Expected the two real emails, got {got}."
+      - name: good messages are acknowledged and bad ones end up dead-lettered
+        code: |
+          import random
+          q = "check-" + str(random.randint(100000, 999999))
+          send_jobs(q, [{"email": "a@example.com"}, {"email": "oops"}, {"email": "c@example.com"}])
+          work(q)
+          stats = requests.get(BASE + "/queues/" + q).json()
+          assert stats["done"] == 2, f"The two good ones should be acked (done: 2). Stats: {stats}. Did you POST to /ack?"
+          assert stats["in_flight"] == 0, f"Nothing should be left hidden. Stats: {stats}. Every message must be acked or released."
+          assert stats["dead_letter"] == 1, f"The bad one should fail 3 times and move to the dead-letter queue. Stats: {stats}. Did you POST to /release?"
+      - name: an empty queue is fine
+        code: |
+          import random
+          assert work("check-empty-" + str(random.randint(100000, 999999))) == [], "No messages means nothing sent."
+    solution: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def send_jobs(queue, jobs):
+          ids = []
+          for job in jobs:
+              response = requests.post(BASE + "/queues/" + queue + "/messages", json=job)
+              ids.append(response.json()["id"])
+          return ids
+
+
+      def work(queue):
+          sent = []
+          address = BASE + "/queues/" + queue + "/messages/"
+          response = requests.get(address + "next")
+          while response.status_code == 200:
+              message = response.json()
+              if "@" in message["body"]["email"]:
+                  sent.append(message["body"]["email"])
+                  requests.post(address + message["id"] + "/ack")
+              else:
+                  requests.post(address + message["id"] + "/release")
+              response = requests.get(address + "next")
+          return sent
+    wrong: |
+      import requests
+
+      BASE = "http://localhost:4314"
+
+
+      def send_jobs(queue, jobs):
+          ids = []
+          for job in jobs:
+              response = requests.post(BASE + "/queues/" + queue + "/messages", json=job)
+              ids.append(response.json()["id"])
+          return ids
+
+
+      def work(queue):
+          sent = []
+          address = BASE + "/queues/" + queue + "/messages/"
+          response = requests.get(address + "next")
+          while response.status_code == 200:
+              message = response.json()
+              if "@" in message["body"]["email"]:
+                  sent.append(message["body"]["email"])
+              response = requests.get(address + "next")
+          return sent
+  - id: thumbnail-design
+    type: architecture
+    title: Design a photo upload that never makes people wait
+    instructions: Place each part, and leave out anything that breaks the requirements.
+    scenario: |
+      A property website lets agents upload 30 photos per listing. Each photo needs three resized copies, which takes about 2 seconds per photo. Requirements: the upload page must answer within a second; no photo may be lost if a worker crashes; and on busy Monday mornings they must be able to add capacity without changing the website.
+    parts:
+      - id: web
+        label: Web server
+        hint: Receives the uploads and answers the agent
+      - id: queue
+        label: Message queue
+        hint: Holds one "resize this photo" message per photo
+      - id: worker
+        label: Resize workers
+        hint: Take messages, make the copies, then acknowledge
+      - id: storage
+        label: File storage
+        hint: Keeps the originals and the resized copies
+      - id: dlq
+        label: Dead-letter queue
+        hint: Messages that failed several times, for a person to check
+      - id: inline
+        label: Resize inside the upload request
+        hint: The web server makes all the copies before answering
+    zones:
+      - id: front
+        label: Handles the agent's request
+        hint: Must answer within a second
+      - id: background
+        label: Background processing
+        hint: Works at its own pace, and can be scaled up
+      - id: durable
+        label: Durable storage
+        hint: Survives crashes
+    checklist:
+      - text: Answer the agent quickly
+        all: [{ part: web, zone: front }]
+      - text: Hold the work safely until a worker is free
+        all: [{ part: queue, zone: durable }]
+      - text: Do the resizing in the background, with room to add more workers
+        all: [{ part: worker, zone: background }]
+      - text: Keep the photos safe
+        all: [{ part: storage, zone: durable }]
+      - text: Catch photos that keep failing, without blocking the rest
+        all: [{ part: dlq, zone: durable }]
+      - text: Don't make the agent wait 60 seconds for resizing
+        none: [inline]
+    model:
+      placements:
+        web: front
+        queue: durable
+        worker: background
+        storage: durable
+        dlq: durable
+      explanation: |
+        The web server saves each original to storage, puts one message per photo on the queue, and answers within a second. Workers take messages, make the copies, and acknowledge only when the copies are safely stored. If a worker crashes halfway, its message becomes visible again and another worker picks it up.
+
+        On a busy Monday, you start more workers. The website doesn't change at all. A photo that keeps failing (a corrupt file, say) moves to the dead-letter queue after a few tries, so it doesn't block everything else, and someone can look at it.
+recall:
+  - id: r1
+    type: mcq
+    prompt: When should a worker acknowledge a message?
+    options:
+      - Only after the work is completely done
+      - As soon as it receives the message
+      - Never
+      - Before receiving it
+    answer: 0
+    why: If it acknowledges first and then crashes, the message is gone and the work never happens. Acknowledging last means a crash leads to a retry instead.
+  - id: r2
+    type: mcq
+    prompt: Why must queue workers cope with the same message arriving twice?
+    options:
+      - Most queues deliver at least once. A worker can finish the work but crash before acknowledging, so the message is delivered again
+      - Queues are badly made
+      - Messages are always sent twice
+      - They don't need to
+    answer: 0
+    why: At-least-once delivery is the normal guarantee. Making the work safe to repeat (idempotent), or remembering what's done, is the worker's job.
+  - id: r3
+    type: short
+    prompt: Where does a message go after it has failed too many times?
+    accept: ['dead.?letter', 'dlq']
+    answerText: A dead-letter queue
+  - id: r4
+    type: self
+    prompt: Give two benefits of putting slow work on a queue instead of doing it during the user's request.
+    modelAnswer: The user gets an answer straight away instead of waiting. Spikes are absorbed, because messages wait their turn instead of overloading the system. Workers can be added to go faster. And a failure in, say, the email service doesn't fail the user's order, because the message is retried later.
+cards:
+  - id: queue
+    front: What does a message queue do?
+    back: It holds messages (jobs) from producers until a worker is free to take one. It decouples the part that asks for work from the part that does it.
+  - id: ack
+    front: Acknowledgement and visibility timeout?
+    back: A worker that takes a message has it hidden for a while. Acknowledging deletes it. If there's no acknowledgement before the timeout (say, a crash), the message becomes visible again for another worker.
+  - id: once
+    front: What does at-least-once delivery mean for your code?
+    back: A message may be processed more than once, so the work must be safe to repeat, or check whether it was already done.
+  - id: dlq
+    front: What's a poison message, and what stops it causing trouble?
+    back: A message that fails every time, like bad data. After a few tries, the queue moves it to a dead-letter queue so it stops blocking others, and someone can investigate.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Which of these is a message queue product?
+    options: [RabbitMQ, nginx, Git, Excel]
+    answer: 0
+    why: RabbitMQ, Amazon SQS, Azure Service Bus and Redis-based queues are common choices.
+  - id: t2
+    type: mcq
+    prompt: Emails are piling up in a queue faster than one worker can send them. What's the simplest fix?
+    options:
+      - Start more workers taking from the same queue
+      - Delete the queue
+      - Make the web server send them instead
+      - Send fewer emails
+    answer: 0
+    why: Workers share a queue naturally. Each message goes to one of them. This is horizontal scaling again.
+docs:
+  - title: "AWS: What is a message queue?"
+    url: https://aws.amazon.com/message-queue/
+  - title: "RabbitMQ: Consumer acknowledgements"
+    url: https://www.rabbitmq.com/docs/confirms
+  - title: "Amazon SQS: Visibility timeout"
+    url: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html
+videos: []
+---
+
+## In this lesson
+
+The webhooks lesson said "save the event, answer fast, and do the slow work afterwards". This lesson is about **afterwards**:
+
+- **Doing work now or later**: what has to happen while a user waits, and what doesn't.
+- **Message queues**, **producers** and **workers**.
+- **Acknowledgements** and the **visibility timeout**: what happens when a worker crashes.
+- **At-least-once delivery**: why a message can be processed twice.
+- **Poison messages** and the **dead-letter queue**.
+
+## Now, or a moment later?
+
+When a customer places an order, a shop might need to save it, charge the card, email a receipt, generate a PDF invoice, update stock and notify the warehouse. If all of that happens **during** the request, **synchronously**, the customer stares at a spinner, and if any one step fails (the email service is down), the whole order fails.
+
+But the customer only needs two of those things before seeing "Thank you": the order saved, and the card charged. Everything else can happen a moment later, **asynchronously**, in the background. The trick is handing that work off **safely**, so none of it is lost.
+
+## Message queues
+
+A **message queue** is a service that holds **messages**, each one a small piece of JSON describing a job, until something is ready to deal with them. Step through it:
+
+<Viz name="message-queue" />
+
+- A **producer** puts messages on the queue: the web server, saying "send a receipt for order 501".
+- A **worker** (also called a **consumer**) is a separate program that takes messages off and does the work.
+
+The two sides never talk directly, and they don't run at the same speed. That brings big benefits:
+
+- **Fast answers**: the web server's part takes milliseconds.
+- **Absorbing spikes**: a thousand orders in a minute just make the queue longer for a while, instead of overloading the email service.
+- **Scaling**: emails piling up? Start more workers on the same queue. Each message goes to just one of them. That's horizontal scaling again.
+- **Resilience**: if the email service is down, messages wait, and are retried, instead of failing customers' orders.
+
+<details>
+<summary>Quick check: in a queue setup, which part does the slow work, the producer or the worker?</summary>
+
+The worker. The producer just adds a message describing the job, and carries on.
+</details>
+
+## Acknowledgements: done means done
+
+Here's the subtle part. A worker takes a message and starts sending the email. Then the worker crashes. What happens to the message?
+
+A good queue doesn't **delete** a message when a worker takes it. It **hides** it from other workers for a while, the **visibility timeout** (30 seconds in the practice API). Then:
+
+- When the worker finishes, it sends an **acknowledgement** ("ack"): "done, delete it". Only now is it gone.
+- If no ack arrives before the timeout, because the worker crashed or is stuck, the message becomes **visible again**, and another worker takes it.
+- A worker can also give a message back on purpose, with a negative acknowledgement ("nack", or "release" in the practice API), when it knows it can't handle it right now.
+
+So the rule for workers is: **acknowledge last**, only after the work is completely done. Acknowledge first and crash, and the job is silently lost.
+
+## At least once, not exactly once
+
+Follow that through and you'll spot a catch. A worker sends the email, and then crashes **before** acknowledging. The message reappears, and another worker sends the email **again**.
+
+Most queues promise **at-least-once delivery**: every message will be processed, but occasionally **more than once**. Exactly-once is very hard to guarantee across networks, so the job falls to the worker: make the work safe to repeat (**idempotent**, from *Designing REST APIs*), or record which jobs are done and skip repeats, the same trick as skipping duplicate webhooks.
+
+## Poison messages and the dead-letter queue
+
+Some messages fail **every** time: an email address with a typo, a corrupt photo, a bug that crashes on one particular order. Retried forever, a **poison message** wastes workers, fills the logs, and can block the messages behind it.
+
+So queues count how many times each message has been received. After a limit (3 in the practice API), they move it to a separate **dead-letter queue**: a holding area for messages that couldn't be processed. Nothing is lost, the rest of the work carries on, and a person, or an alert, can look at what went wrong. Stage 4 comes back to dead-letter queues when designing for failure.
+
+## The practice queue
+
+In the task you'll be both producer and worker, using the practice API's queue:
+
+```python
+address = BASE + "/queues/my-emails/messages/"
+
+requests.post(address[:-1], json={"email": "ada@example.com"})   # add one (POST …/messages)
+
+response = requests.get(address + "next")    # take the next one, or 204 if empty
+message = response.json()                    # {"id": "m1", "body": {...}, "receive_count": 1}
+requests.post(address + message["id"] + "/ack")       # done
+requests.post(address + message["id"] + "/release")  # failed, put it back
+```
+
+(`address[:-1]` is the address without its last character, the slash, using the slicing from the debugging lesson.)
+
+Your worker loops with `while` until `next` answers **204**, meaning nothing is waiting. Bad messages are released, come straight back, and after three tries the queue moves them to the dead-letter queue, so your loop ends by itself.
+
+## Real queue products
+
+You'd rarely write a queue yourself. Common choices:
+
+| Product | Notes |
+| --- | --- |
+| **Amazon SQS** | Fully managed by AWS, simple, pay per message |
+| **Azure Service Bus** | Microsoft's managed queues, popular with .NET teams |
+| **RabbitMQ** | Open source, very flexible, you run it yourself (or pay a host) |
+| **Redis-based queues** | Lightweight, popular with Node and Python apps, like BullMQ and Celery |
+
+They all share the ideas in this lesson: producers, workers, acknowledgements, visibility or redelivery, and dead-letter queues.
+
+<ConsultantNote>
+"The checkout is slow" and "sometimes orders fail when the email service is down" are classic symptoms of doing everything synchronously. Moving the non-essential work onto a queue fixes both, and it's often a modest change. When you review one, ask: what happens if a worker crashes halfway? Is the work safe to repeat? Where do failed messages go, and does anyone get told?
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Synchronous vs. asynchronous work** | Done while the user waits / done a moment later, in the background |
+| **Message queue** | A service that holds messages until a worker takes them |
+| **Producer / consumer** | What adds messages / what takes and processes them |
+| **Worker** | A separate program that processes messages |
+| **Acknowledgement (ack)** | "Done, delete it", sent only after the work is finished |
+| **Visibility timeout** | How long a taken message stays hidden before it reappears |
+| **At-least-once delivery** | Every message is processed, but sometimes more than once |
+| **Poison message** | A message that fails every time |
+| **Dead-letter queue** | Where messages go after failing too many times |
+| **Queue products** | SQS, Azure Service Bus, RabbitMQ, Redis-based queues |

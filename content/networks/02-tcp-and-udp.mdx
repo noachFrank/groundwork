@@ -1,0 +1,337 @@
+---
+id: tcp-and-udp
+title: "TCP and UDP: how data actually travels"
+order: 2
+topic: networks-and-the-web
+minutes: 55
+summary: How TCP turns a messy network into a reliable connection, why UDP skips all that, and why distance (latency) often matters more than speed (bandwidth).
+connectivity: offline
+prerequisites:
+  - id: addresses-and-ports
+    need: essential
+    why: Introduces packets, TCP and UDP, which this lesson takes apart.
+  - id: your-network
+    need: helpful
+    why: ping's round-trip times come back here.
+  - id: small-scripts
+    need: essential
+    why: The Python task uses sorted() and the in operator.
+revision: 1
+teaches: [tcp-handshake, sequence-number, retransmission, packet-loss, round-trip, latency, bandwidth, udp-uses]
+uses: [packet, tcp, udp, port, ip-address, connection-refused, https, tls, ping, http, dns, function, return-statement, dictionary, dict-change, dict-key-access, for-loop, range-fn, list, append, in-operator, sorted-fn, if-statement, build-list-pattern, running-total]
+predict:
+  id: p1
+  type: mcq
+  prompt: A video call and a file download both lose a few packets on a bad Wi-Fi connection. What should each one do about the lost packets?
+  options:
+    - Both should wait and get the missing packets sent again
+    - The download should get them again. The call should skip them and carry on
+    - Both should skip them
+    - The call should get them again. The download should skip them
+  answer: 1
+  why: A file with a missing piece is broken, so a download must get every packet, even if it waits. On a call, a packet that arrives late is useless, because that moment of speech has already passed. A tiny glitch is better than freezing. That's the difference between TCP and UDP.
+tasks:
+  - id: reassemble
+    type: python
+    title: Put the packets back together
+    instructions: |
+      You'll use: a dictionary, a `for` loop, `sorted()`, `range()` and `in` (from *Writing a small, useful script*).
+
+      This is what TCP does for every connection. Each packet is a dictionary with a sequence number `"seq"` and some `"data"`. Packets can arrive **out of order**, and some arrive **twice** (when a retransmission crosses with a slow original).
+
+      1. `reassemble(packets)` returns the full message in the right order, with no repeats.
+      2. `missing(packets, total)` returns a list of the sequence numbers from `0` up to `total - 1` that never arrived, smallest first. That's what TCP asks to be sent again.
+    starter: |
+      def reassemble(packets):
+          # 1. Make a dictionary: seq -> data. A repeated seq just overwrites itself.
+          # 2. Go through the seq numbers in sorted() order, adding each data to a message.
+          # 3. Return the message.
+          pass
+
+
+      def missing(packets, total):
+          # Collect the seq numbers that arrived, then check each number in range(total).
+          # Return a list of the ones that are not there.
+          pass
+
+
+      arrived = [
+          {"seq": 2, "data": "lo, "},
+          {"seq": 0, "data": "He"},
+          {"seq": 3, "data": "world"},
+          {"seq": 1, "data": "l"},
+          {"seq": 2, "data": "lo, "},
+      ]
+      print(reassemble(arrived))
+      print(missing(arrived, 5))
+    tests:
+      - name: reassemble puts packets in order
+        code: |
+          got = reassemble([{"seq": 1, "data": "B"}, {"seq": 0, "data": "A"}, {"seq": 2, "data": "C"}])
+          assert got == "ABC", f"Expected ABC, got {got!r}. Sort by seq before joining."
+      - name: reassemble ignores duplicates
+        code: |
+          got = reassemble([{"seq": 0, "data": "Hi"}, {"seq": 1, "data": "!"}, {"seq": 0, "data": "Hi"}])
+          assert got == "Hi!", f"Expected Hi!, got {got!r}. A packet that arrives twice should only count once."
+      - name: reassemble the example message
+        code: |
+          got = reassemble([{"seq": 2, "data": "lo, "}, {"seq": 0, "data": "He"}, {"seq": 3, "data": "world"}, {"seq": 1, "data": "l"}, {"seq": 2, "data": "lo, "}])
+          assert got == "Hello, world", f"Expected 'Hello, world', got {got!r}."
+      - name: missing finds the gaps
+        code: |
+          got = missing([{"seq": 0, "data": "a"}, {"seq": 3, "data": "d"}, {"seq": 3, "data": "d"}], 5)
+          assert got == [1, 2, 4], f"Expected [1, 2, 4], got {got!r}."
+      - name: missing is empty when everything arrived
+        code: |
+          got = missing([{"seq": 1, "data": "b"}, {"seq": 0, "data": "a"}], 2)
+          assert got == [], f"Expected an empty list, got {got!r}."
+    solution: |
+      def reassemble(packets):
+          by_seq = {}
+          for packet in packets:
+              by_seq[packet["seq"]] = packet["data"]
+          message = ""
+          for seq in sorted(by_seq):
+              message = message + by_seq[seq]
+          return message
+
+
+      def missing(packets, total):
+          received = []
+          for packet in packets:
+              received.append(packet["seq"])
+          gaps = []
+          for seq in range(total):
+              if seq not in received:
+                  gaps.append(seq)
+          return gaps
+    wrong: |
+      def reassemble(packets):
+          message = ""
+          for packet in packets:
+              message = message + packet["data"]
+          return message
+
+
+      def missing(packets, total):
+          return []
+  - id: tcp-or-udp
+    type: case
+    title: TCP or UDP?
+    instructions: For each app, choose what its makers most likely use, and why.
+    scenario: |
+      A client is building three things and their developer asks you to sanity-check the choices: an online shop's checkout, a multiplayer racing game, and a live video stream of a conference.
+    questions:
+      - prompt: The checkout, which sends orders and payment details to the server?
+        choices:
+          - text: TCP, through HTTPS
+            score: 2
+            why: Every byte of an order matters, in order. A missing piece would mean a broken or wrong order. HTTPS runs on TCP (or on QUIC, which adds the same guarantees).
+          - text: UDP, because it's faster
+            score: 0
+            why: Faster isn't worth anything if part of the order goes missing. You'd have to rebuild TCP's guarantees yourself.
+      - prompt: The racing game, which sends every car's position 30 times a second?
+        choices:
+          - text: UDP
+            score: 2
+            why: A position from a moment ago is useless once a newer one exists. Waiting for a retransmission would make the game stutter, so it's better to skip lost updates.
+          - text: TCP
+            score: 0
+            why: One lost packet would hold up all the newer positions behind it while TCP waits for the resend. Players would see lag.
+          - text: Email
+            score: 0
+            why: Far too slow for 30 updates a second.
+      - prompt: Viewers say the live stream freezes on hotel Wi-Fi, while the picture is sharp on office broadband. The client asks if they need a "faster server". What's most likely?
+        choices:
+          - text: The viewers' connections lose packets or have little bandwidth. Streaming services handle this by switching to a lower quality automatically
+            score: 2
+            why: The problem is at the viewer's end. Lower quality needs less bandwidth and survives packet loss better. A faster server wouldn't help someone on bad Wi-Fi.
+          - text: Yes, a bigger server will fix it
+            score: 0
+            why: The office viewers are fine, so the server copes. The bottleneck is the hotel Wi-Fi.
+          - text: Switch the whole stream to email
+            score: 0
+            why: Not a thing.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: What does the TCP three-way handshake do?
+    options:
+      - Encrypts the connection
+      - Sets up a connection before any data is sent, with SYN, SYN-ACK, ACK
+      - Looks up the IP address
+      - Sends the web page
+    answer: 1
+    why: It takes one full round trip, and both sides agree the numbers they'll count their packets from. Encryption (TLS) comes after, on top.
+  - id: r2
+    type: mcq
+    prompt: What happens in TCP when a packet is lost?
+    options:
+      - The data has a gap
+      - The connection closes
+      - The receiver keeps confirming only what arrived in order, and the sender sends the lost packet again
+      - Nothing. TCP doesn't notice
+    answer: 2
+    why: That's retransmission. It's why TCP is reliable, and why packet loss shows up as a delay.
+  - id: r3
+    type: short
+    prompt: What's the word for how long one trip across the network takes, measured in milliseconds?
+    accept: ['latency', 'round.?trip', 'ping', 'rtt']
+    answerText: Latency (round-trip time)
+  - id: r4
+    type: self
+    prompt: Explain the difference between latency and bandwidth with an everyday comparison.
+    modelAnswer: Think of a motorway. Bandwidth is how many lanes it has, so how much can travel at once. Latency is how long the drive is, so how long anything takes to get there. A wider road doesn't make the trip shorter. Loading a web page needs many small back-and-forth trips, so latency often matters more than bandwidth.
+cards:
+  - id: handshake
+    front: What are the three steps of the TCP handshake?
+    back: SYN ("can we talk?"), SYN-ACK ("yes, can we?"), ACK ("agreed"). One round trip before any data moves.
+  - id: reliable
+    front: How does TCP make delivery reliable?
+    back: Every packet is numbered. The receiver confirms what arrived, puts packets back in order, and asks for missing ones. The sender resends anything not confirmed.
+  - id: lat-bw
+    front: Latency vs. bandwidth?
+    back: "Latency: how long one trip takes (ms). Bandwidth: how much can travel at once (Mbps). Many small round trips make latency the usual bottleneck for web pages."
+  - id: udp
+    front: When is UDP the better choice?
+    back: When late data is useless and speed matters most, like calls, games and live video. Also DNS, where one small question and answer fits in a single packet.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: A page makes 10 requests one after another, and each needs a round trip of 200ms. Roughly how long is spent just waiting on the network?
+    options: [About 2 seconds, About 0.2 seconds, About 20 seconds, No time at all]
+    answer: 0
+    why: 10 × 200ms = 2,000ms. More bandwidth wouldn't help. Fewer round trips, or servers closer to the user, would.
+  - id: t2
+    type: mcq
+    prompt: Which uses UDP?
+    options: [A typical DNS lookup, Loading a web page over HTTP/1.1, Sending an email, Downloading a file with curl]
+    answer: 0
+    why: DNS questions and answers are small enough for one packet, so DNS uses UDP and simply asks again if no answer comes.
+docs:
+  - title: "MDN: TCP"
+    url: https://developer.mozilla.org/en-US/docs/Glossary/TCP
+  - title: "MDN: UDP"
+    url: https://developer.mozilla.org/en-US/docs/Glossary/UDP
+  - title: "MDN: Latency"
+    url: https://developer.mozilla.org/en-US/docs/Glossary/Latency
+videos: []
+---
+
+## In this lesson
+
+In *Addresses and ports* you met **TCP** (reliable, like a phone call) and **UDP** (fast, no guarantees, like postcards). This lesson opens them up:
+
+- How TCP sets up a connection: the **three-way handshake**.
+- How it makes delivery reliable with **sequence numbers** and **retransmission**.
+- Why UDP throws all of that away on purpose, and which apps want that.
+- **Latency** and **bandwidth**: why a "faster internet" sometimes doesn't make a website any faster.
+
+## The network is messy
+
+Data travels in **packets**: small chunks, each with the destination address on it. Each one is passed from router to router, and the network makes no promises:
+
+- Packets can take **different routes** and arrive **out of order**.
+- Some get **lost**, for example when a router is too busy or Wi-Fi drops for a moment. This is called **packet loss**.
+- Occasionally one arrives **twice**.
+
+That's fine for some things and disastrous for others. A web page, a photo or a bank payment must arrive complete and in order. TCP's whole job is to build that guarantee on top of a network that doesn't offer it.
+
+## Step 1: the handshake
+
+Before any real data moves, TCP sets up a **connection**. Step through it:
+
+<Viz name="tcp-handshake" />
+
+1. The client sends **SYN** ("synchronize"): "Can we talk? I'll number my packets starting from 100."
+2. The server answers **SYN-ACK**: "Yes. I got your 100, and I'll number mine from 300."
+3. The client sends **ACK** ("acknowledge"): "Agreed."
+
+This is the **three-way handshake**. It costs one full **round trip**: there and back again. Now you know what **connection refused** looks like from the inside: the computer answered the SYN with "nothing is listening on that port".
+
+With HTTPS, the encryption handshake you saw in the HTTPS lesson comes **after** this one, so a secure connection costs at least two round trips before the first byte of your page is even requested.
+
+<details>
+<summary>Quick check: what are the three messages of the TCP handshake?</summary>
+
+SYN, SYN-ACK, ACK.
+</details>
+
+## Step 2: numbering and resending
+
+Every packet TCP sends has a **sequence number**, like page numbers on a long letter. The receiver:
+
+- puts packets back in order using the numbers,
+- throws away any repeats,
+- regularly confirms ("ACKs") how far it has received **everything** without a gap.
+
+If a packet goes missing, the receiver keeps confirming only up to the gap. The sender notices that packet was never confirmed and sends it again. That's **retransmission**. The program at the other end never sees any of this: it just receives the data, complete and in order.
+
+The cost: while TCP waits for the missing packet, everything after it waits too, even if it already arrived. Packet loss doesn't cause a gap. It causes a **delay**. That's why a bad connection makes web pages hang rather than appear with holes.
+
+In the Python task you'll write the receiver's side of this: put packets back in order, ignore repeats, and work out which sequence numbers are missing.
+
+## UDP: no handshake, no promises
+
+**UDP** skips all of it. No handshake, no sequence numbers, no confirmations, no resending. A program hands UDP a packet and it's sent. If it's lost, it's lost.
+
+Why would anyone want that? Because sometimes **late data is worthless**:
+
+| App | Why UDP fits |
+| --- | --- |
+| Video and voice calls | A sound from half a second ago is useless now. A tiny glitch beats freezing to wait for it. |
+| Online games | Only the newest position of each player matters. |
+| Live video streams | Keep playing, even if a few packets drop. |
+| DNS lookups | One small question and one small answer each fit in a single packet. If no answer comes, just ask again. |
+
+Apps built on UDP add only the parts of reliability they need. And the newest version of HTTP, HTTP/3, runs on top of UDP with its own smarter version of TCP's guarantees. You'll see why in *Faster HTTP*.
+
+<details>
+<summary>Quick check: why would a video call choose UDP even though it loses packets?</summary>
+
+Because a late packet is useless: that moment of the call has passed. Waiting for a resend would freeze the call, while skipping it causes only a tiny glitch.
+</details>
+
+## Latency and bandwidth
+
+Two numbers describe a connection, and people mix them up constantly:
+
+- **Bandwidth** is how much data can travel **at once**, in megabits per second (Mbps). It's what internet providers advertise.
+- **Latency** is how long one trip **takes**, in milliseconds (ms). The `time=` in ping's output is a round trip.
+
+A motorway makes it clear. Bandwidth is the **number of lanes**. Latency is the **length of the drive**. Adding lanes lets more cars travel at once, but each car's trip takes just as long.
+
+Typical round-trip times:
+
+| From your laptop to… | Round trip |
+| --- | --- |
+| Your own router | 1–5 ms |
+| A server in your own city | 5–20 ms |
+| A server across your country | 30–80 ms |
+| A server on another continent | 100–300 ms |
+
+Light in fiber is fast, but not infinitely fast. Crossing an ocean and back takes a noticeable fraction of a second, and no amount of money changes physics.
+
+### Why latency usually wins
+
+Loading a web page isn't one big download. It's lots of small back-and-forth trips: DNS, the TCP handshake, the TLS handshake, the page, then the images, styles and scripts it asks for. Each one waits for a round trip.
+
+If a server is 150ms away and a page needs 8 round trips one after another, that's 1.2 seconds of pure waiting, however much bandwidth you have. This is why the big tricks for fast websites are about **fewer round trips** and **shorter distances**: reusing connections (*Faster HTTP*) and keeping copies of files near users (*CDNs*).
+
+<ConsultantNote>
+"Our site is slow, should we upgrade our hosting?" is a common client question, and the answer is often no. If their users are in Australia and the server is in Virginia, every round trip costs 200ms or more, and a bigger server doesn't change that. Knowing the difference between latency and bandwidth lets you recommend the fix that actually works, and stops a client from paying for one that doesn't.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Three-way handshake** | SYN, SYN-ACK, ACK: how TCP sets up a connection, costing one round trip |
+| **Sequence number** | A packet's position in the stream, so the receiver can reorder them |
+| **Retransmission** | Sending a packet again because it was never confirmed |
+| **Packet loss** | Packets that never arrive. TCP turns it into delay, and UDP skips it |
+| **Round trip** | There and back again across the network |
+| **Latency** | How long one trip takes, in milliseconds |
+| **Bandwidth** | How much data can travel at once, in Mbps |
+| **When to use UDP** | When late data is worthless: calls, games, live video, DNS |

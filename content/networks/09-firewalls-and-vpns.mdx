@@ -1,0 +1,364 @@
+---
+id: firewalls-and-vpns
+title: "Firewalls and VPNs: who gets in, and private roads"
+order: 9
+topic: networks-and-the-web
+minutes: 55
+summary: How firewall rules decide which connections are allowed, why databases should never face the internet, and what a VPN really does, for a company and for someone in a café.
+connectivity: offline
+prerequisites:
+  - id: addresses-and-ports
+    need: essential
+    why: Introduces firewalls, ports and private addresses.
+  - id: proxies
+    need: essential
+    why: The task uses .startsWith() from there.
+  - id: load-balancers
+    need: helpful
+    why: The design task builds on public and private parts of a system.
+revision: 1
+teaches: [firewall-rule, inbound-outbound, default-deny, host-network-firewall, security-group, network-segmentation, vpn, corporate-vpn, consumer-vpn, split-tunneling, zero-trust]
+uses: [firewall, port, well-known-ports, ip-address, private-public-ip, router-nat, connection-timeout, encryption, https, padlock-meaning, dns, database, server-computer, ssh, load-balancer, reverse-proxy, single-point-of-failure, architecture-diagram, js-function, const-let, js-object, js-dot-access, js-array, for-of, triple-equals, js-string-methods, js-logic-operators, run-and-check]
+predict:
+  id: p1
+  type: mcq
+  prompt: You connect to a "VPN" app on café Wi-Fi. Which of these does it actually do?
+  options:
+    - Makes you completely anonymous online
+    - Encrypts your traffic as far as the VPN company's server, so the café can't see which sites you visit, but the VPN company can
+    - Protects you from viruses
+    - Makes your internet faster
+  answer: 1
+  why: A VPN moves your trust from the local network to the VPN company. It hides your traffic from the café and your internet provider, but the VPN provider sees it instead, and the websites you log in to still know exactly who you are.
+tasks:
+  - id: firewall-rules
+    type: javascript
+    title: Write a firewall's rule check
+    instructions: |
+      You'll use: a `for...of` loop, `.startsWith()` (from *Proxies*), `&&` and `||`.
+
+      Each rule looks like `{ action: "allow", port: 443, from: "any" }`. `from` is either `"any"` or the start of an IP address, like `"10.0.0."`, which matches every address beginning with it.
+
+      `decide(rules, connection)` gets a connection like `{ port: 22, from: "203.0.113.9" }` and returns `"allow"` or `"deny"`:
+
+      - Check the rules **in order**. The **first** rule whose port matches **and** whose `from` matches (it's `"any"`, or the connection's address starts with it) decides.
+      - If no rule matches, return `"deny"`. That's **default deny**.
+    starter: |
+      const rules = [
+        { action: "allow", port: 443, from: "any" },
+        { action: "allow", port: 22, from: "10.0.0." },
+        { action: "deny", port: 22, from: "any" },
+      ];
+
+      function decide(rules, connection) {
+        // for (const rule of rules) {
+        //   Does rule.port match, and is rule.from "any" or the start of connection.from?
+        //   If so, return rule.action.
+        // }
+        // Nothing matched: return "deny".
+        return "allow";
+      }
+
+      console.log(decide(rules, { port: 443, from: "198.51.100.20" }));
+      console.log(decide(rules, { port: 22, from: "10.0.0.5" }));
+      console.log(decide(rules, { port: 22, from: "203.0.113.9" }));
+      console.log(decide(rules, { port: 5432, from: "203.0.113.9" }));
+    tests:
+      - name: HTTPS is allowed from anywhere
+        code: |
+          assert(decide(rules, { port: 443, from: "198.51.100.20" }) === "allow", "Rule 1 allows port 443 from any address.");
+      - name: SSH is allowed from the office network
+        code: |
+          assert(decide(rules, { port: 22, from: "10.0.0.5" }) === "allow", "10.0.0.5 starts with 10.0.0., so rule 2 allows it.");
+      - name: SSH from the internet is denied
+        code: |
+          assert(decide(rules, { port: 22, from: "203.0.113.9" }) === "deny", "Rule 2 doesn't match this address, so rule 3 denies it.");
+      - name: anything without a rule is denied
+        code: |
+          assert(decide(rules, { port: 5432, from: "203.0.113.9" }) === "deny", "No rule mentions port 5432, so default deny applies.");
+      - name: the first matching rule wins
+        code: |
+          const order = [{ action: "deny", port: 80, from: "any" }, { action: "allow", port: 80, from: "any" }];
+          assert(decide(order, { port: 80, from: "1.2.3.4" }) === "deny", "Rules are checked in order, so the deny comes first.");
+      - name: an empty rule list denies everything
+        code: |
+          assert(decide([], { port: 443, from: "1.2.3.4" }) === "deny", "With no rules at all, default deny means deny.");
+    solution: |
+      const rules = [
+        { action: "allow", port: 443, from: "any" },
+        { action: "allow", port: 22, from: "10.0.0." },
+        { action: "deny", port: 22, from: "any" },
+      ];
+
+      function decide(rules, connection) {
+        for (const rule of rules) {
+          const portMatches = rule.port === connection.port;
+          const fromMatches = rule.from === "any" || connection.from.startsWith(rule.from);
+          if (portMatches && fromMatches) {
+            return rule.action;
+          }
+        }
+        return "deny";
+      }
+    wrong: |
+      const rules = [
+        { action: "allow", port: 443, from: "any" },
+        { action: "allow", port: 22, from: "10.0.0." },
+        { action: "deny", port: 22, from: "any" },
+      ];
+
+      function decide(rules, connection) {
+        for (const rule of rules) {
+          if (rule.port === connection.port) {
+            return rule.action;
+          }
+        }
+        return "allow";
+      }
+  - id: segment-design
+    type: architecture
+    title: Lock down a clinic's booking system
+    instructions: Place each part, and leave out anything that would break the requirements.
+    scenario: |
+      A physiotherapy clinic runs its own booking system in the cloud. Requirements: patients book through a website on HTTPS; the database of patients must not be reachable from the internet at all; staff use an admin panel, from the clinic or from home; and the admin panel must not be open to the public internet.
+    parts:
+      - id: web
+        label: Booking website
+        hint: Patients use it from anywhere, on port 443
+      - id: db
+        label: Patient database
+        hint: Names, contact details, appointment notes
+      - id: admin
+        label: Admin panel
+        hint: Staff manage bookings here
+      - id: vpn
+        label: VPN gateway
+        hint: Staff connect to it, then reach private parts
+      - id: open-db
+        label: Firewall rule letting the internet reach the database port
+        hint: So the developer can connect from anywhere
+      - id: open-rdp
+        label: Remote desktop open to the internet
+        hint: So staff can log in to a server from home
+    zones:
+      - id: public
+        label: Public zone
+        hint: Reachable from the internet, only on the ports you allow
+      - id: private
+        label: Private network
+        hint: Unreachable from the internet
+    checklist:
+      - text: Let patients reach the booking website
+        all: [{ part: web, zone: public }]
+      - text: Keep the patient database private
+        all: [{ part: db, zone: private }]
+      - text: Keep the admin panel off the public internet
+        all: [{ part: admin, zone: private }]
+      - text: Give staff a way in from home
+        all: [{ part: vpn, zone: public }]
+      - text: Don't open the database to the internet, even "just for the developer"
+        none: [open-db]
+      - text: Don't expose remote desktop to the internet
+        none: [open-rdp]
+    model:
+      placements:
+        web: public
+        db: private
+        admin: private
+        vpn: public
+      explanation: |
+        Only two things face the internet: the booking website on 443, and the VPN gateway that staff connect to. The firewall's default is deny, with just those two openings.
+
+        The database and admin panel live on the private network. The website reaches the database from inside, and staff reach the admin panel once they're connected to the VPN. An open database port or remote desktop on the internet is among the most common ways small organizations get breached: automated scanners find them within hours.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What does "default deny" mean for a firewall?
+    options:
+      - Anything not explicitly allowed by a rule is blocked
+      - Everything is blocked, always
+      - Everything is allowed unless blocked
+      - The firewall is turned off by default
+    answer: 0
+    why: You list exactly what should get through, and everything else is refused. Forgetting a rule then fails safe.
+  - id: r2
+    type: mcq
+    prompt: Why should a database not be in the public zone?
+    options:
+      - Nothing outside needs to talk to it directly, and exposing it invites attackers to try passwords and known weaknesses
+      - Databases don't work on the internet
+      - It's slower
+      - It costs more
+    answer: 0
+    why: Only the app servers need it. Keeping it private removes a whole category of attack. That's network segmentation.
+  - id: r3
+    type: short
+    prompt: What's the name for a VPN setup where only company traffic goes through the VPN, and everything else goes straight to the internet?
+    accept: ['split']
+    answerText: Split tunneling
+  - id: r4
+    type: self
+    prompt: A client asks whether buying a consumer VPN will "make the company secure". What do you tell them?
+    modelAnswer: A consumer VPN encrypts traffic from a device to the VPN company's server. That helps on untrusted Wi-Fi, but it doesn't stop phishing, weak passwords, viruses or unpatched software, and the VPN company can see the traffic instead. For staff reaching company systems, they want a company VPN (or a zero-trust access tool), together with good passwords, MFA and updates.
+cards:
+  - id: rules
+    front: How does a firewall decide?
+    back: It checks rules in order (port, direction, source address). The first match allows or denies, and anything with no matching rule is denied by default.
+  - id: segmentation
+    front: What's network segmentation?
+    back: Splitting a system into zones, public and private, so only the parts that must face the internet do. Databases and admin tools live in the private zone.
+  - id: two-vpns
+    front: Corporate VPN vs. consumer VPN?
+    back: "Corporate: lets staff reach the company's private network from outside. Consumer: hides your traffic from the local network by sending it through the VPN company's server, which then sees it instead."
+  - id: zero-trust
+    front: What does "zero trust" mean?
+    back: Don't trust a connection just because it's inside the network or on the VPN. Check the user and device on every request, for each app.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: In the cloud, what usually plays the part of the firewall around a server?
+    options: [A security group (or network security group), A DNS record, A CDN, An ETag]
+    answer: 0
+    why: AWS calls them security groups, and Azure calls them network security groups. They're lists of allowed inbound and outbound traffic.
+  - id: t2
+    type: mcq
+    prompt: A connection to a server's port just hangs, then times out. What's a likely reason?
+    options:
+      - A firewall is silently dropping it
+      - Nothing is listening on the port
+      - The certificate expired
+      - DNS returned the wrong name
+    answer: 0
+    why: '"Nothing listening" gives a quick refusal. Silence and a timeout usually mean something in the way is dropping the packets.'
+docs:
+  - title: "Cloudflare Learning: What is a firewall?"
+    url: https://www.cloudflare.com/learning/security/what-is-a-firewall/
+  - title: "Cloudflare Learning: What is a VPN?"
+    url: https://www.cloudflare.com/learning/access-management/what-is-a-vpn/
+  - title: "Microsoft Learn: Windows Firewall overview"
+    url: https://learn.microsoft.com/en-us/windows/security/operating-system-security/network-security/windows-firewall/
+videos: []
+---
+
+## In this lesson
+
+In *Addresses and ports* you met a **firewall** as "something that blocks some connections on purpose", the usual reason a connection times out. This lesson looks at how they decide, and at **VPNs**, which are often sold as security but do something quite specific:
+
+- **Firewall rules**: inbound and outbound, ports, sources, and **default deny**.
+- Firewalls on your own computer and around whole networks, including the cloud's **security groups**.
+- **Network segmentation**: public and private zones.
+- **VPNs**: the company kind and the consumer kind, and what each really protects.
+- **Zero trust**, the idea that's replacing "inside the network means safe".
+
+## How a firewall decides
+
+A firewall checks each connection against a list of **rules**, in order. A rule says, roughly:
+
+> **Allow** (or deny) connections **coming in** to port **443**, **from** any address.
+
+Each rule looks at a few things:
+
+- **Direction**: **inbound** (someone connecting to you) or **outbound** (you connecting out).
+- **Port**: which service, like 443 for HTTPS or 22 for SSH.
+- **Source**: which addresses it applies to. "Any", or a range like the office network, `10.0.0.something`.
+- **Action**: allow or deny.
+
+The first rule that matches decides. And the most important rule of all is the one at the end: **if nothing matched, deny**. This is **default deny**. You list exactly what should get through, so anything you forgot is blocked rather than accidentally open.
+
+A typical web server's inbound rules:
+
+| # | Direction | Port | From | Action |
+| --- | --- | --- | --- | --- |
+| 1 | In | 443 | Any | Allow |
+| 2 | In | 22 | 10.0.0.x (office) | Allow |
+| (end) | In | anything | anything | **Deny** |
+
+In the task you'll write exactly this decision in JavaScript.
+
+<details>
+<summary>Quick check: with the table above, can someone at home connect to port 22?</summary>
+
+No. Rule 2 only allows the office's addresses, so default deny blocks them. (They'd use the VPN, coming up.)
+</details>
+
+## A firewall when it blocks: silence
+
+Firewalls usually block by **dropping** the packet silently, rather than answering "no". That's why a blocked connection **hangs and times out**, while a port with nothing listening gives an instant **connection refused**. Silence tells an attacker nothing, not even that the computer exists.
+
+## Where firewalls live
+
+- **On your own computer.** Windows has a built-in firewall. When a program first tries to listen on the network, Windows may ask "Allow access?" That's this firewall adding an inbound rule. (Groundwork listens only on `127.0.0.1`, which the firewall doesn't need to open, so it never asks.)
+- **Around a network.** Office routers and dedicated firewall boxes filter traffic for everything behind them.
+- **In the cloud.** Every cloud server sits behind rules you configure, called **security groups** in AWS and **network security groups** in Azure. They're firewalls managed through a web page.
+
+A firewall on one computer is a **host firewall**, and one guarding a whole network is a **network firewall**. Real systems use both.
+
+## Segmentation: not everything belongs on the internet
+
+Think back to the load balancer design: only the load balancer faced the internet, and the app servers and database were on a **private network**. That's **network segmentation**: splitting a system into zones, so each part is only reachable by what genuinely needs it.
+
+- **Public zone**: the website, the load balancer, the VPN gateway. Only on the ports they need.
+- **Private zone**: databases, admin tools, internal services. Unreachable from the internet at all.
+
+<Callout kind="warn" title="The breaches that happen every week">
+Databases, remote desktop (port 3389) and admin panels left open to the internet "just for now" are among the most common causes of real break-ins. Automated scanners sweep the whole internet constantly, and they find an open database port within hours. If a developer needs access from home, that's what a VPN is for.
+</Callout>
+
+## VPNs: a private road through a public network
+
+A **VPN** (virtual private network) creates an **encrypted tunnel** from your device to a VPN server. Everything you send goes through the tunnel, comes out at the VPN server, and continues from there. Anyone in between, like the café's Wi-Fi or your internet provider, sees only scrambled data going to the VPN server.
+
+There are two quite different uses.
+
+### The company VPN
+
+A **corporate VPN** lets staff outside the office reach the company's **private network**, as if they were plugged in at their desk. The admin panel and database stay off the internet, and staff connect to the VPN gateway first. That's the design in the task.
+
+Often only traffic for company systems goes through the tunnel, and everything else, like YouTube, goes straight to the internet. This is **split tunneling**. It's faster, but the company can't see or filter that other traffic.
+
+### The consumer VPN
+
+A **consumer VPN** (the kind advertised on podcasts) sends **all** your traffic through the VPN company's servers. What it really does:
+
+| It does | It doesn't |
+| --- | --- |
+| Hide which sites you visit from the café's Wi-Fi and your internet provider | Make you anonymous: sites you log in to still know who you are |
+| Make sites see the VPN server's IP address instead of yours | Stop viruses, phishing or weak passwords |
+| Help on untrusted Wi-Fi | Hide anything from the VPN company, which now sees your traffic |
+
+Notice that HTTPS already hides **what** you send to each site. A consumer VPN mainly hides **which** sites you connect to, and from whom. It moves your trust from the local network to the VPN company. Sometimes that's a good trade, but it isn't "security" in general.
+
+## Zero trust
+
+The old model was a castle with a moat: everything inside the network (or on the VPN) is trusted, everything outside isn't. The trouble is that once an attacker gets inside, through one stolen password or one infected laptop, they can reach everything.
+
+**Zero trust** flips that: **don't trust a connection just because of where it comes from**. Check who the user is, and whether their device is healthy, for **each** app, on **every** request. Tools like Cloudflare Access, Microsoft Entra and Tailscale do this, often replacing the traditional VPN. You'll come back to it in Stage 4's security lessons.
+
+## JavaScript: && and ||
+
+The task combines two conditions. JavaScript writes Python's `and` as **`&&`**, `or` as **`||`**, and `not` as **`!`** (which you met in *Proxies*):
+
+```javascript
+const fromMatches = rule.from === "any" || connection.from.startsWith(rule.from);
+if (portMatches && fromMatches) { ... }
+```
+
+<ConsultantNote>
+"What's open to the internet?" is one of the most valuable questions in any review, and it's quick to answer: list the cloud security group rules and the router's port forwards. Anything beyond the website, the load balancer and the VPN needs a very good reason. A small client with an open database or remote desktop is a breach waiting to happen, and closing it is usually an afternoon's work.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Firewall rule** | Direction, port, source and action, checked in order |
+| **Inbound / outbound** | Connections coming in to you / going out from you |
+| **Default deny** | Anything not explicitly allowed is blocked |
+| **Host vs. network firewall** | Protecting one computer / a whole network |
+| **Security group** | A cloud server's firewall rules |
+| **Network segmentation** | Public and private zones, so only what must face the internet does |
+| **VPN** | An encrypted tunnel from your device to a VPN server |
+| **Corporate VPN** | Lets staff reach a company's private network from outside |
+| **Consumer VPN** | Sends your traffic through a VPN company, hiding it from the local network |
+| **Split tunneling** | Only company traffic goes through the VPN |
+| **Zero trust** | Check the user and device for every app, wherever they connect from |

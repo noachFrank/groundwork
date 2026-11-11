@@ -1,0 +1,5 @@
+id: apis
+title: APIs in depth
+summary: Designing and using real APIs. Covers REST design, error handling, API keys and tokens, OAuth ("Log in with Google"), pagination and rate limits, versions and documentation, GraphQL and gRPC, and how to choose between them. Most tasks call a real practice API on your own computer.
+stage: stage-2
+order: 3

@@ -1393,3 +1393,677 @@ open-connections-cost:
 architecture-diagram:
   name: "Architecture diagrams"
   definition: "A drawing of how a system's parts connect."
+
+# ---- Learning with AI: studying -------------------------------------------------
+retrieval-practice:
+  name: "Retrieval practice"
+  definition: "Answering from memory with nothing to look at, which makes ideas stick far better than re-reading."
+ai-quiz-prompt:
+  name: "Getting AI to quiz you"
+  definition: "Ask for one question at a time, with the answer held back until you've replied, and an explanation after."
+explain-back:
+  name: "Explaining back"
+  definition: "Explaining an idea in your own words, then letting the AI find the gaps and ask follow-up questions."
+interleaving:
+  name: "Interleaving"
+  definition: "Mixing older topics into your practice, so they don't fade and you learn to pick the right idea."
+another-angle:
+  name: "Asking for another angle"
+  definition: "Asking AI for a different explanation or example when a lesson doesn't click, then checking it against the lesson."
+learning-log:
+  name: "Learning logs"
+  definition: "A few lines in your own words after each study session, including what you're still unsure about."
+stuck-rule:
+  name: "The stuck rule"
+  definition: "No progress for about 30 minutes? Write down what you tried, ask for a bigger hint, take a break, then ask a person."
+
+# ---- Networks in the real world ------------------------------------------------
+modem:
+  name: "Modems"
+  definition: "The box connecting a building to the internet provider's line. Often combined with the router."
+wifi-vs-ethernet:
+  name: "Wi-Fi and Ethernet"
+  definition: "Connecting by radio, or by network cable. A cable is faster and steadier."
+dhcp:
+  name: "DHCP"
+  definition: "How a router automatically hands each new device an IP address, the gateway and DNS servers."
+default-gateway:
+  name: "The default gateway"
+  definition: "The router's address on a local network. Anything going outside the network is sent there first."
+dns-server-setting:
+  name: "DNS server settings"
+  definition: "Which DNS servers a device asks for names, usually handed out by the router."
+ipconfig:
+  name: "ipconfig"
+  definition: "Shows a Windows computer's addresses and gateway. /all shows more, and /flushdns clears saved DNS answers."
+ping:
+  name: "ping"
+  definition: "Sends a tiny \"are you there?\" message and times the reply. Many servers ignore it on purpose."
+tracert:
+  name: "tracert"
+  definition: "Lists each router that packets pass through on the way to a destination."
+test-netconnection:
+  name: "Test-NetConnection"
+  definition: "A PowerShell command that checks whether a specific port answers."
+network-troubleshooting:
+  name: "The troubleshooting ladder"
+  definition: "Check from the inside out (device, router, internet, DNS, service). The first step that fails is where the problem is."
+tcp-handshake:
+  name: "The TCP handshake"
+  definition: "SYN, SYN-ACK, ACK: how TCP sets up a connection before any data moves, costing one round trip."
+sequence-number:
+  name: "Sequence numbers"
+  definition: "Each TCP packet's position in the stream, so the receiver can put packets back in order."
+retransmission:
+  name: "Retransmission"
+  definition: "TCP sending a packet again because it was never confirmed."
+packet-loss:
+  name: "Packet loss"
+  definition: "Packets that never arrive. TCP turns it into a delay, and UDP just skips them."
+round-trip:
+  name: "Round trips"
+  definition: "A message going across the network and an answer coming back."
+latency:
+  name: "Latency"
+  definition: "How long one trip across the network takes, in milliseconds. Mostly set by distance."
+bandwidth:
+  name: "Bandwidth"
+  definition: "How much data can travel at once, in megabits per second."
+udp-uses:
+  name: "When to use UDP"
+  definition: "When late data is worthless, like calls, games and live video, and for small lookups like DNS."
+registrar:
+  name: "Domain registrars"
+  definition: "The company you rent a domain name from, usually a year at a time."
+tld:
+  name: "TLDs"
+  definition: "The ending of a domain name, like .com, .org or .uk."
+domain-renewal:
+  name: "Domain renewal"
+  definition: "Paying for the next period. If a domain lapses, its website and email stop and others can buy it."
+nameserver-records:
+  name: "Name servers"
+  definition: "Which DNS host answers for a domain. Changing them moves all of its records to a new host."
+a-record:
+  name: "A records"
+  definition: "A DNS record pointing a name at an IPv4 address. AAAA does the same for IPv6."
+cname-record:
+  name: "CNAME records"
+  definition: "A DNS record saying a name is an alias for another name, which is looked up instead."
+subdomain:
+  name: "Subdomains"
+  definition: "A name in front of a domain, like bookings.example.com, which can point anywhere."
+apex-domain:
+  name: "The apex domain"
+  definition: "The bare domain, like example.com, with nothing in front. It can't be a CNAME."
+mx-record:
+  name: "MX records"
+  definition: "DNS records saying which servers receive email for a domain."
+txt-record:
+  name: "TXT records"
+  definition: "DNS records holding free text, used to prove you own a domain and for email rules."
+email-auth-records:
+  name: "SPF, DKIM and DMARC"
+  definition: "TXT-based records that let receiving mail servers spot forged email from a domain."
+in-text:
+  name: "in on text"
+  definition: "'spf1' in 'v=spf1 -all' is True, because the first text appears inside the second."
+set-cookie-header:
+  name: "Set-Cookie"
+  definition: "The response header a server uses to store a cookie in the browser."
+session:
+  name: "Sessions"
+  definition: "The server's record of a logged-in user, stored under a random ID."
+session-id:
+  name: "Session IDs"
+  definition: "A long random value in a cookie, pointing at a session on the server. It means nothing on its own."
+cookie-jar:
+  name: "Cookie jars"
+  definition: "Where cookies are kept: the browser's store, or the file curl uses with -c and -b."
+httponly:
+  name: "HttpOnly cookies"
+  definition: "A cookie setting that stops JavaScript on the page from reading the cookie."
+secure-cookie:
+  name: "Secure cookies"
+  definition: "A cookie setting meaning the cookie is only ever sent over HTTPS."
+samesite:
+  name: "SameSite cookies"
+  definition: "A cookie setting that stops the cookie being sent when another website starts the request."
+cookie-expiry:
+  name: "Max-Age and Expires"
+  definition: "When the browser should delete a cookie. Sessions should also expire on the server."
+third-party-cookie:
+  name: "Third-party cookies"
+  definition: "Cookies set by a different site embedded in the page, often used to track people across sites."
+session-hijacking:
+  name: "Session hijacking"
+  definition: "Using a stolen session ID to act as someone, with no password needed."
+keep-alive:
+  name: "Keep-alive"
+  definition: "Reusing one connection for many HTTP requests instead of opening a new one each time."
+http2:
+  name: "HTTP/2"
+  definition: "A version of HTTP that sends many requests at once over one connection, with compressed headers."
+multiplexing:
+  name: "Multiplexing"
+  definition: "Interleaving many requests and responses on one connection at the same time."
+head-of-line-blocking:
+  name: "Head-of-line blocking"
+  definition: "Everything waiting behind one slow or lost item, like a queue behind one slow shopper."
+http3-quic:
+  name: "HTTP/3 and QUIC"
+  definition: "HTTP over QUIC, a newer protocol on top of UDP that keeps one lost packet from holding up other requests."
+browser-cache:
+  name: "The browser cache"
+  definition: "Copies of files a browser keeps on disk, so it can skip downloading them again."
+cache-control:
+  name: "Cache-Control"
+  definition: "The header saying whether a copy may be kept and for how long: max-age, no-cache, no-store, public, private."
+etag:
+  name: "ETags"
+  definition: "A label for one version of a response, sent back in If-None-Match to ask whether it changed."
+not-modified:
+  name: "304 Not Modified"
+  definition: "Your saved copy is still good: an answer with no body, so nothing big is downloaded again."
+curl-dump-headers:
+  name: "curl -D and -w"
+  definition: "-D saves the response headers to a file. -w prints details like the HTTP version afterwards."
+str-strip:
+  name: ".strip()"
+  definition: "Removes spaces from both ends of a piece of text."
+proxy:
+  name: "Proxies"
+  definition: "A program in the middle that passes requests on and brings the answers back."
+forward-proxy:
+  name: "Forward proxies"
+  definition: "A proxy in front of users, like an office proxy, sending their requests out."
+reverse-proxy:
+  name: "Reverse proxies"
+  definition: "A proxy in front of servers that receives the public's requests and routes them to the right program."
+service:
+  name: "Services"
+  definition: "A program with one job that other programs talk to over the network."
+tls-termination:
+  name: "TLS termination"
+  definition: "Handling HTTPS at a proxy, so the services behind it don't need certificates."
+x-forwarded-for:
+  name: "X-Forwarded-For"
+  definition: "A header a proxy adds with the original visitor's IP address. Only trust what your own proxy added."
+nginx:
+  name: "nginx"
+  definition: "The most widely used reverse proxy and web server."
+proxy-env-vars:
+  name: "HTTPS_PROXY"
+  definition: "The environment variable that tells npm, pip, curl and other tools to use a proxy."
+tls-inspection:
+  name: "TLS inspection"
+  definition: "A company proxy decrypting HTTPS with its own certificate, which tools must be told to trust."
+js-string-methods:
+  name: ".startsWith() and .slice()"
+  definition: "Whether text begins with something, and the text from a given position onwards."
+js-logic-operators:
+  name: "!, && and ||"
+  definition: "JavaScript's not, and, and or."
+vertical-scaling:
+  name: "Vertical scaling"
+  definition: "Handling more load with a bigger machine. Simple, but there's a ceiling and it's still one machine."
+horizontal-scaling:
+  name: "Horizontal scaling"
+  definition: "Handling more load with more machines running identical copies, behind a load balancer."
+load-balancer:
+  name: "Load balancers"
+  definition: "A reverse proxy that shares requests between several servers behind one address."
+round-robin:
+  name: "Round robin"
+  definition: "Sending requests to each server in turn."
+least-connections:
+  name: "Least connections"
+  definition: "Sending each request to the server currently handling the fewest."
+health-check:
+  name: "Health checks"
+  definition: "A regular tiny request, like GET /health, to see whether a server should keep getting traffic."
+sticky-sessions:
+  name: "Sticky sessions"
+  definition: "A load balancer always sending one user to the same server. A stopgap, not a fix."
+stateless-servers:
+  name: "Stateless servers"
+  definition: "Servers that keep nothing about users in their own memory, so any server can handle any request."
+single-point-of-failure:
+  name: "Single points of failure"
+  definition: "A part that takes everything down when it fails, because there's only one of it."
+js-for-count:
+  name: "The counting for loop"
+  definition: "for (let i = 0; i < n; i++) runs n times, like Python's for i in range(n)."
+cdn:
+  name: "CDNs"
+  definition: "A worldwide network of servers that keeps copies of a site's files near visitors."
+edge-server:
+  name: "Edge servers"
+  definition: "A CDN server close to the visitor."
+origin-server:
+  name: "Origin servers"
+  definition: "A site's real server, behind the CDN, asked only on a cache miss."
+cache-hit-miss:
+  name: "Cache hits and misses"
+  definition: "A hit is answered from a saved copy. A miss has to fetch from the origin."
+hit-ratio:
+  name: "Hit ratios"
+  definition: "The share of requests answered from the cache."
+cache-purge:
+  name: "Purging a CDN"
+  definition: "Telling a CDN to throw away its copy of a file now."
+versioned-filenames:
+  name: "Versioned file names"
+  definition: "Names like app.3f9a1c.js that change when the content does, so no cache has the old one."
+shared-cache-danger:
+  name: "Never cache personal pages publicly"
+  definition: "A shared cache stores one copy for everyone, so a personalized page must be private or no-store."
+ddos-intro:
+  name: "DDoS attacks"
+  definition: "A flood of traffic from many machines, meant to knock a site offline."
+firewall-rule:
+  name: "Firewall rules"
+  definition: "Direction, port, source and action, checked in order until one matches."
+inbound-outbound:
+  name: "Inbound and outbound"
+  definition: "Connections coming in to a computer, and connections it makes out."
+default-deny:
+  name: "Default deny"
+  definition: "Anything not explicitly allowed by a rule is blocked."
+host-network-firewall:
+  name: "Host and network firewalls"
+  definition: "A firewall on one computer, or one guarding a whole network."
+security-group:
+  name: "Security groups"
+  definition: "A cloud server's firewall rules, set up through the cloud provider."
+network-segmentation:
+  name: "Network segmentation"
+  definition: "Splitting a system into public and private zones, so only what must face the internet does."
+vpn:
+  name: "VPNs"
+  definition: "An encrypted tunnel from your device to a VPN server, where your traffic continues."
+corporate-vpn:
+  name: "Corporate VPNs"
+  definition: "A VPN that lets staff reach a company's private network from outside."
+consumer-vpn:
+  name: "Consumer VPNs"
+  definition: "A VPN that sends all your traffic through a VPN company, hiding it from the local network but not from them."
+split-tunneling:
+  name: "Split tunneling"
+  definition: "Only company traffic goes through the VPN, and everything else goes straight to the internet."
+zero-trust:
+  name: "Zero trust"
+  definition: "Don't trust a connection because of where it comes from. Check the user and device for every app."
+
+# ---- APIs in depth -------------------------------------------------------------
+resource:
+  name: "Resources"
+  definition: "One thing an API knows about, with its own address, like /orders/102."
+collection:
+  name: "Collections"
+  definition: "All the things of one kind in an API, like /orders."
+crud:
+  name: "CRUD"
+  definition: "Create, read, update and delete: in REST, POST, GET, PATCH or PUT, and DELETE."
+put-vs-patch:
+  name: "PUT and PATCH"
+  definition: "PUT replaces the whole resource with what you send. PATCH changes only the fields you send."
+safe-methods:
+  name: "Safe methods"
+  definition: "Methods that only read and never change anything, like GET. Browsers and caches send them freely."
+idempotent:
+  name: "Idempotent methods"
+  definition: "Sending it twice has the same effect as once. GET, PUT and DELETE are, POST usually isn't."
+query-string:
+  name: "Query strings"
+  definition: "The ?name=value&name=value part of an address, used to filter, search and sort."
+requests-params:
+  name: "params="
+  definition: "Makes Python's requests build the query string from a dictionary, safely encoded."
+location-header:
+  name: "The Location header"
+  definition: "Says where a newly created resource lives, like /orders/104."
+nested-resources:
+  name: "Nested addresses"
+  definition: "Addresses like /customers/7/orders for things that belong to another thing."
+status-201-204:
+  name: "201 Created and 204 No Content"
+  definition: "Something new was made / it worked and there's nothing to send back."
+client-vs-server-errors:
+  name: "Client and server errors"
+  definition: "4xx means fix your request. 5xx means the server's problem, which may be temporary."
+status-401-403:
+  name: "401 and 403"
+  definition: "401: we don't know who you are. 403: we know who you are, and you're not allowed."
+status-409-422:
+  name: "409 and 422"
+  definition: "409: it clashes with the current state, like a duplicate. 422: the data in it isn't valid."
+status-5xx:
+  name: "500, 502, 503 and 504"
+  definition: "A crash / bad answer from behind a proxy / overloaded, try later / no answer in time from behind a proxy."
+error-body:
+  name: "Error bodies"
+  definition: "The JSON details that come with an error status. Always log them."
+retryable-errors:
+  name: "Retryable errors"
+  definition: "429, the 5xx codes, and no answer at all. Wait, then try again."
+request-timeout:
+  name: "Timeouts"
+  definition: "The longest to wait for an answer, like timeout=5. Without one, code can wait forever."
+requests-exceptions:
+  name: "requests.Timeout and requests.ConnectionError"
+  definition: "Exceptions for no answer in time, and for not being able to connect at all."
+raise-for-status:
+  name: "raise_for_status()"
+  definition: "Turns a 4xx or 5xx status into a requests.HTTPError exception."
+authentication-vs-authorization:
+  name: "Authentication and authorization"
+  definition: "Proving who you are (fails with 401), and what you're allowed to do (fails with 403)."
+authorization-header:
+  name: "The Authorization header"
+  definition: "The standard request header for credentials, like Authorization: Bearer <token>."
+bearer-token:
+  name: "Bearer tokens"
+  definition: "A token where whoever holds it may use it, so it's guarded like a password."
+access-token:
+  name: "Access tokens"
+  definition: "A short-lived credential issued for a purpose, with scopes."
+token-expiry:
+  name: "Token expiry"
+  definition: "Access tokens stop working after a while, often an hour, which limits the damage of a leak."
+scopes:
+  name: "Scopes"
+  definition: "Limits on what a token may do, like reports:read."
+client-credentials:
+  name: "Client credentials"
+  definition: "A program swapping its client id and secret at a token endpoint for an access token."
+requests-data-form:
+  name: "data="
+  definition: "Makes Python's requests send a dictionary as form fields instead of JSON."
+basic-auth:
+  name: "Basic auth"
+  definition: "Sending a username and password with every request. Only acceptable over HTTPS."
+jwt-intro:
+  name: "JWTs"
+  definition: "A common token format with readable details and a signature. Never put secrets in one."
+key-rotation:
+  name: "Key rotation"
+  definition: "Replacing a key with a new one and turning the old one off, regularly and after any leak."
+least-privilege:
+  name: "Least privilege"
+  definition: "Give each program or person only the access it needs, and nothing more."
+oauth:
+  name: "OAuth"
+  definition: "The standard for letting one app use your account on another with limited access, without your password."
+delegated-access:
+  name: "Delegated access"
+  definition: "Letting an app do specific things on your behalf, with access you can cancel."
+oauth-roles:
+  name: "OAuth's roles"
+  definition: "The user, the client app, the authorization server where you log in, and the resource server with your data."
+consent-screen:
+  name: "Consent screens"
+  definition: "The page saying what an app wants to do with your account, and asking you to allow it."
+redirect-uri:
+  name: "Redirect URIs"
+  definition: "The registered address a user is sent back to after logging in, with a code."
+authorization-code:
+  name: "Authorization codes"
+  definition: "A short-lived, single-use code that the app's server swaps for tokens."
+oauth-state:
+  name: "The state check"
+  definition: "A random value sent at the start that must come back unchanged, proving the reply is for your login."
+refresh-token:
+  name: "Refresh tokens"
+  definition: "A long-lived credential, kept on the server, used only to get new access tokens."
+client-secret-server-side:
+  name: "Client secrets stay on the server"
+  definition: "An app's client secret must never be in browser code, where anyone can read it."
+openid-connect:
+  name: "OpenID Connect"
+  definition: "A layer on top of OAuth that adds who logged in. It's what \"Log in with Google\" uses."
+pkce:
+  name: "PKCE"
+  definition: "A one-time secret made for each login, so apps without a server can use OAuth safely."
+encode-uri-component:
+  name: "encodeURIComponent()"
+  definition: "Replaces spaces, slashes and other special characters with % codes, so a value fits in an address."
+pagination:
+  name: "Pagination"
+  definition: "Sending a long list one page at a time, with a way to ask for the next page."
+page-vs-cursor:
+  name: "Page numbers and cursors"
+  definition: "?page=3, or \"continue after this item\". Cursors stay correct while the list changes."
+next-link:
+  name: "Next links"
+  definition: "The address of the next page, given in the answer, or None on the last page."
+while-loop:
+  name: "while loops"
+  definition: "Repeats a block for as long as a condition is true, checked before each round."
+infinite-loop:
+  name: "Infinite loops"
+  definition: "A loop whose condition never becomes false. Ctrl+C stops it in the terminal."
+rate-limit:
+  name: "Rate limits"
+  definition: "A cap on how many requests one caller may send in a window of time."
+status-429:
+  name: "429 Too Many Requests"
+  definition: "The status meaning \"slow down\": you've gone over the rate limit."
+retry-after:
+  name: "Retry-After"
+  definition: "A response header saying how many seconds to wait before trying again."
+ratelimit-headers:
+  name: "Rate limit headers"
+  definition: "Headers like X-RateLimit-Limit, -Remaining and -Reset that say where you stand."
+backoff-intro:
+  name: "Backoff"
+  definition: "Waiting longer after each failure, often doubling (2 ** attempt), up to a limit."
+quota:
+  name: "Quotas"
+  definition: "A total allowance of requests per day or month, often tied to the plan you pay for."
+breaking-change:
+  name: "Breaking changes"
+  definition: "A change that makes existing callers fail, like renaming or removing a field."
+api-versioning:
+  name: "API versioning"
+  definition: "Releasing breaking changes as a new version, like /v2/, while the old one keeps working."
+deprecation-sunset:
+  name: "Deprecation and Sunset"
+  definition: "Headers saying a version is on its way out, and the date it stops working."
+changelog:
+  name: "Changelogs"
+  definition: "A dated list of what changed in each release, with breaking changes marked."
+openapi:
+  name: "OpenAPI"
+  definition: "A machine-readable YAML or JSON description of a REST API's endpoints, parameters and responses."
+swagger-ui:
+  name: "Swagger UI"
+  definition: "Interactive documentation generated from an OpenAPI file."
+sdk:
+  name: "SDKs"
+  definition: "A ready-made library that wraps an API's requests in ordinary functions."
+api-docs-checklist:
+  name: "The API docs checklist"
+  definition: "Base URL, authentication, endpoints, errors, limits, pagination, a sandbox, and the changelog."
+graphql:
+  name: "GraphQL"
+  definition: "An API style with one endpoint, where the client's query names exactly the data it wants."
+over-under-fetching:
+  name: "Over-fetching and under-fetching"
+  definition: "Getting more data than you need, or needing several requests to collect it."
+graphql-query:
+  name: "GraphQL queries"
+  definition: "A request shaped like the answer you want, with fields, nesting and arguments."
+graphql-schema:
+  name: "GraphQL schemas"
+  definition: "The typed list of every field and type a GraphQL API offers."
+graphql-variables:
+  name: "GraphQL variables"
+  definition: "Values sent separately from the query to fill $placeholders, which avoids injection."
+graphql-mutation:
+  name: "Mutations"
+  definition: "A GraphQL operation that changes data."
+graphql-errors:
+  name: "GraphQL errors"
+  definition: "GraphQL usually reports problems in an errors list in the body, even with 200 OK."
+graphql-tradeoffs:
+  name: "GraphQL's trade-offs"
+  definition: "Harder caching, expensive queries that need limits, and a schema and server to maintain."
+rpc:
+  name: "RPC"
+  definition: "A remote procedure call: calling a function that runs on another computer."
+grpc:
+  name: "gRPC"
+  definition: "A popular RPC system using HTTP/2, protobuf messages and generated code."
+protobuf:
+  name: "Protocol Buffers"
+  definition: "Protobuf: a compact binary message format, defined in .proto files."
+proto-file:
+  name: ".proto files"
+  definition: "The shared contract listing a gRPC service's functions and message types."
+code-generation:
+  name: "Code generation"
+  definition: "Producing ready-made client and server code from a contract like a .proto file."
+binary-format:
+  name: "Binary formats"
+  definition: "Data stored as compact bytes rather than readable text."
+grpc-streaming:
+  name: "Streaming"
+  definition: "Sending a flow of messages over one call, which HTTP/2 makes possible."
+api-style-choice:
+  name: "Choosing an API style"
+  definition: "REST by default, GraphQL for varied clients, gRPC inside, webhooks between companies, WebSockets for live screens."
+
+# ---- Connecting services -------------------------------------------------------
+webhook:
+  name: "Webhooks"
+  definition: "An HTTP request a service sends to an address you registered, when something happens."
+webhook-endpoint:
+  name: "Webhook endpoints"
+  definition: "The address on your server that receives webhooks."
+event-payload:
+  name: "Event payloads"
+  definition: "The JSON body of an event: its id, type, when it happened, and the data."
+respond-fast:
+  name: "Answer webhooks fast"
+  definition: "Check it, save it, answer 2xx at once, and do slow work afterwards."
+webhook-retries:
+  name: "Webhook retries"
+  definition: "Senders try again when they don't get a quick 2xx, so the same event can arrive twice."
+dedupe-by-event-id:
+  name: "Skipping duplicate events"
+  definition: "Remember the ids of events you've handled, and skip any you've seen before."
+hmac-signature:
+  name: "HMAC signatures"
+  definition: "A fingerprint of a message made with a shared secret, proving who sent it and that it wasn't changed."
+signing-secret:
+  name: "Signing secrets"
+  definition: "The secret a webhook sender and receiver share for signatures. Keep it in an environment variable."
+node-http-server:
+  name: "http.createServer"
+  definition: "Node's built-in way to make a server. Your function runs for every request, with req and res."
+str-encode:
+  name: ".encode()"
+  definition: "Turns Python text into bytes, the raw form that cryptography functions work on."
+tunnel-tool:
+  name: "Tunnel tools"
+  definition: "Tools like ngrok that give a local server a temporary public address, for testing webhooks."
+sync-vs-async-work:
+  name: "Doing work now or later"
+  definition: "Only what the user needs before seeing the result happens while they wait. The rest happens a moment later."
+message-queue:
+  name: "Message queues"
+  definition: "A service that holds messages, each describing a job, until a worker takes them."
+producer-consumer:
+  name: "Producers and consumers"
+  definition: "What adds messages to a queue, and what takes and processes them."
+worker:
+  name: "Workers"
+  definition: "A separate program that takes messages from a queue and does the work."
+acknowledgement:
+  name: "Acknowledgements"
+  definition: "A worker saying \"done, delete it\", sent only once the work is finished."
+visibility-timeout:
+  name: "Visibility timeouts"
+  definition: "How long a taken message stays hidden. If it's not acknowledged in time, another worker gets it."
+at-least-once:
+  name: "At-least-once delivery"
+  definition: "Every message is processed, but sometimes more than once, so the work must be safe to repeat."
+poison-message:
+  name: "Poison messages"
+  definition: "A message that fails every time it's processed, like one with bad data."
+dead-letter-queue:
+  name: "Dead-letter queues"
+  definition: "Where messages go after failing too many times, so they stop blocking others and a person can check."
+queue-products:
+  name: "Queue products"
+  definition: "Amazon SQS, Azure Service Bus, RabbitMQ and Redis-based queues."
+pub-sub:
+  name: "Publish/subscribe"
+  definition: "A publisher sends an event to a topic, and every subscriber gets its own copy."
+topic:
+  name: "Topics"
+  definition: "A named channel for one kind of event, like order.placed."
+subscriber:
+  name: "Subscribers"
+  definition: "A service that receives every event published to a topic it follows."
+fan-out:
+  name: "Fan-out"
+  definition: "One event delivered to many subscribers."
+event-vs-command:
+  name: "Events and commands"
+  definition: "An event says what happened, for anyone. A command tells one service what to do."
+loose-coupling:
+  name: "Loose coupling"
+  definition: "Parts that can change, be added or fail without the others having to change."
+eventual-consistency:
+  name: "Eventual consistency"
+  definition: "The parts of a system agree a moment later, not instantly."
+event-driven-architecture:
+  name: "Event-driven architecture"
+  definition: "A design built around services publishing events and reacting to them."
+event-log-kafka:
+  name: "Kafka"
+  definition: "An event system that keeps events in a long-lived, ordered log that can be replayed."
+event-tracing-cost:
+  name: "Tracing events"
+  definition: "Following one action through many services needs good logs and an id carried through every event."
+api-gateway:
+  name: "API gateways"
+  definition: "One entry point in front of many services, doing shared jobs like auth, limits and routing once."
+gateway-jobs:
+  name: "What a gateway does"
+  definition: "Cross-cutting jobs: authentication, rate limits, routing, logging, TLS, CORS and versioning."
+backend-for-frontend:
+  name: "Backends for frontends"
+  definition: "A small backend tailored to one kind of client, like the mobile app."
+gateway-vs-proxy:
+  name: "Gateway, proxy or load balancer"
+  definition: "A gateway knows API clients. A reverse proxy routes to apps. A load balancer shares load between copies."
+managed-gateway:
+  name: "Managed gateways"
+  definition: "Cloud gateway services like Amazon API Gateway, Azure API Management, Apigee and Kong."
+gateway-overreach:
+  name: "Gateway overreach"
+  definition: "Business logic creeping into the gateway. Keep it thin."
+two-service-app:
+  name: "A two-service app"
+  definition: "Separate programs, each with one job, talking over HTTP."
+fetch-options:
+  name: "fetch options"
+  definition: "The second argument to fetch, like { method, headers, body }, for sending POSTs and more."
+js-try-catch:
+  name: "try and catch"
+  definition: "JavaScript's try/except: if the code in try throws an error, catch runs instead of crashing."
+url-search-params:
+  name: "URLSearchParams"
+  definition: "Reads name=value&name=value text, like form data, and .get() picks out one field."
+event-source:
+  name: "EventSource"
+  definition: "The browser object that opens a server-sent events stream and calls onmessage for each event."
+sse-format:
+  name: "The SSE format"
+  definition: "Each message is a line starting data:, followed by a blank line."
+end-to-end-check:
+  name: "End-to-end checks"
+  definition: "Testing the whole path, from the first request to what the user sees."

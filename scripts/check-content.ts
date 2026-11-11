@@ -21,6 +21,12 @@ import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 
 const checkLinks = process.argv.includes('--links');
+// --alt-ports runs a private copy of the lab 20000 ports up, and sends the exercises' requests
+// there, so the checks test this code even while an older Groundwork is running.
+const altPorts = process.argv.includes('--alt-ports');
+const ALT_OFFSET = 20000;
+const toLab = (url: string) =>
+  altPorts ? url.replace(/^(http:\/\/(?:localhost|127\.0\.0\.1)):(43\d\d)(?=\/|$)/, (_m, host, port) => `${host}:${Number(port) + ALT_OFFSET}`) : url;
 const content = loadContent(CONTENT_DIR);
 const problems: string[] = validateContent(content);
 let passes = 0;
@@ -31,13 +37,14 @@ const pass = (msg: string) => {
 
 // In the browser, Python's `requests` uses a synchronous XHR. Node has no such thing, so
 // here each call runs in a small child process and waits. Slow, but only used for checks.
-function httpViaChild(method: string, url: string, headersJson: string, body: string): string {
+function httpViaChild(method: string, url: string, headersJson: string, body: string, timeoutMs = 0): string {
   const script = `
-    const [method, url, headers, body] = process.argv.slice(1);
-    fetch(url, { method, headers: JSON.parse(headers), body: body || undefined })
+    const [method, url, headers, body, ms] = process.argv.slice(1);
+    const signal = Number(ms) > 0 ? AbortSignal.timeout(Number(ms)) : undefined;
+    fetch(url, { method, headers: JSON.parse(headers), body: body || undefined, signal })
       .then(async (r) => console.log(JSON.stringify({ status: r.status, body: await r.text(), headers: Object.fromEntries(r.headers) })))
-      .catch(() => console.log(JSON.stringify({ error: 'Could not connect to ' + url })));`;
-  return execFileSync(process.execPath, ['-e', script, method, url, headersJson, body], { encoding: 'utf8', timeout: 15000 });
+      .catch((e) => console.log(JSON.stringify(e && e.name === 'TimeoutError' ? { timeout: true } : { error: 'Could not connect to ' + url })));`;
+  return execFileSync(process.execPath, ['-e', script, method, toLab(url), headersJson, body, String(timeoutMs)], { encoding: 'utf8', timeout: 15000 });
 }
 
 async function checkPython(tasks: { lesson: string; task: PythonTask }[]) {
@@ -146,13 +153,13 @@ const sql = content.lessons.flatMap((l) => l.tasks.filter((t): t is SqlTask => t
 // Python exercises talk to the practice API. The lab runs in its own process, because the
 // synchronous calls above would otherwise block the server that has to answer them. If
 // the app is already running, its copy of the lab answers just as well.
-const labProcess = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', '--import', 'tsx', 'scripts/lab-only.ts'], {
+const labProcess = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', '--import', 'tsx', 'scripts/lab-only.ts', ...(altPorts ? ['--alt'] : [])], {
   cwd: APP_ROOT,
   stdio: 'ignore',
 });
 const labUp = async () => {
   for (let i = 0; i < 100; i++) {
-    const res = await fetch(`http://localhost:${PORTS.http}/hello`).catch(() => null);
+    const res = await fetch(toLab(`http://localhost:${PORTS.http}/hello`)).catch(() => null);
     if (res?.ok) return true;
     await new Promise((r) => setTimeout(r, 100));
   }

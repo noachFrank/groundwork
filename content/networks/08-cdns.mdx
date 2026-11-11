@@ -1,0 +1,301 @@
+---
+id: cdns
+title: "CDNs: copies close to everyone"
+order: 8
+topic: networks-and-the-web
+minutes: 55
+summary: How content delivery networks put copies of a site near every visitor. Covers what they should and must not cache, how to push out changes, and why they also soak up attacks.
+connectivity: offline
+prerequisites:
+  - id: faster-http
+    need: essential
+    why: Cache-Control, max-age and ETags are what a CDN obeys.
+  - id: tcp-and-udp
+    need: essential
+    why: Latency, and why distance matters.
+  - id: proxies
+    need: helpful
+    why: A CDN is a giant reverse proxy.
+revision: 1
+teaches: [cdn, edge-server, origin-server, cache-hit-miss, hit-ratio, cache-purge, versioned-filenames, shared-cache-danger, ddos-intro]
+uses: [latency, round-trip, cache-control, etag, browser-cache, reverse-proxy, tls-termination, dns, http, http-header, cookie, session, server-program, static-site, build-step, function, return-statement, dictionary, dict-change, dict-key-access, in-operator, for-loop, if-statement, comparison-operators, arithmetic, express-intro, middleware, server-route, reviewing-ai-code]
+predict:
+  id: p1
+  type: mcq
+  prompt: A site's server is in London. A visitor in Sydney finds it slow, even on fast broadband. What would help most?
+  options:
+    - A faster server in London
+    - Keeping copies of the site's files on servers near Sydney
+    - Making the images bigger
+    - Asking the visitor to upgrade their internet
+  answer: 1
+  why: Sydney to London and back is around 250ms per round trip, and a page needs many of them. Copies near the visitor cut each trip to a few milliseconds. That's what a CDN does.
+tasks:
+  - id: edge-sim
+    type: python
+    title: Simulate an edge server's cache
+    instructions: |
+      You'll use: a dictionary, `in`, a `for` loop and arithmetic (from the Python lessons).
+
+      An edge server receives requests over time. Each request is a dictionary like `{"time": 30, "path": "/logo.png"}`, with the time in seconds. A saved copy can be reused for `ttl` seconds after it was fetched from the origin.
+
+      `simulate(requests, ttl)` returns a dictionary `{"hits": …, "misses": …}`. For each request:
+
+      - If the path is in the cache **and** fewer than `ttl` seconds have passed since it was stored, it's a **hit**.
+      - Otherwise it's a **miss**: count it, and store the path in the cache with the current time (as if fetched from the origin).
+    starter: |
+      def simulate(requests, ttl):
+          cache = {}
+          hits = 0
+          misses = 0
+          # for each request:
+          #   path in cache and request["time"] - cache[path] < ttl -> a hit
+          #   otherwise a miss: cache[path] = request["time"]
+          return {"hits": hits, "misses": misses}
+
+
+      day = [
+          {"time": 0, "path": "/logo.png"},
+          {"time": 10, "path": "/logo.png"},
+          {"time": 20, "path": "/app.js"},
+          {"time": 70, "path": "/logo.png"},
+      ]
+      print(simulate(day, 60))
+    tests:
+      - name: first request is a miss, the next is a hit
+        code: |
+          got = simulate([{"time": 0, "path": "/a"}, {"time": 5, "path": "/a"}], 60)
+          assert got == {"hits": 1, "misses": 1}, f"Expected 1 hit and 1 miss, got {got}."
+      - name: different paths are cached separately
+        code: |
+          got = simulate([{"time": 0, "path": "/a"}, {"time": 1, "path": "/b"}, {"time": 2, "path": "/a"}], 60)
+          assert got == {"hits": 1, "misses": 2}, f"/a and /b are different files. Expected 1 hit, 2 misses, got {got}."
+      - name: an expired copy is a miss and gets refreshed
+        code: |
+          got = simulate([{"time": 0, "path": "/logo.png"}, {"time": 10, "path": "/logo.png"}, {"time": 20, "path": "/app.js"}, {"time": 70, "path": "/logo.png"}, {"time": 80, "path": "/logo.png"}], 60)
+          assert got == {"hits": 2, "misses": 3}, f"At 70s the logo is 70s old, past the 60s ttl, so it's refetched. Then 80s is a hit. Expected 2 hits, 3 misses, got {got}."
+      - name: exactly ttl seconds old counts as expired
+        code: |
+          got = simulate([{"time": 0, "path": "/a"}, {"time": 60, "path": "/a"}], 60)
+          assert got == {"hits": 0, "misses": 2}, f"It must be fewer than ttl seconds old. Expected 0 hits, 2 misses, got {got}."
+      - name: a ttl of 0 never hits
+        code: |
+          got = simulate([{"time": 0, "path": "/a"}, {"time": 0, "path": "/a"}], 0)
+          assert got == {"hits": 0, "misses": 2}, f"With ttl 0 nothing may be reused. Got {got}."
+    solution: |
+      def simulate(requests, ttl):
+          cache = {}
+          hits = 0
+          misses = 0
+          for request in requests:
+              path = request["path"]
+              if path in cache and request["time"] - cache[path] < ttl:
+                  hits += 1
+              else:
+                  misses += 1
+                  cache[path] = request["time"]
+          return {"hits": hits, "misses": misses}
+    wrong: |
+      def simulate(requests, ttl):
+          cache = {}
+          hits = 0
+          misses = 0
+          for request in requests:
+              path = request["path"]
+              if path in cache:
+                  hits += 1
+              else:
+                  misses += 1
+                  cache[path] = request["time"]
+          return {"hits": hits, "misses": misses}
+  - id: cdn-flaw
+    type: flaw
+    title: Spot the line that leaks private pages
+    language: javascript
+    instructions: |
+      A client put a CDN in front of their Express app to make it faster, and asked an AI assistant to "make the CDN cache everything". The site is much faster. Then a customer reports seeing **someone else's** account page. Which line caused it?
+    code: |
+      app.use((req, res, next) => {
+        res.set("Cache-Control", "public, max-age=86400");
+        next();
+      });
+
+      app.use("/assets", express.static("dist/assets"));
+
+      app.get("/", (req, res) => res.render("home"));
+
+      app.get("/account", requireLogin, (req, res) => {
+        res.render("account", { user: req.user, orders: req.user.orders });
+      });
+    flawLines: [2]
+    lineNotes:
+      "1": Middleware that runs on every request is a normal place to set headers. The question is which headers.
+      "6": Serving built files from dist/assets is normal, and long caching suits them, because their names change with every build.
+      "8": The home page is the same for everyone, so caching it briefly would be fine.
+      "10": Requiring a login for the account page is right.
+      "11": Rendering the user's own details is what an account page should do. The problem is what happens to the answer afterwards.
+    explanation: |
+      Line 2 tells **every** cache, including the CDN, that **every** response is `public` and may be reused for a day. When Ada visits `/account`, the CDN keeps a copy of her page. The next visitor who asks for `/account` gets Ada's copy, with her name and orders.
+
+      Personalized responses must never be stored by a shared cache. Set caching per route: long `public, max-age` for versioned files in `/assets`, and `private, no-store` for anything that depends on who's logged in. When in doubt, don't let the CDN cache a response that comes with a login cookie.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What is the origin server, in CDN terms?
+    options:
+      - The site's real server, which the CDN fetches from on a cache miss
+      - The CDN server nearest the visitor
+      - The visitor's computer
+      - The DNS server
+    answer: 0
+    why: Edge servers sit near visitors and keep copies. The origin is the source of truth behind them.
+  - id: r2
+    type: mcq
+    prompt: You've fixed a typo in app.js, but visitors still see the old version for hours. What's the best long-term fix?
+    options:
+      - Put a version or fingerprint in the file name, like app.3f9a1c.js, so a change means a new name
+      - Tell visitors to clear their cache
+      - Turn the CDN off
+      - Wait
+    answer: 0
+    why: A new name is a new address, so no cache anywhere has the old copy. Build tools do this for you. Purging the CDN also works, but browsers may still hold old copies.
+  - id: r3
+    type: short
+    prompt: What's it called when the CDN already has a fresh copy and answers without contacting the origin?
+    accept: ['hit']
+    answerText: A cache hit
+  - id: r4
+    type: self
+    prompt: Why must a page showing a logged-in user's details never be cached as public by a CDN?
+    modelAnswer: A CDN is a shared cache. It stores one copy and serves it to everyone who asks for that address. If it stores Ada's account page, the next person to request /account gets Ada's details. Personalized responses need Cache-Control private or no-store.
+cards:
+  - id: cdn
+    front: What does a CDN do, in one sentence?
+    back: Keeps copies of a site's files on edge servers around the world, so each visitor is served from nearby, and the origin server is asked only on a miss.
+  - id: what-to-cache
+    front: What should and shouldn't a CDN cache?
+    back: "Should: images, styles, scripts, fonts, videos, and public pages that are the same for everyone. Shouldn't: anything personalized or behind a login, like account pages and carts."
+  - id: purge
+    front: How do you get a changed file out to everyone fast?
+    back: Best of all, give it a new versioned name (app.3f9a1c.js), so the old copy is simply never asked for. Otherwise, purge it from the CDN, and set sensible max-ages.
+  - id: ddos
+    front: How does a CDN help against a DDoS attack?
+    back: A flood of traffic from many machines lands on the CDN's huge network, which can absorb and filter it, instead of on the origin server.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Which of these is a CDN?
+    options: [Cloudflare, Git, Python, SQLite]
+    answer: 0
+    why: Cloudflare, Amazon CloudFront, Akamai, Fastly and Azure Front Door are well-known CDNs.
+  - id: t2
+    type: mcq
+    prompt: A CDN's hit ratio is 95%. What does that mean?
+    options:
+      - 95% of requests were answered from the CDN's copies, and only 5% reached the origin
+      - 95% of visitors liked the site
+      - 95% of requests failed
+      - The site is 95% faster
+    answer: 0
+    why: A high hit ratio means the CDN is doing its job, keeping both latency and the origin's workload low.
+docs:
+  - title: "Cloudflare Learning: What is a CDN?"
+    url: https://www.cloudflare.com/learning/cdn/what-is-a-cdn/
+  - title: "MDN: CDN"
+    url: https://developer.mozilla.org/en-US/docs/Glossary/CDN
+  - title: "MDN: Cache-Control"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control
+videos: []
+---
+
+## In this lesson
+
+Two lessons ago you saw that distance costs time on every round trip. Last lesson you saw how caching headers let a browser reuse a file. A **CDN** combines the two at a worldwide scale:
+
+- What a CDN is: **edge servers** near visitors, and an **origin** behind them.
+- **Cache hits and misses**, and the **hit ratio**.
+- Getting changes out: **purging**, and **versioned file names**.
+- The one thing a CDN must **never** cache.
+- How CDNs also absorb **DDoS** attacks.
+
+## Copies near everyone
+
+A **CDN** (content delivery network) is a company with servers in hundreds of cities around the world. Each of these is an **edge server**. When you put a site behind a CDN, its DNS points at the CDN, which sends each visitor to the nearest edge. The site's own server, now called the **origin**, sits behind it all.
+
+Step through what happens:
+
+<Viz name="cdn-cache" />
+
+- On a **cache miss**, the edge doesn't have the file yet (or its copy has expired). It fetches it from the origin, keeps a copy, and answers.
+- On a **cache hit**, the edge already has a fresh copy and answers straight away. The origin isn't involved.
+
+The share of requests that are hits is the **hit ratio**. At 95%, only 1 in 20 requests ever reaches the origin. Visitors get files from a few miles away instead of an ocean away, and the origin handles a fraction of the traffic.
+
+Well-known CDNs include Cloudflare, Amazon CloudFront, Akamai, Fastly and Azure Front Door. GitHub Pages, which you used in Stage 1, sits behind one too.
+
+<details>
+<summary>Quick check: what happens on a cache miss?</summary>
+
+The edge server doesn't have a fresh copy, so it fetches the file from the origin, keeps a copy for next time, and sends it on to the visitor.
+</details>
+
+## The CDN follows your headers
+
+How long does the edge keep a copy? Mostly, as long as the origin's **Cache-Control** header allows, the same header you met in *Faster HTTP*. `max-age=86400` means a day. (CDNs often let you override this in their settings, and some read a separate `s-maxage` meant just for shared caches.)
+
+That's why caching headers matter even more with a CDN. A browser's cache only affects one person. A CDN's cache affects **everyone**.
+
+## Getting changes out
+
+Caching has an obvious downside: you fix a typo in your site's script, and visitors keep getting the old copy until it expires. Two ways out:
+
+1. **Purging.** CDNs let you tell every edge "throw away your copy of `/app.js` now". It's useful in an emergency, but it doesn't reach copies already in visitors' browsers.
+2. **Versioned file names.** Put a fingerprint of the file's contents in its name: `app.3f9a1c.js`. When the file changes, so does its name, and so does the page's link to it. No cache anywhere has ever seen the new name, so everyone gets the new file at once. The old one is simply never asked for again.
+
+Versioned names let you set huge max-ages (a year is common) on files, while the HTML page that links to them is cached briefly or not at all. Build tools like Vite do this automatically during `npm run build`. Look in a project's `dist` folder and you'll see names like `index-B3kL9xQa.js`. That's this.
+
+## What a CDN must never cache
+
+A CDN is a **shared cache**: one copy, served to everyone who asks for that address. That's wonderful for a logo and a disaster for a page that's different for each person.
+
+If Ada's account page is cached at `/account`, the next visitor who asks for `/account` gets **Ada's page**. This has happened to real companies, exposing customers' names, addresses and orders. Anything personalized needs:
+
+```text
+Cache-Control: private, no-store
+```
+
+`private` means only the user's own browser may keep it, and `no-store` means nothing should. The flaw task shows exactly how this goes wrong.
+
+<Callout kind="warn" title="A rule of thumb">
+If a response depends on who's logged in, a shared cache must not store it. Cache public files hard, and personal pages not at all.
+</Callout>
+
+## More than speed
+
+Because all traffic arrives at the CDN first, it's a natural place for other jobs:
+
+- **TLS termination**: the CDN handles HTTPS and certificates at the edge.
+- **DDoS protection**: in a **DDoS** (distributed denial of service) attack, thousands of hijacked machines flood a site with traffic to knock it offline. A single origin server can't survive that, but a CDN's network is enormous, so it can absorb the flood and filter out the junk before it reaches the origin.
+- **Firewall rules**: blocking obvious attacks and abusive visitors at the edge. You'll meet this as a "WAF" in the Stage 4 security lessons.
+
+## The simulation task
+
+In the task you'll write the heart of an edge server: a dictionary from path to the time the copy was stored, and the hit-or-miss decision for each request. Notice how quickly the hits add up once popular files are cached. That's why a busy site's hit ratio can be well over 90%.
+
+<ConsultantNote>
+A CDN is often the single biggest, cheapest performance win for a client with visitors far from their server, and many have a free tier. But the most common way to break one is "cache everything" with nothing excluded. When you set one up, list what may be cached publicly, check that every logged-in page sends `private` or `no-store`, and test it by logging in as two different users.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **CDN** | A worldwide network of servers keeping copies of a site's files near visitors |
+| **Edge server** | A CDN server close to the visitor |
+| **Origin server** | The site's real server, behind the CDN |
+| **Cache hit / miss** | The edge had a fresh copy / had to fetch from the origin |
+| **Hit ratio** | The share of requests answered from the CDN's copies |
+| **Purging** | Telling the CDN to throw away its copy now |
+| **Versioned file names** | Names like app.3f9a1c.js that change when the content does |
+| **Shared cache danger** | A personalized page cached publicly gets shown to other people |
+| **DDoS** | A flood of traffic from many machines, meant to knock a site offline |

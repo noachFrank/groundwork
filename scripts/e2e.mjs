@@ -4,7 +4,7 @@
 // Start the app first. For the offline run, start it with GROUNDWORK_FORCE_OFFLINE=1 too.
 // Any request to an outside address is recorded and blocked, and fails the run.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from 'playwright-core';
@@ -55,8 +55,8 @@ const lessonFile = (folder, name) => {
   const text = readFileSync(join('content', folder, name), 'utf8').replace(/\r\n/g, '\n');
   return parse(text.match(/^---\n([\s\S]*?)\n---\n/)[1]);
 };
-// Course order: Stage 1's modules, then the Stage 2 module.
-const MODULES = ['learning-with-ai', 'computers', 'git', 'reading-code', 'web-request'];
+// Course order: Stage 1's modules, then Stage 2's.
+const MODULES = ['learning-with-ai', 'computers', 'git', 'reading-code', 'web-request', 'networks', 'apis', 'connecting-services'];
 const lessons = MODULES.flatMap((folder) =>
   readdirSync(join('content', folder)).filter((f) => f.endsWith('.mdx')).sort().map((f) => lessonFile(folder, f)),
 );
@@ -125,8 +125,26 @@ const about = await (await fetch(`${APP}/api/about`)).json();
  * PowerShell window. Steps that need a person (Notepad, a second window) are
  * swapped for what the person would do.
  */
+// What a learner types into orders.js in the Stage 2 milestone, written by a small script
+// because PowerShell would mangle the quotes.
+const ordersFixer = join(tmpdir(), `groundwork-e2e-fix-orders-${process.pid}.cjs`);
+writeFileSync(
+  ordersFixer,
+  `const fs = require("fs");
+const done = ${JSON.stringify(`async function notifyBoard(order) {
+  try {
+    await fetch(BOARD_EVENTS, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "order.created", order: order }) });
+  } catch (error) {
+    console.log("Couldn't reach the board:", error.message);
+  }
+}`)};
+const s = fs.readFileSync("orders.js", "utf8");
+fs.writeFileSync("orders.js", s.replace(/async function notifyBoard\\(order\\) \\{[\\s\\S]*?\\n\\}/, done));
+`,
+);
+
 function runTerminalTask(lessonId, t) {
-  const lines = [];
+  const lines = ['$started = @()'];
   for (const s of t.steps) {
     if (!s.command) continue;
     let c = s.command.replaceAll('{{nodeDir}}', about.nodeDir).replaceAll('$HOME\\Groundwork-Practice', practice);
@@ -134,13 +152,21 @@ function runTerminalTask(lessonId, t) {
     if (c === 'notepad index.html' && lessonId === 'conflicts') {
       c = `Set-Content index.html '<h1>Welcome to my homepage</h1>', '<p>Made by me.</p>', '<a href="about.html">About</a>'`;
     }
+    if (c === 'notepad orders.js' && lessonId === 'milestone-live-app') c = `node "${ordersFixer}"`;
     if (c === 'npm.cmd run dev') {
       c = "$dev = Start-Process npm.cmd -ArgumentList 'run', 'dev' -PassThru -WindowStyle Hidden; Start-Sleep 4";
+    }
+    // A server that keeps its window busy runs in the background, as if in another window.
+    c = c.replace(/(^|; )node (\w+\.js)$/, (_m, pre, file) => `${pre}$started += Start-Process node -ArgumentList '${file}' -PassThru -WindowStyle Hidden; Start-Sleep 2`);
+    // Opening a page in the browser: connect to its live stream the way the page would.
+    if (c === 'Start-Process http://localhost:4397') {
+      c = "Start-Process curl.exe -ArgumentList '-s','-N','--max-time','4','-o','NUL','http://localhost:4397/stream' -WindowStyle Hidden; Start-Sleep 1";
     }
     if (c.startsWith('Start-Process ping')) c += '; Start-Sleep 1';
     lines.push(c);
   }
   if (t.id === 'own-server') lines.push('taskkill /PID $dev.Id /T /F | Out-Null');
+  lines.push('Start-Sleep 1; $started | ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }');
   return ps(lines.join('\n'));
 }
 
@@ -176,6 +202,15 @@ async function genericDo(lesson) {
         break;
       case 'flaw':
         await el.locator('.code-line').nth(t.flawLines[0] - 1).click();
+        break;
+      case 'architecture':
+        // Lay the design out exactly as the model answer does.
+        for (const [part, zone] of Object.entries(t.model.placements)) {
+          const partLabel = t.parts.find((p) => p.id === part).label;
+          await el.locator('.palette').getByRole('button', { name: partLabel, exact: true }).click();
+          await el.locator('.zone').nth(t.zones.findIndex((z) => z.id === zone)).locator('strong').click();
+        }
+        await el.getByRole('button', { name: 'Check my design' }).click();
         break;
       case 'explain':
         await el.getByLabel('Your explanation').fill(t.modelAnswer);

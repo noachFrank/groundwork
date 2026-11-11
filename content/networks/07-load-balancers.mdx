@@ -1,0 +1,396 @@
+---
+id: load-balancers
+title: "Load balancers: many servers, one address"
+order: 7
+topic: networks-and-the-web
+minutes: 55
+summary: How one website runs on many servers at once. Covers spreading requests, noticing sick servers with health checks, why servers should forget users between requests, and the hidden single points of failure.
+connectivity: offline
+prerequisites:
+  - id: proxies
+    need: essential
+    why: A load balancer is a kind of reverse proxy.
+  - id: cookies-and-sessions
+    need: essential
+    why: Sessions are what make spreading users across servers tricky.
+  - id: javascript-arrays
+    need: essential
+    why: The task works with arrays of objects in JavaScript.
+revision: 1
+teaches: [vertical-scaling, horizontal-scaling, load-balancer, round-robin, least-connections, health-check, sticky-sessions, stateless-servers, single-point-of-failure, js-for-count]
+uses: [reverse-proxy, js-logic-operators, js-string-methods, service, session, session-id, cookie, database, server-computer, dns, ip-address, http, status-code, architecture-diagram, js-function, const-let, js-object, js-dot-access, js-array, for-of, triple-equals, js-null-undefined, best-so-far, run-and-check]
+predict:
+  id: p1
+  type: mcq
+  prompt: A shop's single server slows to a crawl every Black Friday. Which change lets it handle almost any amount of traffic in future?
+  options:
+    - Buy the biggest server money can buy
+    - Run several identical servers, with something in front sharing requests between them
+    - Ask customers to shop on a different day
+    - Turn off HTTPS
+  answer: 1
+  why: There's a limit to how big one machine can get, and it's still one machine that can fail. Several machines behind a load balancer can grow by adding more, and survive one of them dying.
+tasks:
+  - id: balancer-code
+    type: javascript
+    title: Write two load-balancing strategies
+    instructions: |
+      You'll use: a counting `for` loop from this lesson, plus arrays of objects and the best-so-far pattern (from *Python: dictionaries and real data*, in JavaScript form).
+
+      Each server is an object like `{ name: "s1", healthy: true, active: 3 }`, where `active` is how many requests it's handling right now.
+
+      1. `pickRoundRobin(servers, state)` returns the **name** of the next healthy server, going round in order. `state.next` is the position to try first. Skip unhealthy servers. After choosing, set `state.next` to the position **after** the chosen one, going back to 0 after the last server. If none are healthy, return `null`.
+      2. `pickLeastConnections(servers)` returns the name of the healthy server with the fewest `active` requests. If two are tied, pick the first. If none are healthy, return `null`.
+
+      In JavaScript, `&&` means Python's `and`, and `||` means `or`.
+    starter: |
+      const servers = [
+        { name: "s1", healthy: true, active: 5 },
+        { name: "s2", healthy: false, active: 0 },
+        { name: "s3", healthy: true, active: 2 },
+      ];
+
+      function pickRoundRobin(servers, state) {
+        // Try at most servers.length positions, starting at state.next:
+        // for (let tries = 0; tries < servers.length; tries++) {
+        //   const server = servers[state.next];
+        //   Move state.next on by one, back to 0 after the last server.
+        //   If server.healthy, return server.name.
+        // }
+        return null;
+      }
+
+      function pickLeastConnections(servers) {
+        // Keep the best healthy server so far, and return its name at the end.
+        return null;
+      }
+
+      const state = { next: 0 };
+      console.log(pickRoundRobin(servers, state), pickRoundRobin(servers, state), pickRoundRobin(servers, state));
+      console.log(pickLeastConnections(servers));
+    tests:
+      - name: round robin goes in order and skips the unhealthy one
+        code: |
+          const list = [{ name: "a", healthy: true }, { name: "b", healthy: false }, { name: "c", healthy: true }];
+          const st = { next: 0 };
+          const picks = [pickRoundRobin(list, st), pickRoundRobin(list, st), pickRoundRobin(list, st), pickRoundRobin(list, st)];
+          assert(picks.join(",") === "a,c,a,c", "Expected a,c,a,c (b is unhealthy), got " + picks.join(","));
+      - name: round robin moves state.next past the chosen server
+        code: |
+          const list = [{ name: "a", healthy: true }, { name: "b", healthy: true }, { name: "c", healthy: true }];
+          const st = { next: 1 };
+          const pick = pickRoundRobin(list, st);
+          assert(pick === "b", "Starting at position 1 should pick b, got " + pick);
+          assert(st.next === 2, "After picking b (position 1), state.next should be 2, got " + st.next);
+      - name: round robin wraps around to the start
+        code: |
+          const list = [{ name: "a", healthy: true }, { name: "b", healthy: true }];
+          const st = { next: 1 };
+          pickRoundRobin(list, st);
+          assert(st.next === 0, "After the last server, state.next should go back to 0, got " + st.next);
+      - name: round robin gives null when nothing is healthy
+        code: |
+          const list = [{ name: "a", healthy: false }, { name: "b", healthy: false }];
+          assert(pickRoundRobin(list, { next: 0 }) === null, "No healthy servers, so return null.");
+      - name: least connections picks the quietest healthy server
+        code: |
+          const list = [{ name: "a", healthy: true, active: 5 }, { name: "b", healthy: false, active: 0 }, { name: "c", healthy: true, active: 2 }];
+          const got = pickLeastConnections(list);
+          assert(got === "c", "b has fewer requests but is unhealthy, so expected c, got " + got);
+      - name: least connections picks the first on a tie
+        code: |
+          const list = [{ name: "a", healthy: true, active: 1 }, { name: "b", healthy: true, active: 1 }];
+          assert(pickLeastConnections(list) === "a", "On a tie, pick the first one.");
+      - name: least connections gives null when nothing is healthy
+        code: |
+          assert(pickLeastConnections([{ name: "a", healthy: false, active: 0 }]) === null, "No healthy servers, so return null.");
+    solution: |
+      function pickRoundRobin(servers, state) {
+        for (let tries = 0; tries < servers.length; tries++) {
+          const server = servers[state.next];
+          state.next = state.next + 1;
+          if (state.next >= servers.length) {
+            state.next = 0;
+          }
+          if (server.healthy) {
+            return server.name;
+          }
+        }
+        return null;
+      }
+
+      function pickLeastConnections(servers) {
+        let best = null;
+        for (const server of servers) {
+          if (server.healthy && (best === null || server.active < best.active)) {
+            best = server;
+          }
+        }
+        if (best === null) {
+          return null;
+        }
+        return best.name;
+      }
+    wrong: |
+      function pickRoundRobin(servers, state) {
+        const server = servers[state.next];
+        state.next = state.next + 1;
+        if (state.next >= servers.length) {
+          state.next = 0;
+        }
+        return server.name;
+      }
+
+      function pickLeastConnections(servers) {
+        let best = servers[0];
+        for (const server of servers) {
+          if (server.active < best.active) {
+            best = server;
+          }
+        }
+        return best.name;
+      }
+  - id: scale-design
+    type: architecture
+    title: Design a shop that survives a server dying
+    instructions: Place each part where it belongs, and leave out anything that would break the requirements.
+    scenario: |
+      An online shop is moving from one server to several, ahead of a big sale. Requirements: visitors use one address; any server can be turned off at any moment without anyone being logged out; orders must never be lost; and only one part of the system should be reachable from the internet.
+    parts:
+      - id: lb
+        label: Load balancer
+        hint: Receives every request and shares them out
+      - id: app1
+        label: App server 1
+        hint: Runs the shop's code
+      - id: app2
+        label: App server 2
+        hint: An identical copy
+      - id: sessions
+        label: Shared session store
+        hint: Holds every logged-in session, for all servers to read
+      - id: db
+        label: Database
+        hint: Orders and products
+      - id: local-sessions
+        label: Sessions in each server's own memory
+        hint: Each server remembers only the users it has seen
+      - id: public-db
+        label: Database open to the internet
+        hint: So staff can reach it from home
+    zones:
+      - id: edge
+        label: Facing the internet
+        hint: The only part the public can reach
+      - id: private
+        label: Private network
+        hint: Only reachable from inside
+      - id: data
+        label: Storage
+        hint: Survives any one server dying
+    checklist:
+      - text: Give visitors one address that shares out the work
+        all: [{ part: lb, zone: edge }]
+      - text: Run more than one app server, out of the public's reach
+        all: [{ part: app1, zone: private }, { part: app2, zone: private }]
+      - text: Keep sessions somewhere every server can read, so nobody is logged out when a server dies
+        all: [{ part: sessions, zone: data }]
+      - text: Keep orders safe in storage
+        all: [{ part: db, zone: data }]
+      - text: Don't tie users to one server's memory
+        none: [local-sessions]
+      - text: Expose only the load balancer to the internet
+        none: [public-db]
+    model:
+      placements:
+        lb: edge
+        app1: private
+        app2: private
+        sessions: data
+        db: data
+      explanation: |
+        The load balancer is the only public part. It shares requests between identical app servers on a private network. The app servers are **stateless**: they keep no sessions in their own memory, but look each one up in a shared session store (often Redis). So any server can handle any request, and turning one off logs nobody out.
+
+        Orders live in the database, which only the app servers can reach. A real design would also have two load balancers, and a backup copy of the database, so none of these is a single point of failure.
+recall:
+  - id: r1
+    type: mcq
+    prompt: What's the difference between vertical and horizontal scaling?
+    options:
+      - Vertical means a bigger server. Horizontal means more servers
+      - Vertical is for databases, horizontal for websites
+      - Vertical is cheaper, always
+      - They're the same
+    answer: 0
+    why: Vertical scaling is simple but hits a ceiling and leaves one machine that can fail. Horizontal scaling needs a load balancer, and servers that don't store users' state.
+  - id: r2
+    type: short
+    prompt: What does a load balancer regularly send each server, to find out whether it should keep sending it traffic?
+    accept: ['health']
+    answerText: A health check
+  - id: r3
+    type: mcq
+    prompt: Users get logged out at random after a shop adds a second server. What's the likely cause?
+    options:
+      - Sessions are stored in each server's own memory, so the other server doesn't know them
+      - The load balancer is too fast
+      - Cookies don't work with two servers
+      - DNS is broken
+    answer: 0
+    why: Request one goes to server A, which creates the session. Request two lands on server B, which has never heard of it. The fix is a shared session store (or, as a stopgap, sticky sessions).
+  - id: r4
+    type: self
+    prompt: What's a single point of failure? Give an example from this lesson.
+    modelAnswer: A part that takes everything down when it fails, because there's only one of it. One load balancer in front of ten servers is an example, and so is a single database. The fix is usually a second copy that takes over automatically.
+cards:
+  - id: vh
+    front: Vertical vs. horizontal scaling?
+    back: "Vertical: a bigger machine. Simple, but there's a ceiling and it can still fail. Horizontal: more machines behind a load balancer. It grows further and survives failures."
+  - id: algorithms
+    front: Round robin vs. least connections?
+    back: "Round robin: each server in turn. Least connections: whichever server has the fewest requests right now, which is better when requests take very different amounts of time."
+  - id: stateless
+    front: Why should app servers be stateless?
+    back: So any server can handle any request. Sessions and data live in shared stores, and servers can be added, removed or restarted without logging anyone out.
+  - id: sticky
+    front: What are sticky sessions, and what's the catch?
+    back: The load balancer always sends a user to the same server. It hides the session problem, but load gets uneven, and users on a server that dies lose their sessions anyway.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: A server crashes behind a load balancer with health checks. What do visitors notice?
+    options:
+      - Little or nothing. The load balancer stops sending it traffic within seconds
+      - The whole site goes down
+      - Everyone is logged out
+      - DNS changes
+    answer: 0
+    why: That's the point of health checks. (If sessions were kept in the crashed server's memory, its users would be logged out. Another reason to keep servers stateless.)
+  - id: t2
+    type: mcq
+    prompt: What does a typical health check endpoint look like?
+    options:
+      - GET /health, answering 200 if the server and what it depends on are working
+      - A daily email
+      - A DNS record
+      - A login page
+    answer: 0
+    why: A tiny, fast address the load balancer can ask every few seconds. Anything but a 2xx means "take me out of rotation".
+docs:
+  - title: "Cloudflare Learning: What is load balancing?"
+    url: https://www.cloudflare.com/learning/performance/what-is-load-balancing/
+  - title: "AWS: What is load balancing?"
+    url: https://aws.amazon.com/what-is/load-balancing/
+  - title: "nginx: Using nginx as an HTTP load balancer"
+    url: https://nginx.org/en/docs/http/load_balancing.html
+videos: []
+---
+
+## In this lesson
+
+Big websites don't run on one computer. They run on many identical ones behind a single address. This lesson covers:
+
+- **Vertical** and **horizontal** scaling: a bigger server, or more servers.
+- **Load balancers**, and the two common ways they share out requests: **round robin** and **least connections**.
+- **Health checks**: how a load balancer notices a sick server.
+- Why the servers behind it should be **stateless**, and what **sticky sessions** are.
+- **Single points of failure**: the part you forgot to double up.
+
+## A bigger server, or more servers?
+
+When one server can't keep up, there are two ways to grow:
+
+- **Vertical scaling** means a **bigger** machine: more processor cores, more memory. It's simple, because nothing about the software changes. But there's a ceiling (the biggest machine available), the price rises steeply near the top, and it's still **one** machine. If it fails, everything is down.
+- **Horizontal scaling** means **more** machines, each running an identical copy of the app. It can keep growing by adding machines, and if one fails, the others carry on. The catch is that something has to share requests between them, and the app has to cope with any request landing on any machine.
+
+Small sites usually start vertical, and that's fine. Horizontal scaling is how almost everything large is built.
+
+## The load balancer
+
+A **load balancer** is a reverse proxy whose main job is **sharing requests between several servers**. DNS points the site's name at the load balancer, and visitors never see the servers behind it. Step through one:
+
+<Viz name="load-balancer" />
+
+### How it chooses
+
+The two most common strategies:
+
+- **Round robin**: each server in turn, 1, 2, 3, 1, 2, 3… Simple and fair when every request takes about the same time.
+- **Least connections**: send each request to whichever server is handling the **fewest** requests right now. Better when some requests are slow (a big report) and others are quick (a product page), because a server stuck on slow ones naturally gets fewer new ones.
+
+You'll write both in the task.
+
+### A counting loop in JavaScript
+
+Round robin needs a loop that runs a set number of times, rather than once per item. JavaScript has a classic loop for that:
+
+```javascript
+for (let tries = 0; tries < servers.length; tries++) {
+  // runs with tries = 0, 1, 2, … up to servers.length - 1
+}
+```
+
+Read the three parts in the brackets, separated by semicolons:
+
+1. `let tries = 0` runs once, at the start.
+2. `tries < servers.length` is checked before each round. When it's false, the loop stops.
+3. `tries++` runs after each round. `++` means "add one".
+
+It's the same as Python's `for tries in range(len(servers)):`. You'll see it constantly in older JavaScript code.
+
+## Health checks
+
+A load balancer must not send visitors to a server that's broken. So every few seconds, it sends each server a **health check**: usually a tiny request like `GET /health`.
+
+- A quick `200 OK` means "healthy, keep sending me traffic".
+- An error, or no answer, a few times in a row means "take me out". The load balancer stops sending it anything.
+- When it starts passing again, it's quietly added back.
+
+A good `/health` checks the things the server can't work without, like whether it can reach the database, and answers fast. Visitors notice nothing when one server dies, which is the point.
+
+<details>
+<summary>Quick check: what does a load balancer do with a server that fails its health checks?</summary>
+
+It stops sending it requests until it passes again. The other servers take its share.
+</details>
+
+## The session problem
+
+Here's the trap that catches nearly everyone the first time. In *Cookies and sessions*, the server stored each logged-in user's session. Suppose each app server keeps sessions **in its own memory**:
+
+1. Ada logs in. The load balancer sends her to server 1, which creates her session.
+2. Her next click goes to server 2. Server 2 has never heard of her session. She's logged out.
+
+There are two fixes:
+
+- **Sticky sessions**: the load balancer remembers which server each user went to (usually with a cookie of its own) and always sends them back there. It's quick to switch on, but load gets uneven, and when that server dies, its users lose their sessions anyway.
+- **Stateless servers**: the servers keep **nothing** about users in their own memory. Sessions go in a **shared store** that every server can read, often a fast in-memory database called Redis. Any server can handle any request, and servers can be added, removed or restarted freely.
+
+Stateless servers are the proper answer. "Keep app servers stateless" is one of the most repeated rules in system design.
+
+## Single points of failure
+
+You added a load balancer and three servers, so a server can die without the site going down. But what if the **load balancer** dies? Or the one database? A **single point of failure** is any part that takes everything down when it fails, because there's only one of it.
+
+Removing them means doubling up: two load balancers sharing one address, a standby copy of the database that takes over automatically, servers in two separate data centers. Each one costs money, so the real question for a client is **which failures they can afford**. That's a big theme in Stage 4.
+
+Cloud providers sell load balancers as a service, which are themselves built from many machines, so you don't run them yourself. Examples are AWS's Application Load Balancer and Azure Load Balancer.
+
+<ConsultantNote>
+When a client says "we need to scale", ask what's actually slow, and how much traffic they expect. Many apps never outgrow one well-sized server, and vertical scaling is far simpler. When they do need horizontal scaling, the work isn't the load balancer, which is a few clicks in any cloud. It's making the app stateless. That's a real code change, and you should spot it before anyone promises a deadline.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Vertical scaling** | A bigger machine |
+| **Horizontal scaling** | More machines running identical copies |
+| **Load balancer** | Shares requests between several servers behind one address |
+| **Round robin** | Each server in turn |
+| **Least connections** | The server currently handling the fewest requests |
+| **Health check** | A regular tiny request to see if a server should get traffic |
+| **Sticky sessions** | Always sending a user to the same server |
+| **Stateless servers** | Servers that keep nothing about users in their own memory |
+| **Single point of failure** | A part that takes everything down when it fails |
+| **Counting `for` loop** | `for (let i = 0; i < n; i++)`, which runs n times |

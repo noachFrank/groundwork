@@ -1,0 +1,338 @@
+---
+id: api-auth
+title: "Proving who's calling: API keys and tokens"
+order: 3
+topic: software-talking
+minutes: 55
+summary: How programs prove who they are to an API. Covers keys versus short-lived tokens, the Authorization header, scopes that limit what a token can do, and how keys leak and what to do when one does.
+connectivity: offline
+prerequisites:
+  - id: api-errors
+    need: essential
+    why: 401 and 403 are at the heart of this lesson.
+  - id: env-and-path
+    need: essential
+    why: Secrets belong in environment variables.
+  - id: cookies-and-sessions
+    need: helpful
+    why: Compares sessions and cookies with tokens.
+revision: 1
+teaches: [authentication-vs-authorization, authorization-header, bearer-token, access-token, token-expiry, scopes, client-credentials, requests-data-form, basic-auth, jwt-intro, key-rotation, least-privilege]
+uses: [api-key, api-key-header, secret, env-for-secrets, environment-variable, secrets-in-history, revoke-key, keys-in-browser, status-401-403, http-header, https, session, cookie, api, json, requests-intro, status-code-attr, response-json-py, keyword-arguments, function, return-statement, dictionary, dict-key-access, if-statement, f-string, run-and-check, reviewing-ai-code]
+predict:
+  id: p1
+  type: mcq
+  prompt: A reporting tool needs to read a client's sales figures through an API. Which credential is safest to give it?
+  options:
+    - The owner's own username and password
+    - A credential that can only read sales reports, expires after an hour, and can be cancelled at any time
+    - A key that can do everything, so it never stops working
+    - No credential at all
+  answer: 1
+  why: Give each program only what it needs, for as short a time as practical, in a form you can cancel without changing anything else. That's the idea behind tokens with scopes, and it limits the damage when something leaks.
+tasks:
+  - id: token-call
+    type: python
+    title: Get a token, then use it
+    instructions: |
+      You'll use: `requests.post` with `data=` and `requests.get` with `headers=`, from this lesson.
+
+      The practice API has a token endpoint at `/oauth/token` and a protected report at `/reports/sales`. The client id and secret are given as constants. In real code, you'd read them from environment variables.
+
+      1. `get_token(scope)` POSTs to `BASE + "/oauth/token"` with these form fields: `grant_type` set to `client_credentials`, plus `client_id`, `client_secret` and `scope`. Return the `access_token` from the JSON answer.
+      2. `sales_report(token)` GETs `BASE + "/reports/sales"` with the header `Authorization: Bearer <token>`. Return a dictionary `{"status": <status code>, "body": <the .json() body>}`.
+    starter: |
+      import requests
+
+      BASE = "http://localhost:4314"
+      CLIENT_ID = "reports-app"
+      CLIENT_SECRET = "practice-secret"  # in real code: read this from an environment variable
+
+
+      def get_token(scope):
+          # requests.post(BASE + "/oauth/token", data={...})
+          pass
+
+
+      def sales_report(token):
+          # headers={"Authorization": "Bearer " + token}
+          pass
+
+
+      token = get_token("reports:read")
+      print("token:", token)
+      print(sales_report(token))
+      print(sales_report(get_token("orders:read")))
+      print(sales_report("made-up-token"))
+    tests:
+      - name: get_token returns an access token
+        code: |
+          token = get_token("reports:read")
+          assert isinstance(token, str) and token.startswith("at_"), f"Expected a token starting at_, got {token!r}. Check the four form fields."
+      - name: the right scope gets the report
+        code: |
+          got = sales_report(get_token("reports:read"))
+          assert got["status"] == 200, f"A token with reports:read should get 200, got {got}."
+          assert got["body"]["orders"] >= 3, f"The report should count the orders. Got {got}."
+      - name: the wrong scope is forbidden
+        code: |
+          got = sales_report(get_token("orders:read"))
+          assert got["status"] == 403, f"That token is valid but lacks reports:read, so expect 403 Forbidden. Got {got}."
+      - name: a made-up token is unauthorized
+        code: |
+          got = sales_report("made-up-token")
+          assert got["status"] == 401, f"The API doesn't recognize this token, so expect 401. Got {got}."
+    solution: |
+      import requests
+
+      BASE = "http://localhost:4314"
+      CLIENT_ID = "reports-app"
+      CLIENT_SECRET = "practice-secret"
+
+
+      def get_token(scope):
+          response = requests.post(BASE + "/oauth/token", data={
+              "grant_type": "client_credentials",
+              "client_id": CLIENT_ID,
+              "client_secret": CLIENT_SECRET,
+              "scope": scope,
+          })
+          return response.json()["access_token"]
+
+
+      def sales_report(token):
+          response = requests.get(BASE + "/reports/sales", headers={"Authorization": "Bearer " + token})
+          return {"status": response.status_code, "body": response.json()}
+    wrong: |
+      import requests
+
+      BASE = "http://localhost:4314"
+      CLIENT_ID = "reports-app"
+      CLIENT_SECRET = "practice-secret"
+
+
+      def get_token(scope):
+          response = requests.post(BASE + "/oauth/token", data={
+              "grant_type": "client_credentials",
+              "client_id": CLIENT_ID,
+              "client_secret": CLIENT_SECRET,
+          })
+          return response.json()["access_token"]
+
+
+      def sales_report(token):
+          response = requests.get(BASE + "/reports/sales", headers={"Authorization": token})
+          return {"status": response.status_code, "body": response.json()}
+  - id: key-leak
+    type: flaw
+    title: Find where the key leaks
+    language: python
+    instructions: |
+      This works perfectly: it gets a forecast from a weather API. The key is even read from an environment variable, which is good. But the key still ends up somewhere it shouldn't. Which line?
+    code: |
+      import os
+      import requests
+
+      API_KEY = os.environ["WEATHER_API_KEY"]
+
+      def forecast(city):
+          url = f"https://api.weather.example/v1/forecast?city={city}&key={API_KEY}"
+          response = requests.get(url, timeout=5)
+          print("Called", url, "and got", response.status_code)
+          return response.json()
+    flawLines: [9, 7]
+    lineNotes:
+      "1": os is Python's module for the operating system, used here to read environment variables.
+      "4": Reading the key from an environment variable is exactly right. It keeps the key out of the code and out of Git.
+      "8": A GET with a timeout is good practice.
+      "10": Returning the JSON body is fine.
+    explanation: |
+      Line 9 **prints the whole URL, key included**, into the program's output. Output usually ends up in log files, which are kept for months, read by many people and tools, and sometimes pasted into chats or bug reports. The key leaks there.
+
+      Line 7 is the root cause: the key is in the **URL**. Addresses get recorded all over the place: in server logs, proxy logs, monitoring tools and error trackers. Some APIs insist on it, but if the API accepts a header, use that instead, as in `headers={"X-API-Key": API_KEY}`, and never log headers or full URLs that contain secrets.
+recall:
+  - id: r1
+    type: mcq
+    prompt: Authentication vs. authorization?
+    options:
+      - Authentication is proving who you are. Authorization is what you're allowed to do
+      - They mean the same thing
+      - Authorization comes first
+      - Authentication is only for websites
+    answer: 0
+    why: A failed authentication gets 401, and a failed authorization gets 403.
+  - id: r2
+    type: short
+    prompt: Which request header carries a bearer token?
+    accept: ['authorization']
+    answerText: "Authorization (as in Authorization: Bearer <token>)"
+  - id: r3
+    type: mcq
+    prompt: Why do access tokens usually expire after a short time, like an hour?
+    options:
+      - So a leaked token is only useful to an attacker for a short while
+      - To make the API faster
+      - Because servers run out of tokens
+      - So users have to pay again
+    answer: 0
+    why: Short lifetimes limit the damage of a leak. The program just gets a new token when the old one expires.
+  - id: r4
+    type: self
+    prompt: An API key was accidentally committed to a public GitHub repository an hour ago. What do you do, in order?
+    modelAnswer: Revoke or rotate the key immediately in the provider's dashboard, and create a new one stored in an environment variable or secret store. Update the program to use the new key. Check the provider's logs for any use you don't recognize. Then remove the key from the code, remembering it's still in the Git history, which is why revoking it comes first.
+cards:
+  - id: auth-terms
+    front: Authentication vs. authorization, with the status codes?
+    back: "Authentication: who are you? (fails with 401). Authorization: are you allowed? (fails with 403)."
+  - id: bearer
+    front: 'What does `Authorization: Bearer abc123` mean?'
+    back: '"Whoever bears (holds) this token may use it." The API checks the token and what it allows. Anyone who copies it can use it, so treat it like a password.'
+  - id: scopes
+    front: What are scopes?
+    back: Limits on what a token can do, like reports:read or orders:write. Ask for only the scopes a program needs.
+  - id: key-vs-token
+    front: API key vs. access token?
+    back: "Key: long-lived, often all-powerful, and replaced by hand. Token: short-lived, scoped, and issued by a token endpoint in exchange for a client id and secret (or a user's consent)."
+testOut:
+  - id: t1
+    type: mcq
+    prompt: What is a JWT?
+    options:
+      - A common format for tokens, holding readable details (who, which scopes, when it expires) plus a signature that proves the server issued it
+      - A kind of database
+      - An encryption method for passwords
+      - A JavaScript framework
+    answer: 0
+    why: JSON Web Tokens are readable by anyone, so they must never hold secrets. The signature only stops them from being changed. They come back in the Stage 4 security lessons.
+  - id: t2
+    type: mcq
+    prompt: A service suggests "Basic auth" for its API. What is it?
+    options:
+      - Sending a username and password, lightly encoded (not encrypted), in the Authorization header with every request
+      - The most secure option
+      - A login page
+      - An API key in the URL
+    answer: 0
+    why: It's only safe over HTTPS, and it sends the real password every time. Tokens are usually a better choice.
+docs:
+  - title: "MDN: HTTP authentication"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Authentication
+  - title: "MDN: Authorization header"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Authorization
+  - title: "OAuth 2.0: Client credentials"
+    url: https://oauth.net/2/grant-types/client-credentials/
+videos: []
+---
+
+## In this lesson
+
+In *APIs and JSON* you sent an API key in an `X-API-Key` header. That's one way for a program to prove who it is. This lesson covers the others, and why they exist:
+
+- **Authentication** and **authorization**: two different questions.
+- The **Authorization** header and **bearer tokens**.
+- **Access tokens** that expire, and **scopes** that limit them.
+- Getting a token with **client credentials**.
+- How keys and tokens **leak**, and what to do when one does.
+
+## Two different questions
+
+Every protected API asks two separate questions:
+
+1. **Authentication**: **who are you?** Proving your identity, with a key, a token or a password.
+2. **Authorization**: **what are you allowed to do?** Checking that identity's permissions.
+
+They fail differently. A missing or invalid credential gets **401 Unauthorized** (despite the name, it's about authentication). A valid credential without permission gets **403 Forbidden**. You saw both in the last lesson, and you'll get both from the practice API in the task.
+
+## API keys: simple, but blunt
+
+An **API key** is a long secret string that identifies a program. You've used one. Keys are popular because they're simple, but they have weaknesses:
+
+- They usually **never expire**. A key leaked three years ago still works today.
+- They're often **all-powerful**: one key can do everything the account can.
+- Replacing one means updating every program that uses it, by hand.
+
+They're fine for many server-to-server uses, as long as they're stored in environment variables and **rotated** (replaced with a new one, and the old one turned off) now and then, and immediately after any leak.
+
+## Tokens: short-lived and limited
+
+An **access token** is also a secret string, but it's **issued** for a purpose and has limits built in:
+
+- It **expires**, often after an hour (`expires_in: 3600`). A leaked token is only useful for a short while. When it runs out, the program simply asks for a new one.
+- It has **scopes**: a list of what it may do, like `reports:read` or `orders:write`. A token that can only read reports can't delete anything, even if it's stolen.
+
+Tokens are sent in the standard **Authorization** header, with the word **Bearer** in front:
+
+```text
+Authorization: Bearer at_6d40877ec0e7e87ddd59
+```
+
+"Bearer" means "whoever holds this may use it". There's no extra check that it's really you, so a token has to be guarded like a password.
+
+<details>
+<summary>Quick check: a token is valid but only has the orders:read scope. It asks for the sales report, which needs reports:read. What status comes back?</summary>
+
+403 Forbidden. The API knows who's calling (authentication worked) but that token isn't allowed to read reports (authorization failed).
+</details>
+
+## Getting a token: client credentials
+
+Where does a program get a token? From a **token endpoint**: an address that hands out tokens in exchange for proof. For a program acting on its own behalf (not for a particular person), that proof is a **client id** and a **client secret**, issued when the program was registered with the service. This is called the **client credentials** flow:
+
+```python
+response = requests.post(BASE + "/oauth/token", data={
+    "grant_type": "client_credentials",
+    "client_id": "reports-app",
+    "client_secret": "practice-secret",
+    "scope": "reports:read",
+})
+token = response.json()["access_token"]
+```
+
+- **`data=`** sends the dictionary as **form fields**, the way an HTML form would, rather than as JSON. Token endpoints traditionally expect this format. (`json=` sends JSON, and the API's documentation says which one it wants.)
+- `grant_type` says which kind of exchange this is.
+- The answer includes the `access_token`, its `token_type` ("Bearer"), `expires_in` (seconds), and the `scope` it was given.
+
+This is one part of a standard called **OAuth 2.0**. The next lesson covers its most famous part, "Log in with Google".
+
+## Other things you'll see
+
+- **Basic auth** sends a username and password with **every** request, in the Authorization header. They're only lightly encoded, not encrypted, so it's only acceptable over HTTPS, and tokens are usually better.
+- **JWTs** (JSON Web Tokens, said "jots") are a very common token format. A JWT is three chunks of text separated by dots. The middle chunk holds readable details, like who it's for, its scopes and when it expires, and the last is a signature proving the server issued it. Anyone can **read** a JWT, so it must never hold secrets. They return in Stage 4.
+- **Sessions and cookies** from *Cookies and sessions* do the same job for websites in a browser. Tokens are more common for mobile apps and programs calling APIs.
+
+## How credentials leak
+
+The usual ways, all of them common:
+
+- **Committed to Git**, even "just for a minute". It's in the history forever, as you saw in Stage 1, and bots scan public repositories for keys within minutes.
+- **Put in browser code**, where anyone can read it with F12.
+- **Written to logs**: printing a URL or headers that contain a key. The flaw task is exactly this.
+- **Pasted into chats, tickets or AI assistants** while asking for help.
+
+When one leaks, the order matters: **revoke or rotate it first**, then clean up. Deleting it from the code doesn't help while the old key still works.
+
+<Callout kind="warn" title="Least privilege">
+Give each program its own credential, with only the scopes it needs. If the reporting tool's token leaks, the attacker can read reports and nothing else, and you can cancel just that one. This idea is called **least privilege**, and Stage 4 builds on it.
+</Callout>
+
+<ConsultantNote>
+Ask early in any engagement: "Where are your API keys, who can see them, and when were they last rotated?" You'll often find one all-powerful key shared by five systems and two ex-employees, written in a document. Moving to one scoped credential per system, kept in environment variables or a secret manager, is a cheap, high-value recommendation, and it makes the next leak a ten-minute fix instead of a crisis.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Authentication** | Proving who you are (fails with 401) |
+| **Authorization** | What you're allowed to do (fails with 403) |
+| **Authorization header** | The standard request header for credentials |
+| **Bearer token** | "Whoever holds this may use it", sent as `Authorization: Bearer …` |
+| **Access token** | A short-lived credential issued for a purpose |
+| **Token expiry** | Tokens stop working after a while, often an hour |
+| **Scopes** | Limits on what a token may do, like reports:read |
+| **Client credentials** | Getting a token with a program's client id and secret |
+| **`data=`** | Sends a dictionary as form fields instead of JSON |
+| **Basic auth** | A username and password with every request. HTTPS only |
+| **JWT** | A common, readable, signed token format |
+| **Key rotation** | Replacing a key with a new one, and turning the old one off |
+| **Least privilege** | Give each program only the access it needs, and nothing more |

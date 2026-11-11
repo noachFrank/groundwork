@@ -1,0 +1,428 @@
+---
+id: domains
+title: "Domains in practice: buying, pointing, and email records"
+order: 3
+topic: networks-and-the-web
+minutes: 55
+summary: How a domain is bought and renewed, how it's pointed at a website, what the records behind email do, and the two mistakes that take whole businesses offline.
+connectivity: offline
+prerequisites:
+  - id: dns
+    need: essential
+    why: Domain names, authoritative servers and record types are introduced there.
+  - id: python-dicts-data
+    need: essential
+    why: The task works with a list of dictionaries.
+  - id: publish-a-page
+    need: helpful
+    why: You published a site on github.io there. This lesson is how a real domain would point at it.
+revision: 1
+teaches: [registrar, tld, domain-renewal, nameserver-records, a-record, cname-record, subdomain, apex-domain, mx-record, txt-record, email-auth-records, in-text]
+uses: [dns, domain-name, dns-hierarchy, authoritative-server, dns-records, ttl-caching, dns-propagation, nslookup, ip-address, ipv4-ipv6, github-pages, static-site, function, return-statement, return-in-branch, for-loop, range-fn, list, append, dictionary, dict-key-access, if-statement, and-or-not, none-value, in-operator, build-list-pattern]
+predict:
+  id: p1
+  type: mcq
+  prompt: A bakery moves its website to a new web host. The site works on the new host, but from that day on, nobody can email the bakery. What's the most likely cause?
+  options:
+    - The new website has a bug
+    - The email records in DNS were lost in the move, so email no longer knows where to go
+    - Email doesn't work with new websites
+    - The bakery's laptop has a virus
+  answer: 1
+  why: Email is found through the domain's DNS, using MX records. Moving a website often means moving DNS to a new host, and if nobody copies the MX records across, email silently stops arriving. It's one of the most common small-business disasters.
+tasks:
+  - id: follow-records
+    type: python
+    title: Follow the records, and check email
+    instructions: |
+      You'll use: a `for` loop over a list of dictionaries, `range()`, `if` and `in` (from the Python lessons), plus `in` on text from this lesson.
+
+      `records` is one domain's DNS, written as Python data. The helper `find(records, name, kind)` is done for you: it returns the first record with that name and type, or `None`.
+
+      1. `resolve(records, name)` follows CNAME records until it reaches an A record, and returns that IP address. If the name has no A or CNAME record, return `None`. Give up and return `None` after 5 steps, so a loop of CNAMEs can't run forever.
+      2. `email_problems(records, domain)` returns a list of what's missing for email: `"MX"` if the domain has no MX record, and `"SPF"` if it has no TXT record whose value contains `v=spf1`. Return `[]` if both are there.
+    starter: |
+      records = [
+          {"name": "smiledental.example", "type": "A", "value": "203.0.113.10"},
+          {"name": "www.smiledental.example", "type": "CNAME", "value": "smiledental.example"},
+          {"name": "bookings.smiledental.example", "type": "CNAME", "value": "smiledental.bookingsapp.example"},
+          {"name": "smiledental.bookingsapp.example", "type": "A", "value": "198.51.100.7"},
+          {"name": "smiledental.example", "type": "MX", "value": "mail.protection.example"},
+          {"name": "smiledental.example", "type": "TXT", "value": "v=spf1 include:mail.protection.example -all"},
+      ]
+
+
+      def find(records, name, kind):
+          for record in records:
+              if record["name"] == name and record["type"] == kind:
+                  return record
+          return None
+
+
+      def resolve(records, name):
+          # Repeat at most 5 times (for step in range(5)):
+          #   If there's an A record for name, return its value.
+          #   Else if there's a CNAME for name, set name to its value and go round again.
+          #   Else return None.
+          # After the loop, return None.
+          pass
+
+
+      def email_problems(records, domain):
+          # Start with an empty list. Add "MX" if find(...) finds no MX record.
+          # Then look through the records for a TXT on this domain with "v=spf1" in its value.
+          pass
+
+
+      print(resolve(records, "www.smiledental.example"))
+      print(resolve(records, "bookings.smiledental.example"))
+      print(email_problems(records, "smiledental.example"))
+    tests:
+      - name: an A record resolves directly
+        code: |
+          got = resolve(records, "smiledental.example")
+          assert got == "203.0.113.10", f"Expected 203.0.113.10, got {got!r}."
+      - name: a CNAME is followed to its A record
+        code: |
+          got = resolve(records, "www.smiledental.example")
+          assert got == "203.0.113.10", f"www is a CNAME for smiledental.example, so expected 203.0.113.10, got {got!r}."
+      - name: a CNAME to another company's name is followed too
+        code: |
+          got = resolve(records, "bookings.smiledental.example")
+          assert got == "198.51.100.7", f"Expected 198.51.100.7, got {got!r}."
+      - name: an unknown name gives None
+        code: |
+          assert resolve(records, "shop.smiledental.example") is None, "There are no records for shop, so return None."
+      - name: a CNAME loop gives up instead of running forever
+        code: |
+          loop = [{"name": "a.example", "type": "CNAME", "value": "b.example"}, {"name": "b.example", "type": "CNAME", "value": "a.example"}]
+          assert resolve(loop, "a.example") is None, "a points to b and b points to a. Stop after 5 steps and return None."
+      - name: email_problems is empty when MX and SPF are there
+        code: |
+          got = email_problems(records, "smiledental.example")
+          assert got == [], f"Both records exist, so expected [], got {got!r}."
+      - name: email_problems spots a missing MX and SPF
+        code: |
+          moved = [{"name": "bakery.example", "type": "A", "value": "203.0.113.50"}, {"name": "bakery.example", "type": "TXT", "value": "google-site-verification=abc123"}]
+          got = email_problems(moved, "bakery.example")
+          assert got == ["MX", "SPF"], f"There's no MX, and the only TXT isn't SPF, so expected ['MX', 'SPF'], got {got!r}."
+      - name: email_problems spots only a missing SPF
+        code: |
+          some = [{"name": "bakery.example", "type": "MX", "value": "mx.mailhost.example"}]
+          got = email_problems(some, "bakery.example")
+          assert got == ["SPF"], f"Expected ['SPF'], got {got!r}."
+    solution: |
+      records = [
+          {"name": "smiledental.example", "type": "A", "value": "203.0.113.10"},
+          {"name": "www.smiledental.example", "type": "CNAME", "value": "smiledental.example"},
+          {"name": "bookings.smiledental.example", "type": "CNAME", "value": "smiledental.bookingsapp.example"},
+          {"name": "smiledental.bookingsapp.example", "type": "A", "value": "198.51.100.7"},
+          {"name": "smiledental.example", "type": "MX", "value": "mail.protection.example"},
+          {"name": "smiledental.example", "type": "TXT", "value": "v=spf1 include:mail.protection.example -all"},
+      ]
+
+
+      def find(records, name, kind):
+          for record in records:
+              if record["name"] == name and record["type"] == kind:
+                  return record
+          return None
+
+
+      def resolve(records, name):
+          for step in range(5):
+              a = find(records, name, "A")
+              if a is not None:
+                  return a["value"]
+              cname = find(records, name, "CNAME")
+              if cname is None:
+                  return None
+              name = cname["value"]
+          return None
+
+
+      def email_problems(records, domain):
+          problems = []
+          if find(records, domain, "MX") is None:
+              problems.append("MX")
+          has_spf = False
+          for record in records:
+              if record["name"] == domain and record["type"] == "TXT" and "v=spf1" in record["value"]:
+                  has_spf = True
+          if not has_spf:
+              problems.append("SPF")
+          return problems
+    wrong: |
+      records = []
+
+
+      def find(records, name, kind):
+          for record in records:
+              if record["name"] == name and record["type"] == kind:
+                  return record
+          return None
+
+
+      def resolve(records, name):
+          a = find(records, name, "A")
+          if a is not None:
+              return a["value"]
+          return None
+
+
+      def email_problems(records, domain):
+          if find(records, domain, "MX") is None:
+              return ["MX"]
+          return []
+  - id: website-move
+    type: case
+    title: "Client call: \"our email stopped\""
+    instructions: A real pattern. Work out what happened and how to stop it happening again.
+    scenario: |
+      A small accounting firm, Ledger & Co, owns ledgerco.example. Last Friday a freelancer moved their website to a new web host. As part of the move, the freelancer changed the domain's name servers to the new host's, so the new host now answers all DNS questions for ledgerco.example. The website works. Since Friday, the firm has received no email at all, and clients are phoning to ask why nobody answers.
+    questions:
+      - prompt: What's the most likely cause?
+        choices:
+          - text: The new DNS host was only given the website's records. The MX records, which say where email goes, were never copied across
+            score: 2
+            why: Changing name servers moves all of the domain's DNS to the new host. Anything not recreated there, like MX and SPF records, simply stops existing.
+          - text: The email provider is down
+            score: 1
+            why: Possible, but the timing points at the move. Check the domain's DNS first.
+          - text: The new website is too big
+            score: 0
+            why: Website size has nothing to do with email arriving.
+      - prompt: How do you confirm it quickly?
+        choices:
+          - text: "Look up the domain's MX records, with `nslookup -type=MX ledgerco.example`, and compare with what the email provider says they should be"
+            score: 2
+            why: Direct evidence in seconds. No MX records, or wrong ones, confirms it.
+          - text: Send a test email and wait a day
+            score: 0
+            why: Slow, and it doesn't tell you why it failed.
+          - text: Ask the freelancer if they broke it
+            score: 1
+            why: Worth asking, but you can check the facts yourself first, without putting anyone on the defensive.
+      - prompt: After restoring the MX and SPF records, what do you recommend for the future?
+        choices:
+          - text: Keep a written copy of every DNS record, check it before any DNS change, and turn on auto-renew for the domain with a contact email that's monitored
+            score: 2
+            why: A record of DNS turns a disaster into a five-minute fix. Auto-renew prevents the other classic way small businesses lose everything.
+          - text: Never change anything again
+            score: 0
+            why: Not realistic. Changes are fine when they're done carefully.
+          - text: Move email to the same host as the website
+            score: 1
+            why: Sometimes sensible, but it doesn't stop the same mistake next time. Records and checklists do.
+    passScore: 5
+recall:
+  - id: r1
+    type: mcq
+    prompt: What does a domain registrar do?
+    options:
+      - Hosts your website
+      - Sells and renews domain names, and records which name servers answer for your domain
+      - Sends your email
+      - Issues HTTPS certificates
+    answer: 1
+    why: The registrar is where you "rent" the name. The website, the DNS and the email can each be with different companies.
+  - id: r2
+    type: mcq
+    prompt: You want www.shop.example to show the site hosted at shopsite.hostingco.example. Which record fits?
+    options:
+      - A CNAME for www, pointing at shopsite.hostingco.example
+      - An MX record
+      - A TXT record
+      - An A record pointing at the word "hostingco"
+    answer: 0
+    why: A CNAME says "this name is another name for that one". The hosting company can then change its IP addresses without you touching your DNS.
+  - id: r3
+    type: short
+    prompt: Which DNS record type tells the world where to deliver email for a domain?
+    accept: ['\bmx\b']
+    answerText: MX
+  - id: r4
+    type: self
+    prompt: Name the two classic mistakes that take a small business's domain offline, and how to prevent each one.
+    modelAnswer: Letting the domain expire, because the renewal reminder went to an old email address or an ex-employee. Prevent it with auto-renew and a monitored contact address. And losing records during a DNS move, especially MX records for email. Prevent it by keeping a copy of every record and checking them after any change.
+cards:
+  - id: three-companies
+    front: Registrar, DNS host and web host. What does each do?
+    back: "Registrar: sells and renews the name, and says which name servers answer for it. DNS host: answers the DNS questions (the records). Web host: runs the website. They can be three different companies."
+  - id: a-vs-cname
+    front: A record vs. CNAME?
+    back: "A: name → IP address. CNAME: name → another name (follow that one instead). Hosting companies usually ask you for a CNAME."
+  - id: mx-txt
+    front: What do MX and TXT records do?
+    back: "MX: which servers receive email for the domain. TXT: free text, used for proving you own the domain and for email anti-forgery rules like SPF, DKIM and DMARC."
+  - id: apex
+    front: What's the apex of a domain?
+    back: The bare name, like example.com, with nothing in front. It can't be a CNAME, so it usually gets A records (or a provider's special alias record).
+testOut:
+  - id: t1
+    type: mcq
+    prompt: A domain expired last week. What happens?
+    options:
+      - Nothing, domains last forever once bought
+      - The website and email stop working, and after a grace period anyone can buy the name
+      - Only the website stops
+      - The registrar renews it for free
+    answer: 1
+    why: Everything that depends on the name stops. Expired domains are sometimes snapped up quickly by others, which can be very hard to undo.
+  - id: t2
+    type: mcq
+    prompt: A service asks you to add a TXT record containing "verify=8f3a…" to your domain. Why?
+    options:
+      - To prove you control the domain
+      - To make the site faster
+      - To receive email
+      - To get a new IP address
+    answer: 0
+    why: Only someone who controls a domain's DNS can add records to it, so a TXT record with a code the service gave you proves ownership.
+docs:
+  - title: "MDN: What is a domain name?"
+    url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Howto/Web_mechanics/What_is_a_domain_name
+  - title: "Cloudflare Learning: DNS records"
+    url: https://www.cloudflare.com/learning/dns/dns-records/
+  - title: "GitHub Docs: Managing a custom domain for GitHub Pages"
+    url: https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site
+videos: []
+---
+
+## In this lesson
+
+In *DNS* you learned how a name becomes an IP address. This lesson is DNS from the side of someone who **owns** a domain, which is what your clients will be:
+
+- Who you buy a domain from, and the renewal trap.
+- How a domain is **pointed** at a website, with **A** and **CNAME** records.
+- **Subdomains** and the **apex**.
+- The records behind **email**: **MX**, and the **TXT** records that fight forged email.
+- The two mistakes that take small businesses offline, and how to prevent them.
+
+## Buying a domain
+
+A domain name isn't bought forever. It's **rented**, usually a year at a time, from a **registrar**: a company allowed to sell names, like Namecheap, GoDaddy, Cloudflare or Squarespace.
+
+The ending of the name is the **TLD** (top-level domain): `.com`, `.org`, `.uk`, `.dev` and hundreds more. Each TLD is run by one organization, which is why prices differ: a `.com` might cost $10–15 a year, and some fancy endings far more.
+
+When you register a name, the registrar records two important things:
+
+- **Who owns it**, with a contact email. Renewal reminders and important warnings go there.
+- **Which name servers** answer DNS questions for it. These are the **authoritative servers** from the DNS lesson. Changing them hands your whole domain's DNS to a different company.
+
+### The renewal trap
+
+If nobody renews it, the domain **expires**. The website and email stop, and after a grace period anyone can buy the name. This happens to real businesses all the time, usually because the reminders went to an ex-employee's email address or an old web designer.
+
+<Callout kind="warn" title="The cheapest insurance there is">
+Turn on **auto-renew**, make sure the contact email is one someone actually reads, and know which account the domain lives in. Ask every new client: "Who controls your domain, and when does it renew?" Many don't know.
+</Callout>
+
+## Three companies, one name
+
+People often assume the domain, the DNS and the website are all one thing. They're three jobs, and they're often done by three different companies:
+
+| Job | Who does it | Example |
+| --- | --- | --- |
+| **Registrar** | Rents you the name | Namecheap |
+| **DNS host** | Answers DNS questions with your records | Cloudflare (often the registrar too) |
+| **Web host** | Runs the website | GitHub Pages, Vercel, Squarespace |
+
+Knowing which is which is half of fixing any domain problem.
+
+## Pointing a domain at a website
+
+Your DNS host keeps a list of **records**. You met the types in the DNS lesson. Here's how you use the two main ones in practice.
+
+An **A record** points a name straight at an IPv4 address (an **AAAA** record does the same for IPv6):
+
+```text
+smiledental.example.      A      203.0.113.10
+```
+
+A **CNAME** record says "this name is just another name for that one, so go and look that one up instead":
+
+```text
+www.smiledental.example.  CNAME  smiledental.example.
+```
+
+Web hosts usually ask for a CNAME, because it lets them change their own IP addresses whenever they like without you touching your DNS. For example, to use your own domain with GitHub Pages, you'd add a CNAME pointing at `yourname.github.io`.
+
+Following a CNAME is exactly what you'll code in the task: look up the name, and if it's a CNAME, look up the name it points to, until you reach an A record.
+
+<details>
+<summary>Quick check: a hosting company tells you "point www at shops.hostco.example". Which record do you add?</summary>
+
+A CNAME for `www` with the value `shops.hostco.example`.
+</details>
+
+## Subdomains and the apex
+
+Anything you put in front of the domain is a **subdomain**: `www.smiledental.example`, `bookings.smiledental.example`, `staging.smiledental.example`. You can make as many as you like, for free, by adding records. Each can point somewhere completely different: the bookings subdomain might point at a booking company's servers.
+
+The bare name, `smiledental.example`, is called the **apex** (or "root" or "naked" domain). It has one quirk: it **can't be a CNAME**, because of how DNS rules work. So the apex usually gets an A record, or a special alias record that some DNS hosts offer. A very common setup is: the apex has an A record, and `www` is a CNAME pointing at the apex.
+
+## The records behind email
+
+Email finds its way using DNS too, with completely separate records from the website.
+
+**MX** ("mail exchanger") records say which servers receive email for the domain:
+
+```text
+smiledental.example.      MX     10 mail.protection.example.
+```
+
+The number is a priority: lower is tried first, so a domain can have backup mail servers. If a domain has **no** MX records, email to it has nowhere to go.
+
+**TXT** records hold free text. Two big uses:
+
+1. **Proving you own a domain.** A service (Google, Microsoft, a newsletter tool) gives you a code to add as a TXT record. Only the domain's owner can add records, so finding it proves you're in control.
+2. **Stopping forged email.** Anyone can write "From: boss@smiledental.example" on an email. Three TXT-based standards let receiving mail servers check:
+   - **SPF** lists which servers are allowed to send email for the domain. It starts `v=spf1`.
+   - **DKIM** publishes a key used to check a signature on each email.
+   - **DMARC** tells receivers what to do when a check fails, like "send it to spam".
+
+Together, these **email authentication records** decide whether a client's invoices land in the inbox or the spam folder. Big email providers now reject bulk email from domains without them.
+
+<Callout title="in works on text too">
+In the Python lessons you used `in` to check whether a key is in a dictionary or an item is in a list. It also works on **text**: `"v=spf1" in "v=spf1 include:mail.example -all"` is `True`, because the first text appears somewhere inside the second. You'll use it in the task to spot SPF records.
+</Callout>
+
+## Looking at a real domain's records
+
+When you're online, `nslookup` can ask for any record type with `-type=`:
+
+```powershell
+nslookup -type=MX gmail.com
+nslookup -type=TXT gmail.com
+```
+
+This is the first thing to check when email stops arriving, or when a client says "I added the record but it doesn't work". Remember **TTL** from the DNS lesson: a change can take a while to reach everyone, so check the records at the source (the DNS host's dashboard) as well as what your own computer sees.
+
+## The two disasters
+
+Almost every domain emergency in a small business is one of these:
+
+1. **The domain expired.** Prevent it with auto-renew and a monitored contact email.
+2. **Records were lost in a move.** Someone changed the **name servers** to a new DNS host, recreated the website's records there, and forgot the MX and TXT records. The website works, so nobody notices for days that no email is arriving. Prevent it by **keeping a copy of every record** before any DNS change, and checking them all afterwards.
+
+<ConsultantNote>
+Early in any engagement, write down the client's whole domain setup: registrar and renewal date, who has the login, the DNS host, every record, and where the website and email live. It takes half an hour, it often uncovers a near-disaster (like the domain being in an ex-employee's personal account), and it makes you the person who knows how everything is connected.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Registrar** | The company you rent a domain from, yearly |
+| **TLD** | The ending of a domain, like .com or .uk |
+| **Domain renewal** | Paying for the next period. If it lapses, the site and email stop |
+| **Name servers** | Which DNS host answers for a domain. Changing them moves all its records |
+| **A record** | A name pointing at an IPv4 address (AAAA for IPv6) |
+| **CNAME record** | A name that's an alias for another name |
+| **Subdomain** | A name in front of the domain, like bookings.example.com |
+| **Apex** | The bare domain, like example.com. It can't be a CNAME |
+| **MX record** | Which servers receive email for the domain |
+| **TXT record** | Free text, used for ownership proofs and email rules |
+| **SPF, DKIM, DMARC** | TXT-based records that help stop forged email |
+| **`in` on text** | `"a" in "cat"` is True when the first text appears inside the second |

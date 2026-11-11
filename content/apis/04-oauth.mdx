@@ -1,0 +1,456 @@
+---
+id: oauth
+title: "OAuth: \"Log in with Google\" and connecting accounts"
+order: 4
+topic: software-talking
+minutes: 60
+summary: How one app gets limited access to your account on another without ever seeing your password. Covers the authorization code flow step by step, the state check, refresh tokens, and the one secret that must never reach a browser.
+connectivity: offline
+prerequisites:
+  - id: api-auth
+    need: essential
+    why: Access tokens, scopes and the token endpoint come from there.
+  - id: javascript-arrays
+    need: essential
+    why: The JavaScript task works with objects.
+  - id: rest-design
+    need: helpful
+    why: Query strings, which OAuth uses to pass details along.
+revision: 1
+teaches: [oauth, delegated-access, oauth-roles, consent-screen, redirect-uri, authorization-code, oauth-state, refresh-token, client-secret-server-side, openid-connect, pkce, encode-uri-component]
+uses: [access-token, bearer-token, scopes, client-credentials, requests-data-form, token-expiry, authorization-header, status-401-403, query-string, keys-in-browser, secret, frontend, backend, browser, https, api, requests-intro, status-code-attr, response-json-py, function, return-statement, dictionary, if-statement, js-function, const-let, js-object, js-dot-access, template-literal, triple-equals, js-logic-operators, js-null-undefined, run-and-check]
+predict:
+  id: p1
+  type: mcq
+  prompt: A photo-printing app wants to print pictures from your Google Photos. What's the safe way for it to get access?
+  options:
+    - You type your Google password into the printing app
+    - The app sends you to Google, you log in there and approve "read your photos", and Google gives the app a limited token
+    - You email your photos to the app
+    - The app guesses your password
+  answer: 1
+  why: That's OAuth. Your password only ever goes to Google. The app gets a token that can only read photos, and you can cancel it in your Google account at any time, without changing your password.
+tasks:
+  - id: oauth-js
+    type: javascript
+    title: Build the login link, then check the reply
+    instructions: |
+      You'll use: objects and template literals (from the JavaScript lessons), plus `encodeURIComponent()` from this lesson.
+
+      1. `authorizeLink(config, state)` returns the address to send the user to. It's `config.authorizeUrl`, then `?`, then these query string parts, **in this order**, joined with `&`: `response_type=code`, `client_id=…`, `redirect_uri=…`, `scope=…`, `state=…`. Pass every value except `code` through `encodeURIComponent()`.
+      2. `handleCallback(query, expectedState)` gets the query string the user came back with, as an object, and returns:
+         - `{ ok: false, reason: "denied" }` if `query.error` is `"access_denied"` (the user clicked "Cancel"), or `{ ok: false, reason: query.error }` for any other error,
+         - otherwise `{ ok: false, reason: "state-mismatch" }` if `query.state` isn't exactly `expectedState`,
+         - otherwise `{ ok: false, reason: "no-code" }` if there's no `query.code`,
+         - otherwise `{ ok: true, code: query.code }`.
+    starter: |
+      const config = {
+        authorizeUrl: "https://accounts.example/authorize",
+        clientId: "photoprint",
+        redirectUri: "https://photoprint.example/callback",
+        scope: "photos.read profile",
+      };
+
+      function authorizeLink(config, state) {
+        // `${config.authorizeUrl}?response_type=code&client_id=${encodeURIComponent(config.clientId)}&...`
+        return config.authorizeUrl;
+      }
+
+      function handleCallback(query, expectedState) {
+        // Check query.error first, then the state, then the code.
+        return { ok: true, code: query.code };
+      }
+
+      console.log(authorizeLink(config, "x7Kq2"));
+      console.log(handleCallback({ code: "abc", state: "x7Kq2" }, "x7Kq2"));
+      console.log(handleCallback({ code: "abc", state: "evil" }, "x7Kq2"));
+    tests:
+      - name: the link has every part, in order, encoded
+        code: |
+          const got = authorizeLink(config, "x7Kq2");
+          const want = "https://accounts.example/authorize?response_type=code&client_id=photoprint&redirect_uri=https%3A%2F%2Fphotoprint.example%2Fcallback&scope=photos.read%20profile&state=x7Kq2";
+          assert(got === want, "Expected\n" + want + "\ngot\n" + got);
+      - name: the link uses the config it's given
+        code: |
+          const got = authorizeLink({ authorizeUrl: "https://a.example/auth", clientId: "c1", redirectUri: "http://localhost:4399/cb", scope: "x" }, "s s");
+          assert(got === "https://a.example/auth?response_type=code&client_id=c1&redirect_uri=http%3A%2F%2Flocalhost%3A4399%2Fcb&scope=x&state=s%20s", "Got " + got);
+      - name: a good reply gives the code
+        code: |
+          const got = handleCallback({ code: "abc", state: "x7Kq2" }, "x7Kq2");
+          assert(got.ok === true && got.code === "abc", "Expected { ok: true, code: 'abc' }, got " + JSON.stringify(got));
+      - name: a wrong state is refused
+        code: |
+          const got = handleCallback({ code: "abc", state: "evil" }, "x7Kq2");
+          assert(got.ok === false && got.reason === "state-mismatch", "The state doesn't match what we sent, so refuse it. Got " + JSON.stringify(got));
+      - name: a missing state is refused
+        code: |
+          const got = handleCallback({ code: "abc" }, "x7Kq2");
+          assert(got.ok === false && got.reason === "state-mismatch", "No state at all doesn't match either. Got " + JSON.stringify(got));
+      - name: the user saying no is handled
+        code: |
+          const got = handleCallback({ error: "access_denied", state: "x7Kq2" }, "x7Kq2");
+          assert(got.ok === false && got.reason === "denied", "Got " + JSON.stringify(got));
+          const other = handleCallback({ error: "server_error", state: "x7Kq2" }, "x7Kq2");
+          assert(other.ok === false && other.reason === "server_error", "Other errors pass their name through. Got " + JSON.stringify(other));
+      - name: no code is refused
+        code: |
+          const got = handleCallback({ state: "x7Kq2" }, "x7Kq2");
+          assert(got.ok === false && got.reason === "no-code", "Got " + JSON.stringify(got));
+    solution: |
+      const config = {
+        authorizeUrl: "https://accounts.example/authorize",
+        clientId: "photoprint",
+        redirectUri: "https://photoprint.example/callback",
+        scope: "photos.read profile",
+      };
+
+      function authorizeLink(config, state) {
+        return `${config.authorizeUrl}?response_type=code` +
+          `&client_id=${encodeURIComponent(config.clientId)}` +
+          `&redirect_uri=${encodeURIComponent(config.redirectUri)}` +
+          `&scope=${encodeURIComponent(config.scope)}` +
+          `&state=${encodeURIComponent(state)}`;
+      }
+
+      function handleCallback(query, expectedState) {
+        if (query.error === "access_denied") {
+          return { ok: false, reason: "denied" };
+        }
+        if (query.error) {
+          return { ok: false, reason: query.error };
+        }
+        if (query.state !== expectedState) {
+          return { ok: false, reason: "state-mismatch" };
+        }
+        if (!query.code) {
+          return { ok: false, reason: "no-code" };
+        }
+        return { ok: true, code: query.code };
+      }
+    wrong: |
+      const config = {
+        authorizeUrl: "https://accounts.example/authorize",
+        clientId: "photoprint",
+        redirectUri: "https://photoprint.example/callback",
+        scope: "photos.read profile",
+      };
+
+      function authorizeLink(config, state) {
+        return `${config.authorizeUrl}?response_type=code&client_id=${config.clientId}&redirect_uri=${config.redirectUri}&scope=${config.scope}&state=${state}`;
+      }
+
+      function handleCallback(query, expectedState) {
+        if (query.error) {
+          return { ok: false, reason: query.error };
+        }
+        return { ok: true, code: query.code };
+      }
+  - id: oauth-python
+    type: python
+    title: Swap the code for tokens, and refresh
+    instructions: |
+      You'll use: `requests.post` with `data=` and the Authorization header (from *Proving who's calling*), and an `if` on the status code.
+
+      This is the **server** side of the flow, where the client secret lives. The practice API plays Google's part: the code `practice-auth-code` is what a user's browser would have brought back.
+
+      1. `exchange(code)` POSTs to `BASE + "/oauth/token"` with the form fields `grant_type` set to `authorization_code`, plus `code`, `redirect_uri` (use `REDIRECT_URI`), `client_id` and `client_secret`. Return the whole `.json()` answer. A good one contains `access_token` and `refresh_token`.
+      2. `report(access_token, refresh_token)` GETs `/reports/sales` with the bearer token. If the answer is **401**, get a new access token by POSTing to the token endpoint with `grant_type` set to `refresh_token`, the `refresh_token`, `client_id` and `client_secret`. Then try the report **once more** with the new token. Return the final status code.
+    starter: |
+      import requests
+
+      BASE = "http://localhost:4314"
+      CLIENT_ID = "reports-app"
+      CLIENT_SECRET = "practice-secret"
+      REDIRECT_URI = "http://localhost:4399/callback"
+
+
+      def exchange(code):
+          pass
+
+
+      def report(access_token, refresh_token):
+          # 1. Try the report with the access token.
+          # 2. If it's 401, refresh, then try once more with the new access_token.
+          pass
+
+
+      tokens = exchange("practice-auth-code")
+      print(tokens)
+      print(report(tokens["access_token"], tokens["refresh_token"]))
+      print(report("practice-expired-token", tokens["refresh_token"]))
+    tests:
+      - name: exchange gives an access token and a refresh token
+        code: |
+          got = exchange("practice-auth-code")
+          assert "access_token" in got and "refresh_token" in got, f"Expected both tokens, got {got}. Check grant_type, redirect_uri and the client id and secret."
+      - name: a wrong code is refused
+        code: |
+          got = exchange("made-up-code")
+          assert got.get("error") == "invalid_grant", f"The practice API should refuse a made-up code. Got {got}."
+      - name: a working token gets the report
+        code: |
+          tokens = exchange("practice-auth-code")
+          got = report(tokens["access_token"], tokens["refresh_token"])
+          assert got == 200, f"Expected 200, got {got}."
+      - name: an expired token is refreshed and retried
+        code: |
+          tokens = exchange("practice-auth-code")
+          got = report("practice-expired-token", tokens["refresh_token"])
+          assert got == 200, f"The first try gets 401. Refresh, retry, and the second try should be 200. Got {got}."
+    solution: |
+      import requests
+
+      BASE = "http://localhost:4314"
+      CLIENT_ID = "reports-app"
+      CLIENT_SECRET = "practice-secret"
+      REDIRECT_URI = "http://localhost:4399/callback"
+
+
+      def exchange(code):
+          response = requests.post(BASE + "/oauth/token", data={
+              "grant_type": "authorization_code",
+              "code": code,
+              "redirect_uri": REDIRECT_URI,
+              "client_id": CLIENT_ID,
+              "client_secret": CLIENT_SECRET,
+          })
+          return response.json()
+
+
+      def get_report(token):
+          return requests.get(BASE + "/reports/sales", headers={"Authorization": "Bearer " + token})
+
+
+      def report(access_token, refresh_token):
+          response = get_report(access_token)
+          if response.status_code == 401:
+              fresh = requests.post(BASE + "/oauth/token", data={
+                  "grant_type": "refresh_token",
+                  "refresh_token": refresh_token,
+                  "client_id": CLIENT_ID,
+                  "client_secret": CLIENT_SECRET,
+              }).json()
+              response = get_report(fresh["access_token"])
+          return response.status_code
+    wrong: |
+      import requests
+
+      BASE = "http://localhost:4314"
+      CLIENT_ID = "reports-app"
+      CLIENT_SECRET = "practice-secret"
+      REDIRECT_URI = "http://localhost:4399/callback"
+
+
+      def exchange(code):
+          response = requests.post(BASE + "/oauth/token", data={
+              "grant_type": "authorization_code",
+              "code": code,
+              "redirect_uri": REDIRECT_URI,
+              "client_id": CLIENT_ID,
+              "client_secret": CLIENT_SECRET,
+          })
+          return response.json()
+
+
+      def report(access_token, refresh_token):
+          return requests.get(BASE + "/reports/sales", headers={"Authorization": "Bearer " + access_token}).status_code
+recall:
+  - id: r1
+    type: mcq
+    prompt: In OAuth, who sees your password?
+    options:
+      - Only the service you log in to, like Google
+      - The app that wants access
+      - Both
+      - Nobody, because OAuth doesn't use passwords
+    answer: 0
+    why: You log in on Google's own page. The app never sees your password, only a code and then a limited token.
+  - id: r2
+    type: mcq
+    prompt: What's the `state` value for?
+    options:
+      - The app sends a random value and checks that the same one comes back, so it only accepts replies to logins it started
+      - It says which country you're in
+      - It stores the access token
+      - It's the user's password
+    answer: 0
+    why: Without it, an attacker could trick your browser into completing a login they started, connecting their account to yours.
+  - id: r3
+    type: short
+    prompt: What does an app use to get a new access token when the old one expires, without asking the user again?
+    accept: ['refresh']
+    answerText: A refresh token
+  - id: r4
+    type: self
+    prompt: Why must the code-for-token swap happen on the app's server, not in the browser?
+    modelAnswer: The swap needs the app's client secret. Anything in browser code can be read by anyone with F12, so a client secret in the frontend is public, and anyone could pretend to be the app. The server keeps the secret, does the swap, and holds the tokens. Apps with no server at all use PKCE instead of a secret.
+cards:
+  - id: oauth
+    front: What problem does OAuth solve?
+    back: Letting one app use your account on another service, with limited permissions you can cancel, without ever giving it your password. This is delegated access.
+  - id: steps
+    front: The authorization code flow in four steps?
+    back: "1. The app sends you to the service with client_id, scope, redirect_uri and state. 2. You log in there and approve. 3. You're sent back to the redirect_uri with a code and the state. 4. The app's server swaps the code (plus its client secret) for tokens."
+  - id: refresh
+    front: Access token vs. refresh token?
+    back: "Access token: short-lived, sent with each API call. Refresh token: long-lived, kept safely on the server, used only to get new access tokens."
+  - id: oidc
+    front: OAuth vs. OpenID Connect?
+    back: "OAuth is about access: what an app may do with your account. OpenID Connect adds identity on top: who you are. That's what \"Log in with Google\" uses."
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Why must the redirect_uri be registered in advance with the service?
+    options:
+      - So the service only ever sends codes to the app's real address, and not to an attacker's site
+      - To make it faster
+      - So the user can type it
+      - It doesn't need to be
+    answer: 0
+    why: If any address were accepted, an attacker could make a login link that sends your code to their own server.
+  - id: t2
+    type: mcq
+    prompt: What does `encodeURIComponent("a b/c")` return?
+    options: ['"a%20b%2Fc"', '"a b/c"', '"a+b+c"', An error]
+    answer: 0
+    why: Spaces, slashes and other special characters are replaced with % codes, so a value can sit safely inside a query string.
+docs:
+  - title: "OAuth 2.0 (oauth.net)"
+    url: https://oauth.net/2/
+  - title: "OAuth 2.0: Authorization code grant"
+    url: https://oauth.net/2/grant-types/authorization-code/
+  - title: "OAuth 2.0 Simplified (Aaron Parecki)"
+    url: https://www.oauth.com/
+  - title: "MDN: encodeURIComponent()"
+    url: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
+videos: []
+---
+
+## In this lesson
+
+"Log in with Google", "Connect your Dropbox", "Allow this app to post to your calendar". They all use one standard: **OAuth**. This lesson walks through it slowly, because it looks complicated until you see that every step has a reason:
+
+- The problem OAuth solves: **delegated access**.
+- The four **roles**, and the **authorization code flow**, step by step.
+- The **state** check, and why the **client secret** must stay on a server.
+- **Refresh tokens**, **OpenID Connect** and **PKCE**, briefly.
+- **`encodeURIComponent()`**, for building the links.
+
+## The problem
+
+Before OAuth, if a printing app wanted your photos from another service, it asked for your **password** for that service. That was terrible:
+
+- The app could do **anything** with your account, not just read photos.
+- You couldn't cancel its access without changing your password, which also locked out everything else.
+- If the app was hacked, so was every user's account.
+
+OAuth's answer is **delegated access**: you let the app do **one specific thing** on your behalf, with a token you can cancel, and your password never leaves the service you log in to.
+
+## Four roles
+
+| Role | In our example |
+| --- | --- |
+| **The user** (resource owner) | You |
+| **The client**: the app that wants access | PhotoPrint |
+| **The authorization server**: where you log in and approve | Google's sign-in |
+| **The resource server**: the API with your stuff | Google Photos API |
+
+Before any of this, PhotoPrint registered with Google and got a **client id** (public) and a **client secret** (private), and told Google its **redirect URI**: the exact address where users should be sent back.
+
+## The authorization code flow
+
+Step through it:
+
+<Viz name="oauth-flow" />
+
+In words:
+
+1. **Send the user to the authorization server.** PhotoPrint sends your browser to a link like:
+
+   ```text
+   https://accounts.example/authorize?response_type=code&client_id=photoprint
+     &redirect_uri=https%3A%2F%2Fphotoprint.example%2Fcallback
+     &scope=photos.read&state=x7Kq2
+   ```
+
+   It says who's asking (`client_id`), what it wants (`scope`), where to send you back (`redirect_uri`), and a random `state` (more on that below).
+
+2. **You log in and approve.** On Google's own page, so PhotoPrint never sees your password. Google shows a **consent screen**: "PhotoPrint wants to: see your photos. Allow?"
+
+3. **Back to the app, with a code.** Google sends your browser to the redirect URI with a short-lived, single-use **authorization code**: `https://photoprint.example/callback?code=Splx10BeZQ&state=x7Kq2`.
+
+4. **Swap the code for tokens, server to server.** PhotoPrint's **server** sends the code, plus its **client secret**, directly to Google's token endpoint. Google answers with an **access token** (and often a **refresh token**).
+
+5. **Use the token.** PhotoPrint calls the Photos API with `Authorization: Bearer …`, exactly as in the last lesson.
+
+Why the extra step with a code, instead of putting the token straight in the redirect? Because the redirect travels through the browser, where addresses end up in history and logs. The code is useless without the client secret, and it works only once, for a few minutes.
+
+<details>
+<summary>Quick check: at which step does the client secret get used, and where?</summary>
+
+Step 4, when the app's server swaps the code for tokens. It's sent server to server, never through the browser.
+</details>
+
+## The state check
+
+When the user comes back to the redirect URI, how does the app know this reply belongs to a login **it** started? An attacker could start a login with **their own** account, then trick you into opening the callback link with **their** code. Your session would then be connected to the attacker's account, and anything you upload goes to them.
+
+So before step 1, the app makes a random **state** value and remembers it (in the user's session). When the user comes back, it checks that the `state` in the reply **matches exactly**. No match, no login. You'll write that check in the JavaScript task.
+
+## The client secret stays on the server
+
+The swap in step 4 needs the **client secret**, and the same rule applies as for API keys: anything in browser code is public. If the secret is in frontend JavaScript, anyone can read it and pretend to be the app.
+
+So the flow above is for apps **with a server**. Apps with no server of their own, like single-page web apps and mobile apps, use an addition called **PKCE** (said "pixie"). The app makes a random one-time secret at the start of each login, sends a scrambled version in step 1, and the real one in step 4. A stolen code is useless without it, and nothing permanent has to be hidden in the app.
+
+<Callout kind="warn" title="A very common AI mistake">
+Ask an AI for "Google login in React" and it may put the client secret, or the whole code exchange, in the frontend. That's the API-key-in-the-browser mistake again. The exchange belongs on your server, or the app should use PKCE.
+</Callout>
+
+## Refresh tokens
+
+Access tokens expire, often after an hour. Asking the user to log in and approve again every hour would be awful. So the token endpoint can also hand out a **refresh token**: a long-lived credential, kept safely on the server, used for one thing only: getting a **new access token** when the old one expires.
+
+The typical pattern, which you'll code in the Python task:
+
+1. Call the API with the access token.
+2. If it answers **401** because the token expired, POST the refresh token to the token endpoint (`grant_type=refresh_token`).
+3. Retry the call with the new access token, **once**.
+
+Users can cancel an app's access in their account settings ("Third-party apps with account access"). That revokes the refresh token, and the app has to ask again.
+
+## OpenID Connect: logging in, not just access
+
+OAuth itself is about **access**: what an app may do. "Log in with Google" needs **identity**: who you are. **OpenID Connect** is a thin layer on top of OAuth that adds exactly that: along with the access token, the app gets an **ID token** saying who logged in. When people say "we use OAuth for login", they usually mean OpenID Connect.
+
+## JavaScript: encodeURIComponent
+
+A query string can't contain raw spaces, `&`, `/` or `?` inside a value, because they'd be confused with the address's own structure. **`encodeURIComponent()`** replaces such characters with `%` codes:
+
+```javascript
+encodeURIComponent("https://photoprint.example/callback")  // "https%3A%2F%2Fphotoprint.example%2Fcallback"
+encodeURIComponent("photos.read profile")                  // "photos.read%20profile"
+```
+
+`%3A` is a colon, `%2F` is a slash, and `%20` is a space. Python's `params=` does the same thing for you automatically.
+
+<ConsultantNote>
+"Can we let users log in with Google or Microsoft?" and "can we connect to the client's Salesforce?" are everyday requests, and both are OAuth. Knowing the flow lets you estimate the work honestly (registering the app, the consent screen, storing refresh tokens safely, handling revoked access) and review it properly. Where is the client secret? Is state checked? Are tokens stored encrypted? Those questions catch real bugs.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **OAuth** | The standard for letting one app use your account on another, with limited access |
+| **Delegated access** | Letting an app do specific things on your behalf, without your password |
+| **Client / authorization server / resource server** | The app / where you log in / the API with your data |
+| **Consent screen** | "This app wants to… Allow?" |
+| **Redirect URI** | The registered address the user is sent back to |
+| **Authorization code** | A short-lived, single-use code, swapped for tokens |
+| **State** | A random value that must come back unchanged, proving the reply is for your login |
+| **Refresh token** | A long-lived credential for getting new access tokens |
+| **Client secret (server-side)** | The app's private credential, which never goes in browser code |
+| **OpenID Connect** | Identity on top of OAuth: who logged in |
+| **PKCE** | A one-time secret per login, for apps without a server |
+| **`encodeURIComponent()`** | Makes a value safe to put in a query string |

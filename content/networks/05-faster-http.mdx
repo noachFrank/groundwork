@@ -1,0 +1,314 @@
+---
+id: faster-http
+title: "Faster HTTP: versions and caching"
+order: 5
+topic: networks-and-the-web
+minutes: 60
+summary: How HTTP/1.1, HTTP/2 and HTTP/3 cut down on waiting, and how caching headers let browsers skip requests altogether, or get a tiny "nothing changed" answer instead of the whole thing again.
+connectivity: offline
+prerequisites:
+  - id: tcp-and-udp
+    need: essential
+    why: Round trips, latency, packet loss and UDP explain why each HTTP version exists.
+  - id: http
+    need: essential
+    why: Headers and status codes, which caching is built from.
+  - id: cookies-and-sessions
+    need: helpful
+    why: Uses curl options like -i and -s again.
+revision: 1
+teaches: [keep-alive, http2, multiplexing, head-of-line-blocking, http3-quic, browser-cache, cache-control, etag, not-modified, curl-dump-headers, str-strip]
+uses: [http, http-header, status-code, status-families, response-body, round-trip, latency, tcp, tcp-handshake, udp, packet-loss, tls, https, network-tab, curl, curl-output-file, terminal, powershell, practice-folder, function, return-statement, if-statement, elif-else, for-loop, str-split, type-conversion, in-operator, comparison-operators, list, append]
+predict:
+  id: p1
+  type: mcq
+  prompt: You visit a site's homepage twice in a minute. The logo hasn't changed. What's the best thing for the browser to do the second time?
+  options:
+    - Download the logo again, to be safe
+    - Use the copy it saved last time, if the server said that was allowed
+    - Ask the user whether the logo has changed
+    - Skip showing the logo
+  answer: 1
+  why: That's caching. The server's response headers say how long a copy may be reused, so the second visit can skip the request entirely. It's one of the biggest speed-ups on the web, and it costs nothing.
+tasks:
+  - id: cache-headers
+    type: terminal
+    title: Earn a 304 Not Modified
+    instructions: |
+      You'll use curl's `-D` option from this lesson, plus `-s`, `-o` and `-H` from earlier. Groundwork's practice API has a `/catalog` address that sends real caching headers.
+
+      Groundwork must be running. Nothing here needs the internet.
+    steps:
+      - text: Open PowerShell, go to your practice folder, and make a folder for this lesson.
+        command: cd $HOME\Groundwork-Practice; mkdir cache-lesson; cd cache-lesson
+      - text: Ask which HTTP version a request used. `-w` prints a detail about the request when it's done, and `-o NUL` throws the body away. The practice server speaks HTTP/1.1.
+        command: curl.exe -s -o NUL -w "%{http_version}" http://localhost:4314/hello > version.txt; Get-Content version.txt
+      - text: Fetch the catalog. `-D` saves the response headers to a file. Find the ETag and Cache-Control headers.
+        command: curl.exe -s -D first-headers.txt -o catalog.json http://localhost:4314/catalog; Get-Content first-headers.txt
+      - text: Ask again, sending the ETag back in an If-None-Match header, the way a browser would. The server answers 304 Not Modified, with no body at all.
+        command: 'curl.exe -s -D second-headers.txt -o NUL -H "If-None-Match: catalog-v1" http://localhost:4314/catalog; Get-Content second-headers.txt'
+      - text: "Optional, only if you're online: run `curl.exe -s -o NUL -w \"%{http_version}\" https://www.google.com` to see a big site answer over HTTP/2. Nothing to check."
+    checks:
+      - path: cache-lesson/version.txt
+        contains: "1.1"
+        hint: Run the `-w "%{http_version}"` step, with Groundwork running.
+      - path: cache-lesson/first-headers.txt
+        contains: etag
+        hint: Run the first /catalog step with `-D first-headers.txt`.
+      - path: cache-lesson/second-headers.txt
+        contains: "304"
+        hint: 'Send `-H "If-None-Match: catalog-v1"` exactly as shown, and save the headers with `-D second-headers.txt`.'
+  - id: cache-decision
+    type: python
+    title: Decide like a browser cache
+    instructions: |
+      You'll use: `.split()` (from *HTTP*), `.strip()` from this lesson, `in`, `int()` and `if`/`elif`.
+
+      A browser has a saved copy of a file. `cache_decision(cache_control, age)` gets the response's `Cache-Control` header (text like `"public, max-age=60"`) and how many seconds old the copy is. Return:
+
+      - `"no-store"` if the header contains `no-store`: the copy shouldn't exist at all, so fetch it fresh.
+      - `"revalidate"` if it contains `no-cache`: ask the server first (with the ETag).
+      - `"fresh"` if there's a `max-age=N` and the copy is **younger** than N seconds: use it without asking.
+      - `"revalidate"` in every other case.
+    starter: |
+      def cache_decision(cache_control, age):
+          # 1. Split the header on commas, and .strip() the spaces off each part.
+          # 2. Check for "no-store", then "no-cache".
+          # 3. Look for a part starting with max-age=. Split it on "=" and int() the number.
+          # 4. Otherwise return "revalidate".
+          pass
+
+
+      print(cache_decision("public, max-age=60", 10))
+      print(cache_decision("public, max-age=60", 90))
+      print(cache_decision("no-store", 0))
+    tests:
+      - name: a young copy is fresh
+        code: |
+          got = cache_decision("public, max-age=60", 10)
+          assert got == "fresh", f"10 seconds is less than max-age 60, so expected fresh, got {got!r}."
+      - name: an old copy needs revalidating
+        code: |
+          got = cache_decision("public, max-age=60", 90)
+          assert got == "revalidate", f"90 seconds is past max-age 60, so expected revalidate, got {got!r}."
+      - name: exactly max-age is no longer fresh
+        code: |
+          got = cache_decision("max-age=60", 60)
+          assert got == "revalidate", f"The copy must be younger than max-age, so 60 of 60 means revalidate. Got {got!r}."
+      - name: no-store wins
+        code: |
+          got = cache_decision("no-store", 0)
+          assert got == "no-store", f"Expected no-store, got {got!r}."
+      - name: no-cache means ask first, even with a max-age
+        code: |
+          got = cache_decision("no-cache, max-age=600", 5)
+          assert got == "revalidate", f"no-cache means always check with the server, so expected revalidate, got {got!r}."
+      - name: spaces after commas are handled
+        code: |
+          got = cache_decision("private,   max-age=300", 100)
+          assert got == "fresh", f"Expected fresh, got {got!r}. Did you .strip() each part?"
+      - name: no caching rule means revalidate
+        code: |
+          got = cache_decision("", 0)
+          assert got == "revalidate", f"Expected revalidate, got {got!r}."
+    solution: |
+      def cache_decision(cache_control, age):
+          parts = []
+          for part in cache_control.split(","):
+              parts.append(part.strip())
+          if "no-store" in parts:
+              return "no-store"
+          if "no-cache" in parts:
+              return "revalidate"
+          for part in parts:
+              if "max-age=" in part:
+                  max_age = int(part.split("=")[1])
+                  if age < max_age:
+                      return "fresh"
+          return "revalidate"
+    wrong: |
+      def cache_decision(cache_control, age):
+          if "no-store" in cache_control:
+              return "no-store"
+          if "max-age" in cache_control:
+              return "fresh"
+          return "revalidate"
+recall:
+  - id: r1
+    type: mcq
+    prompt: What's the main improvement in HTTP/2?
+    options:
+      - Many requests and responses share one connection at the same time, instead of waiting in line
+      - It's encrypted for the first time
+      - It uses UDP
+      - It removes headers
+    answer: 0
+    why: That's multiplexing. HTTP/3 then moves to QUIC, over UDP, so one lost packet doesn't hold up every other request.
+  - id: r2
+    type: short
+    prompt: What status code means "your saved copy is still good, so I'm not sending it again"?
+    accept: ['\b304\b']
+    answerText: "304"
+    why: 304 Not Modified. The browser sent an ETag in If-None-Match, and it matched.
+  - id: r3
+    type: mcq
+    prompt: 'A response has `Cache-Control: no-store`. What does it mean?'
+    options:
+      - Don't save a copy of this anywhere
+      - Save it, but check before reusing it
+      - Save it for a day
+      - The server is out of disk space
+    answer: 0
+    why: no-store is for private things like bank statements. no-cache, despite its name, means "save it, but check with the server before each reuse".
+  - id: r4
+    type: self
+    prompt: Explain what an ETag is and how it saves time, in your own words.
+    modelAnswer: An ETag is a label for one version of a file, sent by the server in a header. Next time, the browser sends that label back in If-None-Match. If the file hasn't changed, the server answers 304 Not Modified with no body, so nothing big is downloaded again. If it has changed, the server sends the new version with a new ETag.
+cards:
+  - id: versions
+    front: HTTP/1.1 vs. HTTP/2 vs. HTTP/3, in one line each?
+    back: "1.1: one request at a time per connection (browsers open about 6). 2: many requests at once on one connection. 3: the same, over QUIC on UDP, so one lost packet doesn't stall everything."
+  - id: cache-control
+    front: What do max-age, no-cache and no-store mean?
+    back: "max-age=N: reuse the copy for N seconds without asking. no-cache: keep a copy but check with the server each time. no-store: don't keep a copy at all."
+  - id: etag
+    front: How does an ETag lead to a 304?
+    back: 'The server sends `ETag: "v7"`. Later the browser sends `If-None-Match: "v7"`. If it still matches, the server answers 304 Not Modified with no body.'
+  - id: hol
+    front: What is head-of-line blocking?
+    back: Everything waiting behind one slow or lost item. HTTP/1.1 has it per connection, HTTP/2 still has it at the TCP level when a packet is lost, and HTTP/3 avoids it.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Which header tells a browser it may reuse a response for 10 minutes without asking?
+    options: ["Cache-Control: max-age=600", "Content-Type: text/html", "ETag: 600", "Retry-After: 600"]
+    answer: 0
+    why: max-age is in seconds, and 600 seconds is 10 minutes.
+  - id: t2
+    type: mcq
+    prompt: HTTP/3 runs on top of which protocol?
+    options: [QUIC, over UDP, TCP only, FTP, DNS]
+    answer: 0
+    why: QUIC brings its own reliability and encryption, built on UDP, so it can avoid TCP's head-of-line blocking.
+docs:
+  - title: "MDN: HTTP caching"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching
+  - title: "MDN: Evolution of HTTP"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Evolution_of_HTTP
+  - title: "MDN: ETag"
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/ETag
+videos: []
+---
+
+## In this lesson
+
+The last lesson showed that waiting, not bandwidth, is usually what makes the web slow: every round trip costs time. This lesson covers the two big ways HTTP fights that:
+
+- **Newer versions of HTTP**, which waste fewer round trips: **keep-alive**, **HTTP/2** and **HTTP/3**.
+- **Caching**: response headers that let a browser skip a request entirely, or get a tiny "nothing changed" answer.
+
+## Keep-alive: don't hang up between requests
+
+In the earliest HTTP, every request opened a new TCP connection (one round trip for the handshake, plus TLS for HTTPS), sent one request, and closed it. A page with 40 images paid for 40 handshakes.
+
+HTTP/1.1 made **keep-alive** the default: after a response, the connection stays open for the next request. That alone saves a lot of round trips. But HTTP/1.1 still has a limit: on one connection, requests go **one at a time**. The second waits until the first response has fully arrived, like one checkout lane with a queue.
+
+Browsers work around it by opening about **six connections** to each site at once. That's six lanes, but each one still has a queue behind it.
+
+## HTTP/2: many requests at once on one connection
+
+HTTP/2 (2015) changed how the messages travel, without changing what they mean. Methods, paths, headers and status codes are all the same. But:
+
+- Requests and responses are cut into small numbered pieces, and **many of them share one connection at the same time**. A big image and a tiny script no longer queue behind each other. This is called **multiplexing**.
+- Headers are **compressed**, because pages send nearly identical headers hundreds of times.
+
+You don't change your code to use HTTP/2. The browser and the server agree on it during the TLS handshake. Most big sites already use it.
+
+## HTTP/3: fixing what TCP can't
+
+HTTP/2 left one problem behind. All those requests share one **TCP** connection, and TCP delivers everything strictly in order. When **one** packet is lost, TCP holds back **everything** after it until the resend arrives, even pieces belonging to completely different files. One straggler blocks the whole queue. That's called **head-of-line blocking**.
+
+On a good connection it rarely matters. On a phone moving between cell towers, or on busy Wi-Fi, it hurts.
+
+**HTTP/3** (2022) moves off TCP onto a new protocol called **QUIC**, built on top of **UDP**. QUIC does its own numbering and resending, like TCP, but **separately for each request**, so a lost packet only delays the one file it belongs to. It also combines the connection and encryption handshakes, saving another round trip.
+
+| Version | Runs on | Requests per connection | Main win |
+| --- | --- | --- | --- |
+| HTTP/1.1 | TCP | One at a time | Keep-alive: reuse the connection |
+| HTTP/2 | TCP | Many at once | Multiplexing and compressed headers |
+| HTTP/3 | QUIC over UDP | Many at once, independent | No head-of-line blocking, faster setup |
+
+You can see which version each request used in the browser's **Network tab**: right-click the column headings and turn on **Protocol**. `h2` is HTTP/2 and `h3` is HTTP/3.
+
+<details>
+<summary>Quick check: why did HTTP/3 move from TCP to UDP?</summary>
+
+Because TCP delivers everything strictly in order, so one lost packet holds up all the requests sharing the connection. QUIC, built on UDP, handles each request separately.
+</details>
+
+## Caching: the fastest request is the one you don't send
+
+Every version above makes requests cheaper. **Caching** avoids them altogether. When a browser receives a file, it can keep a copy in its **browser cache** on your disk. Next time the page needs that file, it may use the copy. The server decides whether that's allowed, with response headers.
+
+### Cache-Control
+
+The **Cache-Control** response header sets the rules. Its parts are separated by commas:
+
+| Value | Meaning |
+| --- | --- |
+| `max-age=3600` | You may reuse this copy for 3,600 seconds (an hour) **without asking** |
+| `no-cache` | You may keep a copy, but **check with the server** before every reuse. The name is misleading |
+| `no-store` | Don't keep a copy at all. For private things like bank statements |
+| `public` / `private` | Shared caches, like a CDN, may / may not keep a copy. `private` means only the user's own browser. More on this in *CDNs* |
+
+So `Cache-Control: public, max-age=86400` on a logo means: anyone may keep this for a day.
+
+### ETags and 304 Not Modified
+
+What happens when `max-age` runs out, or with `no-cache`? The browser doesn't have to download the whole file again. It can **revalidate**: ask "has this changed?"
+
+1. The first response included an **ETag** header: a label for this exact version, like `ETag: "catalog-v1"`.
+2. The browser sends the label back in an **If-None-Match** request header: "send it only if it's no longer `catalog-v1`".
+3. If nothing changed, the server answers **304 Not Modified**, with **no body**. A few hundred bytes instead of the whole file.
+4. If it did change, the server sends `200 OK` with the new version and a new ETag.
+
+A 304 still costs a round trip, but it saves the download. You'll earn one in the task.
+
+<details>
+<summary>Quick check: what does a browser send to ask "has this changed since version v7?"</summary>
+
+An `If-None-Match: "v7"` request header. If it still matches, the server answers 304 Not Modified.
+</details>
+
+## Seeing headers with curl
+
+Two curl options help here:
+
+- `-D first-headers.txt` saves the response **headers** to a file, separately from the body. (`-i` from the last lesson mixes them into the body instead.)
+- `-w "%{http_version}"` prints a detail about the request once it's finished. Here, which HTTP version was used.
+
+One PowerShell detail: a real ETag includes double quotes, like `"catalog-v1"`, and PowerShell makes passing quotes to curl awkward. So in the task you'll send `If-None-Match: catalog-v1` without them, and Groundwork's practice API accepts that.
+
+## Python: cleaning up text with .strip()
+
+In the Python task you'll split a Cache-Control header on commas. `"public, max-age=60".split(",")` gives `["public", " max-age=60"]`. Notice the space at the start of the second part. **`.strip()`** removes spaces from both ends of a piece of text: `" max-age=60".strip()` gives `"max-age=60"`. You'll use it on every part before comparing.
+
+<ConsultantNote>
+Caching is often the cheapest performance fix there is, and it's frequently set up wrong. Long `max-age` on files that change means users see old versions. `no-store` on everything means every visit downloads everything again. A quick look at a client's headers in the Network tab often finds an easy win, and occasionally a privacy bug, like a personal page cached where other people can see it.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **Keep-alive** | Reusing one connection for many requests |
+| **HTTP/2** | Many requests at once over one connection, with compressed headers |
+| **Multiplexing** | Interleaving many requests and responses on one connection |
+| **Head-of-line blocking** | Everything waiting behind one lost or slow item |
+| **HTTP/3 and QUIC** | HTTP over QUIC, a UDP-based protocol with per-request reliability |
+| **Browser cache** | Saved copies of files on your disk |
+| **Cache-Control** | The header saying whether, and for how long, a copy may be reused |
+| **ETag** | A label for one version of a response |
+| **304 Not Modified** | "Your copy is still good": an answer with no body |
+| **curl -D** | Saves response headers to a file |
+| **`.strip()`** | Removes spaces from both ends of text |

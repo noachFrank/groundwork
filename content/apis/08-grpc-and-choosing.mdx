@@ -1,0 +1,281 @@
+---
+id: grpc-and-choosing
+title: "gRPC, and choosing the right API style"
+order: 8
+topic: software-talking
+minutes: 55
+summary: gRPC, the fast, strictly typed style that services inside big systems use to talk to each other, and a practical guide to choosing between REST, GraphQL, gRPC, WebSockets and webhooks.
+connectivity: offline
+prerequisites:
+  - id: graphql
+    need: essential
+    why: The comparison builds on REST and GraphQL.
+  - id: faster-http
+    need: essential
+    why: gRPC runs on HTTP/2.
+  - id: live-updates
+    need: helpful
+    why: WebSockets and server-sent events appear in the comparison.
+revision: 1
+teaches: [rpc, grpc, protobuf, proto-file, code-generation, binary-format, grpc-streaming, api-style-choice]
+uses: [api, rest, graphql, graphql-schema, openapi, sdk, service, http2, multiplexing, json, text-format, browser, polling, server-sent-events, websocket, breaking-change, realtime-requirement, programming-language, function, function-call, compiler]
+predict:
+  id: p1
+  type: mcq
+  prompt: Inside a large company, 200 small services call each other millions of times a minute. Which matters most for those internal calls?
+  options:
+    - That a person can read every message easily in a browser
+    - Speed, small messages, and both sides agreeing exactly on what each message contains
+    - That the messages are written in YAML
+    - That every call opens a new web page
+  answer: 1
+  why: At that scale, every byte and millisecond is multiplied by millions, and a mismatch between services causes outages. That's the niche gRPC fills. It's fast, compact and strictly typed, at the cost of being harder for humans to read.
+tasks:
+  - id: choose-style
+    type: case
+    title: Pick the API style
+    instructions: For each situation, choose the style you'd recommend, and notice why.
+    scenario: |
+      You're advising a growing logistics company on four integration decisions. Their team knows REST well. They have a public website, a driver app, about 30 internal services, and several shipping partners.
+    questions:
+      - prompt: Partners want to look up shipments and create pickups from their own systems, in many different languages.
+        choices:
+          - text: A REST API with an OpenAPI description
+            score: 2
+            why: It's the most widely understood style. Every language can call it, it's easy to test with curl and Postman, and an OpenAPI file gives partners docs and SDKs.
+          - text: gRPC
+            score: 1
+            why: Possible, but partners would need gRPC tooling and the .proto files. For public APIs, the extra hurdle usually isn't worth it.
+          - text: Direct access to the database
+            score: 0
+            why: Never. That bypasses all your rules and permissions, and ties partners to your internal tables.
+      - prompt: The internal pricing service is called by 30 other services, thousands of times a second, and needs to be fast and strictly consistent.
+        choices:
+          - text: gRPC
+            score: 2
+            why: Compact binary messages over HTTP/2, a shared .proto contract, and generated code in every service. This is exactly where gRPC shines.
+          - text: GraphQL
+            score: 0
+            why: GraphQL is for clients needing flexible combinations of data, not high-volume calls between services.
+          - text: Email
+            score: 0
+            why: Far too slow for this.
+      - prompt: Partners want to know the moment a shipment is delivered, without asking every few minutes.
+        choices:
+          - text: Webhooks, where your system calls an address each partner registers
+            score: 2
+            why: Server-to-server notifications without polling. That's the next module's first lesson.
+          - text: Ask partners to poll every second
+            score: 0
+            why: Wasteful for everyone, and most polls return nothing new.
+          - text: A WebSocket held open by each partner
+            score: 1
+            why: Workable, but partners would have to keep a connection open all day. Webhooks are the usual choice between companies.
+      - prompt: Dispatchers' screens should show drivers' positions moving live on a map.
+        choices:
+          - text: WebSockets (or server-sent events), from the server to the dispatchers' browsers
+            score: 2
+            why: A live feed to a browser, updating every few seconds. That's what open connections are for.
+          - text: gRPC directly from the browser
+            score: 0
+            why: Browsers can't speak normal gRPC. It needs a special proxy (gRPC-Web).
+          - text: REST, refreshed by hand
+            score: 0
+            why: The dispatchers need it live.
+    passScore: 7
+  - id: explain-styles
+    type: explain
+    title: Explain the choice to a client
+    instructions: Explaining technical trade-offs in plain words is the core of consulting. Try it without looking back.
+    prompt: |
+      The logistics company's operations director, who isn't technical, asks: "Our developers keep arguing about REST, GraphQL and gRPC. What's the difference, and do we have to pick just one?" Write a short answer for them.
+    rubric:
+      - Describes each of the three in plain, non-technical words
+      - Says what kind of situation each one suits
+      - Makes clear they can use different styles for different jobs
+      - Avoids unexplained jargon
+    minScore: 3
+    modelAnswer: |
+      They're three ways for software to talk to other software, and each suits a different job, so you don't have to pick one.
+
+      REST is the standard, well-understood way. Most companies' public connections use it, so it's the best choice for your partners. GraphQL lets an app ask for exactly the information one screen needs in a single request, which helps when many different apps need different mixes of data, like your website and driver app. gRPC is built for speed between your own internal systems, which talk to each other thousands of times a second. It's very fast and strict, but harder for outsiders to use.
+
+      A sensible setup is REST for partners, gRPC between your internal services, and GraphQL only if your apps keep needing many requests per screen.
+    gradingPrompt: |
+      I'm learning to be a software consultant. A non-technical operations director asked me the difference between REST, GraphQL and gRPC, and whether they have to pick one. Here's my answer. Please check it's accurate and understandable to a non-technical person, and suggest one improvement.
+
+      My answer:
+      {{ANSWER}}
+recall:
+  - id: r1
+    type: mcq
+    prompt: What is a .proto file?
+    options:
+      - The shared contract describing a gRPC service's functions and message types, used to generate code for each side
+      - A log file
+      - A type of image
+      - A database backup
+    answer: 0
+    why: Both sides generate their code from the same file, so they always agree on the shape of every message.
+  - id: r2
+    type: short
+    prompt: What does RPC stand for?
+    accept: ['remote procedure call']
+    answerText: Remote procedure call
+    why: Calling a function that runs on another computer as if it were in your own program.
+  - id: r3
+    type: mcq
+    prompt: Why isn't gRPC usually used for an API that browsers call directly?
+    options:
+      - Browsers can't speak normal gRPC, so it needs a translating proxy (gRPC-Web), and its binary messages are hard to inspect
+      - It's too slow
+      - It doesn't support HTTPS
+      - Browsers ban it by law
+    answer: 0
+    why: It's built for service-to-service calls. REST or GraphQL suits browsers better.
+  - id: r4
+    type: self
+    prompt: Summarize when you'd reach for REST, GraphQL, gRPC, webhooks and WebSockets, in one line each.
+    modelAnswer: "REST: the default, especially for public and partner APIs. GraphQL: many different clients needing different combinations of related data. gRPC: fast, high-volume calls between your own internal services. Webhooks: telling another company's server when something happens. WebSockets (or SSE): live updates to a browser or app."
+cards:
+  - id: grpc
+    front: gRPC in one sentence?
+    back: A style where services call each other's functions over HTTP/2, with compact binary messages defined in a shared .proto file that both sides generate code from.
+  - id: protobuf
+    front: Protobuf vs. JSON?
+    back: "Protobuf: compact binary, strictly typed, needs the .proto file to read. JSON: readable text, flexible, bigger and slower to process."
+  - id: choose
+    front: The API-style rule of thumb?
+    back: REST by default. GraphQL for many different clients with varied data needs. gRPC between internal services. Webhooks for server-to-server notifications. WebSockets or SSE for live browser updates.
+  - id: streaming
+    front: What can gRPC do that a single REST request can't?
+    back: Streaming, where either side (or both) sends a flow of messages over one call, thanks to HTTP/2.
+testOut:
+  - id: t1
+    type: mcq
+    prompt: Which format does gRPC normally use for its messages?
+    options: [Protocol Buffers (protobuf), YAML, HTML, CSV]
+    answer: 0
+    why: Protobuf is a compact binary format, defined by .proto files.
+  - id: t2
+    type: mcq
+    prompt: A public API for partners in many programming languages, easy to test with curl. Which style?
+    options: [REST, gRPC, A shared database, FTP]
+    answer: 0
+    why: REST is the most widely understood and easiest to try out.
+docs:
+  - title: "gRPC: Introduction"
+    url: https://grpc.io/docs/what-is-grpc/introduction/
+  - title: "Protocol Buffers: Overview"
+    url: https://protobuf.dev/overview/
+  - title: "gRPC: Core concepts"
+    url: https://grpc.io/docs/what-is-grpc/core-concepts/
+videos: []
+---
+
+## In this lesson
+
+You've now met REST, GraphQL, polling, server-sent events and WebSockets. This lesson adds the last major style, **gRPC**, and then pulls everything together:
+
+- **RPC**: calling a function on another computer.
+- **gRPC**, **protobuf** and **.proto files**: a strict, shared contract.
+- **Binary formats**, **generated code** and **streaming**.
+- A practical guide to **choosing an API style**.
+
+## Calling a function on another computer
+
+REST thinks in **resources**: nouns in the address, and verbs as methods. Another long-standing approach thinks in **functions**: "call `GetPrice` with these inputs, and give me the result". When the function runs on another computer, that's a **remote procedure call**, or **RPC**. Your code looks like it's calling an ordinary function, and the library does the network part.
+
+```python
+price = pricing.GetPrice(product_id=42, country="GB")
+```
+
+## gRPC
+
+**gRPC** is the most popular modern RPC system, created at Google. Three things set it apart.
+
+### 1. A shared contract: the .proto file
+
+Everything starts with a **.proto file** describing the service's functions and the exact shape of every message:
+
+```protobuf
+service Pricing {
+  rpc GetPrice (PriceRequest) returns (PriceReply);
+}
+
+message PriceRequest {
+  int32 product_id = 1;
+  string country = 2;
+}
+
+message PriceReply {
+  int64 price_in_pennies = 1;
+  string currency = 2;
+}
+```
+
+- `service Pricing` with `rpc GetPrice (...) returns (...)` declares a function and its input and output types.
+- Each `message` lists its fields, with **types** (`int32` is a whole number, `string` is text) and a **field number** (`= 1`, `= 2`). The numbers, not the names, are what's actually sent, which keeps messages small, and lets fields be renamed later without breaking anything.
+
+It's the same idea as an OpenAPI file or a GraphQL schema, but stricter.
+
+### 2. Generated code
+
+From that one file, a tool **generates** code for each language: a ready-made client for the caller and a skeleton for the server, in Python, Go, Java, C#, JavaScript and more. This is **code generation**. Both sides are built from the same contract, so they can't disagree about what a message contains. A mistake shows up when the code is built, not as a confusing failure in production.
+
+### 3. Compact binary messages over HTTP/2
+
+JSON is **text**: readable, but bulky. `{"product_id": 42, "country": "GB"}` repeats the field names in every message. gRPC uses **Protocol Buffers** (**protobuf**), a **binary format**: compact bytes that only make sense with the .proto file. Messages are often several times smaller and faster to process.
+
+It runs over **HTTP/2**, so many calls share one connection at once (multiplexing, from *Faster HTTP*). HTTP/2 also allows **streaming**: either side, or both, can send a flow of messages over a single call, for example a server streaming price updates, or a client uploading a long series of readings.
+
+<details>
+<summary>Quick check: why are protobuf messages smaller than JSON?</summary>
+
+They're binary, and they send short field numbers instead of repeating field names as text in every message.
+</details>
+
+## Where gRPC fits, and where it doesn't
+
+**Good fit:** calls **between your own internal services**, especially at high volume, where speed and strict agreement matter, and all the teams can share the .proto files. Many large systems use gRPC inside and REST at the edge.
+
+**Poor fit:**
+
+- **Browsers.** They can't speak normal gRPC. It needs a translating proxy called **gRPC-Web**.
+- **Public and partner APIs.** Outsiders need the .proto files and gRPC tools, and they can't just try it with curl.
+- **Debugging by eye.** Binary messages can't be read in a log or the Network tab without extra tools.
+
+## Choosing an API style
+
+There's no single best style. Each fits a kind of job:
+
+| Situation | Usually choose | Why |
+| --- | --- | --- |
+| A public or partner API, or "we're not sure yet" | **REST** | Everyone understands it, every language and tool supports it, and HTTP caching works |
+| Many different apps need different mixes of related data | **GraphQL** | One request per screen, exactly the data needed |
+| Fast, high-volume calls between your own services | **gRPC** | Compact, strictly typed, with generated code and streaming |
+| Telling another company's server when something happens | **Webhooks** | Server-to-server notifications without polling (next module) |
+| Live updates to a browser or app | **WebSockets** or **SSE** (or polling, if a delay is fine) | Push instead of asking |
+
+Three principles behind the table:
+
+1. **Start with REST** unless there's a specific reason not to. It's the default for good reasons.
+2. **Choose per job, not per company.** It's normal to have REST for partners, gRPC inside, and WebSockets for a live dashboard.
+3. **The team matters.** A style nobody on the team knows has a real cost in learning, bugs and hiring. Name that cost when you recommend it.
+
+<ConsultantNote>
+Technology debates inside client teams ("we should move everything to gRPC!") are common, and they're often about taste. Your value is turning them into criteria: who calls this API, how often, from where, and who maintains it? Answered honestly, those questions usually settle the argument, and a written decision ("REST for partners because…, gRPC for pricing because…") stops it coming back every six months.
+</ConsultantNote>
+
+## Words in this lesson
+
+| Word | Meaning |
+| --- | --- |
+| **RPC** | Remote procedure call: calling a function that runs on another computer |
+| **gRPC** | A popular RPC system using HTTP/2, protobuf and generated code |
+| **Protobuf** | Protocol Buffers: a compact binary message format |
+| **.proto file** | The shared contract listing a service's functions and message types |
+| **Code generation** | Producing client and server code from the contract |
+| **Binary format** | Data as compact bytes rather than readable text |
+| **Streaming** | Sending a flow of messages over one call |
+| **Choosing an API style** | REST by default, GraphQL for varied clients, gRPC inside, webhooks between companies, WebSockets for live screens |
